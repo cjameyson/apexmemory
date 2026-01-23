@@ -6,7 +6,7 @@
 
 	interface Props {
 		title: string;
-		icon: Component;
+		icon?: Component;
 		count?: number;
 		isOpen?: boolean;
 		actions?: Snippet;
@@ -16,7 +16,7 @@
 
 	let {
 		title,
-		icon: Icon,
+		icon: Icon = undefined,
 		count,
 		isOpen = $bindable(true),
 		actions,
@@ -43,8 +43,10 @@
 					isOpen && 'rotate-90'
 				)}
 			/>
-			<Icon class="size-4 text-slate-500 dark:text-slate-400" />
-			<span class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
+			{#if Icon}
+				<Icon class="size-4 text-slate-500 dark:text-slate-400" />
+			{/if}
+			<span class="text-base font-semibold text-slate-700 dark:text-slate-300 truncate">
 				{title}
 			</span>
 			{#if count !== undefined}

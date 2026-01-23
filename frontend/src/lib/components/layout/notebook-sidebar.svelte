@@ -9,7 +9,8 @@
 		PlusIcon,
 		PanelLeftCloseIcon,
 		PanelLeftOpenIcon,
-		FolderIcon
+		SettingsIcon,
+		SearchIcon
 	} from '@lucide/svelte';
 	import type { Notebook, Source, Card } from '$lib/types';
 
@@ -19,8 +20,10 @@
 		cards: Card[];
 		selectedSource?: Source | null;
 		isCollapsed?: boolean;
+		sidebarWidth?: number;
 		onSelectSource?: (source: Source | null) => void;
 		onToggleCollapse?: () => void;
+		onOpenSettings?: () => void;
 		class?: string;
 	}
 
@@ -30,15 +33,32 @@
 		cards,
 		selectedSource = null,
 		isCollapsed = $bindable(false),
+		sidebarWidth = $bindable(288),
 		onSelectSource,
 		onToggleCollapse,
+		onOpenSettings,
 		class: className
 	}: Props = $props();
 
+	let isResizing = $state(false);
+
+	function handleResizeStart(e: MouseEvent) {
+		isResizing = true;
+		e.preventDefault();
+	}
+
+	function handleResizeMove(e: MouseEvent) {
+		if (!isResizing) return;
+		const newWidth = Math.min(400, Math.max(200, e.clientX));
+		sidebarWidth = newWidth;
+	}
+
+	function handleResizeEnd() {
+		isResizing = false;
+	}
+
 	let sourcesOpen = $state(true);
 	let cardsOpen = $state(true);
-
-	let dueCount = $derived(cards.filter((c) => c.due).length);
 
 	function selectSource(source: Source | null) {
 		onSelectSource?.(source);
@@ -50,28 +70,51 @@
 	}
 </script>
 
+<svelte:window
+	onmousemove={handleResizeMove}
+	onmouseup={handleResizeEnd}
+/>
+
 <aside
 	class={cn(
-		'bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-200',
-		isCollapsed ? 'w-12' : 'w-72',
+		'bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-200 relative',
+		isCollapsed && 'w-12',
 		className
 	)}
+	style={!isCollapsed ? `width: ${sidebarWidth}px` : undefined}
 >
 	<!-- Sidebar header -->
 	<div class="p-2 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
 		{#if !isCollapsed}
-			<div class="flex items-center gap-2 flex-1 min-w-0 px-2">
+			<a
+				href="/notebooks/{notebook.id}"
+				class="flex items-center gap-2 flex-1 min-w-0 px-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+			>
 				<span class="text-xl">{notebook.emoji}</span>
 				<span class="font-semibold text-slate-900 dark:text-white truncate">
 					{notebook.name}
 				</span>
-			</div>
+			</a>
 		{/if}
 
+		{#if !isCollapsed}
+			<!-- Settings button (only when expanded) -->
+			<Button
+				variant="ghost"
+				size="icon"
+				class="shrink-0 size-8 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+				onclick={() => onOpenSettings?.()}
+				aria-label="Notebook settings"
+			>
+				<SettingsIcon class="size-4" />
+			</Button>
+		{/if}
+
+		<!-- Collapse button -->
 		<Button
 			variant="ghost"
 			size="icon"
-			class="shrink-0 size-8"
+			class="shrink-0 size-8 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
 			onclick={toggleCollapse}
 			aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
 		>
@@ -88,15 +131,6 @@
 		{#if isCollapsed}
 			<!-- Collapsed state: icon buttons only -->
 			<div class="flex flex-col items-center gap-1 px-1.5">
-				<Button
-					variant={!selectedSource ? 'secondary' : 'ghost'}
-					size="icon"
-					class="size-8"
-					onclick={() => selectSource(null)}
-					aria-label="All sources"
-				>
-					<FolderIcon class="size-4" />
-				</Button>
 				<Button
 					variant="ghost"
 					size="icon"
@@ -117,27 +151,9 @@
 		{:else}
 			<!-- Expanded state: full sidebar -->
 
-			<!-- All sources button -->
-			<div class="px-2 mb-2">
-				<button
-					type="button"
-					onclick={() => selectSource(null)}
-					class={cn(
-						'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors',
-						!selectedSource
-							? 'bg-sky-100 dark:bg-sky-900/30 text-sky-900 dark:text-sky-100'
-							: 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-					)}
-				>
-					<FolderIcon class="size-4 text-slate-500" />
-					<span class="text-sm font-medium">All sources</span>
-				</button>
-			</div>
-
 			<!-- Sources section -->
 			<SidebarSection
 				title="Sources"
-				icon={FileStackIcon}
 				count={sources.length}
 				bind:isOpen={sourcesOpen}
 			>
@@ -167,23 +183,34 @@
 			<!-- Cards section -->
 			<SidebarSection
 				title="Cards"
-				icon={LayersIcon}
 				count={cards.length}
 				bind:isOpen={cardsOpen}
 			>
-				<div class="px-3 py-2 space-y-1">
-					<div class="flex items-center justify-between text-sm">
-						<span class="text-slate-600 dark:text-slate-400">Total</span>
-						<span class="font-medium text-slate-900 dark:text-white">{cards.length}</span>
-					</div>
-					{#if dueCount > 0}
-						<div class="flex items-center justify-between text-sm">
-							<span class="text-slate-600 dark:text-slate-400">Due</span>
-							<span class="font-medium text-sky-600 dark:text-sky-400">{dueCount}</span>
-						</div>
-					{/if}
+				<div class="px-2 py-1">
+					<a
+						href="/notebooks/{notebook.id}/cards"
+						class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+					>
+						<SearchIcon class="size-4" />
+						<span>Browse</span>
+					</a>
 				</div>
 			</SidebarSection>
 		{/if}
 	</div>
+
+	<!-- Resize handle (only when expanded) -->
+	{#if !isCollapsed}
+		<div
+			class={cn(
+				'absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-sky-500/50 transition-colors',
+				isResizing && 'bg-sky-500/50'
+			)}
+			onmousedown={handleResizeStart}
+			role="separator"
+			aria-orientation="vertical"
+			aria-label="Resize sidebar"
+			tabindex="0"
+		></div>
+	{/if}
 </aside>

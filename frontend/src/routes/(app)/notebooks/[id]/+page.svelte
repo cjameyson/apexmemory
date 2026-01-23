@@ -2,23 +2,14 @@
 	import type { PageData } from './$types';
 	import { appState } from '$lib/stores/app.svelte';
 	import NotebookSidebar from '$lib/components/layout/notebook-sidebar.svelte';
-	import CardsGridView from '$lib/components/notebook/cards-grid-view.svelte';
+	import NotebookDashboard from '$lib/components/notebook/notebook-dashboard.svelte';
 	import SourceDetail from '$lib/components/notebook/source-detail.svelte';
-	import type { Source, Card } from '$lib/types';
+	import type { Source } from '$lib/types';
 
 	let { data }: { data: PageData } = $props();
 
 	// Local state for source selection (page-specific)
 	let selectedSource = $state<Source | null>(null);
-
-	// Filter cards based on selected source
-	let displayedCards = $derived.by(() => {
-		const source = selectedSource;
-		if (source) {
-			return data.cards.filter((c) => c.sourceId === source.id);
-		}
-		return data.cards;
-	});
 
 	function handleSelectSource(source: Source | null) {
 		selectedSource = source;
@@ -28,12 +19,9 @@
 		}
 	}
 
-	function handleViewModeChange(mode: 'all' | 'due' | 'mastered') {
-		appState.setCardsViewMode(mode);
-	}
-
-	function handleCardClick(_card: Card) {
-		// Future: open card editor/viewer
+	function handleOpenSettings() {
+		// TODO: Open notebook settings modal
+		console.log('Open notebook settings');
 	}
 
 	function handleSourceClose() {
@@ -70,6 +58,7 @@
 			{selectedSource}
 			bind:isCollapsed={appState.sidebarCollapsed}
 			onSelectSource={handleSelectSource}
+			onOpenSettings={handleOpenSettings}
 		/>
 	{/if}
 
@@ -86,25 +75,11 @@
 				onToggleExpand={handleToggleExpand}
 			/>
 		{:else}
-			<!-- Cards grid view -->
-			<div class="mb-6">
-				<div class="flex items-center gap-3 mb-2">
-					<span class="text-2xl">{data.notebook.emoji}</span>
-					<h1 class="text-xl font-bold text-slate-900 dark:text-white">
-						{data.notebook.name}
-					</h1>
-				</div>
-				<p class="text-sm text-slate-500 dark:text-slate-400">
-					{data.cards.length} cards across {data.sources.length} sources
-				</p>
-			</div>
-
-			<CardsGridView
-				cards={displayedCards}
+			<!-- Notebook dashboard -->
+			<NotebookDashboard
+				notebook={data.notebook}
 				sources={data.sources}
-				viewMode={appState.cardsViewMode}
-				onViewModeChange={handleViewModeChange}
-				onCardClick={handleCardClick}
+				cards={data.cards}
 			/>
 		{/if}
 	</div>

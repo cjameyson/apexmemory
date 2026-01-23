@@ -2,10 +2,11 @@
 	import { page } from '$app/stores';
 	import { cn } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import NotebooksDropdown from '$lib/components/navigation/notebooks-dropdown.svelte';
 	import SearchTrigger from '$lib/components/navigation/search-trigger.svelte';
 	import ReviewLauncher from '$lib/components/navigation/review-launcher.svelte';
-	import { HomeIcon, BrainIcon } from '@lucide/svelte';
+	import { HomeIcon, BrainIcon, SettingsIcon, LogOutIcon } from '@lucide/svelte';
 	import type { Notebook, ReviewScope } from '$lib/types';
 	import type { User } from '$lib/api/types';
 	import { appState } from '$lib/stores/app.svelte';
@@ -28,6 +29,18 @@
 	function handleStartReview(scope: ReviewScope) {
 		appState.startFocusMode(scope);
 	}
+
+	function getInitials(u: User): string {
+		if (u.username) {
+			return u.username.slice(0, 2).toUpperCase();
+		}
+		return u.email.slice(0, 2).toUpperCase();
+	}
+
+	async function handleLogout() {
+		await fetch('/api/auth/logout', { method: 'POST' });
+		window.location.href = '/login';
+	}
 </script>
 
 <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2 shrink-0">
@@ -40,7 +53,6 @@
 				class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
 			>
 				<BrainIcon class="size-6 text-sky-500" />
-				<span class="font-semibold text-sm hidden sm:inline">Apex Memory</span>
 			</a>
 
 			<!-- Home button -->
@@ -76,6 +88,42 @@
 				{currentNotebook}
 				onStartReview={handleStartReview}
 			/>
+
+			<!-- User avatar dropdown -->
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger>
+					{#snippet child({ props })}
+						<button
+							{...props}
+							class="size-8 rounded-full bg-sky-500 text-white text-sm font-medium flex items-center justify-center hover:bg-sky-600 transition-colors"
+						>
+							{getInitials(user)}
+						</button>
+					{/snippet}
+				</DropdownMenu.Trigger>
+
+				<DropdownMenu.Content align="end" class="w-48">
+					<DropdownMenu.Label class="font-normal">
+						<div class="flex flex-col space-y-1">
+							<p class="text-sm font-medium">{user.username || 'User'}</p>
+							<p class="text-xs text-slate-500 truncate">{user.email}</p>
+						</div>
+					</DropdownMenu.Label>
+					<DropdownMenu.Separator />
+					<DropdownMenu.Item class="gap-2 cursor-pointer">
+						<SettingsIcon class="size-4" />
+						Settings
+					</DropdownMenu.Item>
+					<DropdownMenu.Separator />
+					<DropdownMenu.Item
+						class="gap-2 cursor-pointer text-red-600 dark:text-red-400"
+						onclick={handleLogout}
+					>
+						<LogOutIcon class="size-4" />
+						Logout
+					</DropdownMenu.Item>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
 		</div>
 	</div>
 </header>
