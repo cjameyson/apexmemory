@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:18beta2
+    container_name: apexmemory-pg18
+    env_file:
+      # provide the other pg app and migrator users
+      - ./.env
+    environment:
+      POSTGRES_DB: ${PG_DATABASE}
+      POSTGRES_USER: ${PG_SUPER_USER}
+      POSTGRES_PASSWORD: ${PG_SUPER_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--locale-provider=builtin --builtin-locale=C.UTF-8 --encoding=UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - apexmemory_pgdata:/var/lib/postgresql/data
+      - ./backend/db/init:/docker-entrypoint-initdb.d:ro 
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_SUPER_USER} -d ${PG_DATABASE}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  apexmemory_pgdata:
