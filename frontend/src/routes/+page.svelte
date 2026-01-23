@@ -1,229 +1,87 @@
 <script lang="ts">
+	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
-	import * as Card from '$lib/components/ui/card';
-	import { Input } from '$lib/components/ui/input';
-	import * as Dialog from '$lib/components/ui/dialog';
-	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { PageHeader, Stack, Cluster, Container } from '$lib/components/layout';
-	import Loading from '$lib/components/ui/loading.svelte';
-	import { toast } from 'svelte-sonner';
+	import { BrainIcon, ZapIcon, BookOpenIcon, SparklesIcon } from '@lucide/svelte';
 
-	let dialogOpen = $state(false);
-	let showLoading = $state(false);
-
-	function handleShowToast() {
-		toast.success('Toast notification working!', {
-			description: 'This is a success message.'
-		});
-	}
-
-	function toggleLoading() {
-		showLoading = !showLoading;
-	}
+	// If user is logged in, this page won't be shown (see +page.server.ts)
 </script>
 
-<Container>
-	<Stack gap="xl">
-		<PageHeader
-			title="Apex Memory"
-			description="Design System Foundation"
-		>
-			{#snippet actions()}
-				<Button variant="outline" onclick={handleShowToast}>Show Toast</Button>
-			{/snippet}
-		</PageHeader>
+<!-- Landing page for unauthenticated users -->
+<div class="min-h-screen bg-gradient-to-br from-slate-50 to-sky-50 dark:from-slate-950 dark:to-slate-900">
+	<!-- Header -->
+	<header class="px-6 py-4">
+		<div class="max-w-6xl mx-auto flex items-center justify-between">
+			<div class="flex items-center gap-2">
+				<BrainIcon class="size-8 text-sky-500" />
+				<span class="text-xl font-bold text-slate-900 dark:text-white">Apex Memory</span>
+			</div>
+			<div class="flex items-center gap-2">
+				<Button variant="ghost" href="/login">Sign in</Button>
+				<Button href="/register">Get Started</Button>
+			</div>
+		</div>
+	</header>
 
-		<!-- FSRS Rating Colors -->
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>FSRS Rating Colors</Card.Title>
-				<Card.Description>Spaced repetition answer rating colors</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<Cluster gap="sm">
-					<div class="flex items-center gap-2">
-						<div class="w-8 h-8 rounded-md bg-again"></div>
-						<span class="text-sm">Again</span>
-					</div>
-					<div class="flex items-center gap-2">
-						<div class="w-8 h-8 rounded-md bg-hard"></div>
-						<span class="text-sm">Hard</span>
-					</div>
-					<div class="flex items-center gap-2">
-						<div class="w-8 h-8 rounded-md bg-good"></div>
-						<span class="text-sm">Good</span>
-					</div>
-					<div class="flex items-center gap-2">
-						<div class="w-8 h-8 rounded-md bg-easy"></div>
-						<span class="text-sm">Easy</span>
-					</div>
-				</Cluster>
-			</Card.Content>
-		</Card.Root>
+	<!-- Hero -->
+	<main class="px-6 py-20">
+		<div class="max-w-4xl mx-auto text-center">
+			<h1 class="text-5xl font-bold text-slate-900 dark:text-white mb-6">
+				Remember everything you learn
+			</h1>
+			<p class="text-xl text-slate-600 dark:text-slate-400 mb-10 max-w-2xl mx-auto">
+				Apex Memory uses AI-enhanced flashcards and proven spaced repetition algorithms
+				to help you retain knowledge for life.
+			</p>
+			<div class="flex items-center justify-center gap-4">
+				<Button size="lg" href="/register" class="gap-2">
+					<ZapIcon class="size-5" />
+					Start learning free
+				</Button>
+				<Button size="lg" variant="outline" href="/demo">
+					View demo
+				</Button>
+			</div>
+		</div>
 
-		<!-- Button Variants -->
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Buttons</Card.Title>
-				<Card.Description>Button component variants</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<Stack gap="md">
-					<Cluster gap="sm">
-						<Button>Primary</Button>
-						<Button variant="secondary">Secondary</Button>
-						<Button variant="outline">Outline</Button>
-						<Button variant="ghost">Ghost</Button>
-						<Button variant="destructive">Destructive</Button>
-						<Button variant="link">Link</Button>
-					</Cluster>
-					<Cluster gap="sm">
-						<Button size="sm">Small</Button>
-						<Button size="default">Default</Button>
-						<Button size="lg">Large</Button>
-						<Button size="icon">
-							<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-						</Button>
-					</Cluster>
-				</Stack>
-			</Card.Content>
-		</Card.Root>
-
-		<!-- Input -->
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Input</Card.Title>
-				<Card.Description>Text input component</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<Stack gap="sm" class="max-w-sm">
-					<Input placeholder="Default input" />
-					<Input type="email" placeholder="Email input" />
-					<Input disabled placeholder="Disabled input" />
-				</Stack>
-			</Card.Content>
-		</Card.Root>
-
-		<!-- Dialog -->
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Dialog</Card.Title>
-				<Card.Description>Modal dialog component</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<Dialog.Root bind:open={dialogOpen}>
-					<Dialog.Trigger>
-						{#snippet child({ props })}
-							<Button {...props}>Open Dialog</Button>
-						{/snippet}
-					</Dialog.Trigger>
-					<Dialog.Content>
-						<Dialog.Header>
-							<Dialog.Title>Dialog Title</Dialog.Title>
-							<Dialog.Description>
-								This is a dialog description. Dialogs are used for important information or actions.
-							</Dialog.Description>
-						</Dialog.Header>
-						<Dialog.Footer>
-							<Button variant="outline" onclick={() => (dialogOpen = false)}>Cancel</Button>
-							<Button onclick={() => (dialogOpen = false)}>Confirm</Button>
-						</Dialog.Footer>
-					</Dialog.Content>
-				</Dialog.Root>
-			</Card.Content>
-		</Card.Root>
-
-		<!-- Dropdown Menu -->
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Dropdown Menu</Card.Title>
-				<Card.Description>Dropdown menu component</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<DropdownMenu.Root>
-					<DropdownMenu.Trigger>
-						{#snippet child({ props })}
-							<Button variant="outline" {...props}>Open Menu</Button>
-						{/snippet}
-					</DropdownMenu.Trigger>
-					<DropdownMenu.Content>
-						<DropdownMenu.Item>Profile</DropdownMenu.Item>
-						<DropdownMenu.Item>Settings</DropdownMenu.Item>
-						<DropdownMenu.Separator />
-						<DropdownMenu.Item>Log out</DropdownMenu.Item>
-					</DropdownMenu.Content>
-				</DropdownMenu.Root>
-			</Card.Content>
-		</Card.Root>
-
-		<!-- Loading States -->
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Loading States</Card.Title>
-				<Card.Description>Skeleton loading components</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<Stack gap="lg">
-					<Button variant="outline" onclick={toggleLoading}>
-						{showLoading ? 'Hide' : 'Show'} Loading States
-					</Button>
-
-					{#if showLoading}
-						<div class="grid gap-6 md:grid-cols-2">
-							<div>
-								<p class="text-sm text-muted-foreground mb-2">Card Loading</p>
-								<Loading variant="card" count={2} />
-							</div>
-							<div>
-								<p class="text-sm text-muted-foreground mb-2">List Loading</p>
-								<Loading variant="list" count={3} />
-							</div>
-						</div>
-					{/if}
-				</Stack>
-			</Card.Content>
-		</Card.Root>
-
-		<!-- Typography -->
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Typography</Card.Title>
-				<Card.Description>Fluid typography scale</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<Stack gap="sm">
-					<p class="text-5xl font-bold">Heading 5XL</p>
-					<p class="text-4xl font-bold">Heading 4XL</p>
-					<p class="text-3xl font-semibold">Heading 3XL</p>
-					<p class="text-2xl font-semibold">Heading 2XL</p>
-					<p class="text-xl font-medium">Heading XL</p>
-					<p class="text-lg">Text Large</p>
-					<p class="text-base">Text Base</p>
-					<p class="text-sm text-muted-foreground">Text Small (muted)</p>
-					<p class="text-xs text-muted-foreground">Text Extra Small (muted)</p>
-				</Stack>
-			</Card.Content>
-		</Card.Root>
-
-		<!-- Prose -->
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Prose</Card.Title>
-				<Card.Description>Markdown-style content rendering</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<div class="prose">
-					<h2>Sample Content</h2>
-					<p>This is a paragraph demonstrating the prose styling for rendered markdown content in flashcards.</p>
-					<ul>
-						<li>First item</li>
-						<li>Second item</li>
-						<li>Third item</li>
-					</ul>
-					<blockquote>This is a blockquote for important information.</blockquote>
-					<p>Inline <code>code</code> looks like this.</p>
+		<!-- Features -->
+		<div class="max-w-5xl mx-auto mt-24 grid md:grid-cols-3 gap-8">
+			<div class="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+				<div class="w-12 h-12 bg-sky-100 dark:bg-sky-900/30 rounded-xl flex items-center justify-center mb-4">
+					<SparklesIcon class="size-6 text-sky-600 dark:text-sky-400" />
 				</div>
-			</Card.Content>
-		</Card.Root>
-	</Stack>
-</Container>
+				<h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+					AI Card Generation
+				</h3>
+				<p class="text-slate-600 dark:text-slate-400">
+					Upload PDFs, videos, or notes. Our AI creates high-quality flashcards with citations.
+				</p>
+			</div>
+
+			<div class="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+				<div class="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl flex items-center justify-center mb-4">
+					<BookOpenIcon class="size-6 text-emerald-600 dark:text-emerald-400" />
+				</div>
+				<h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+					FSRS Algorithm
+				</h3>
+				<p class="text-slate-600 dark:text-slate-400">
+					The latest evidence-based scheduling algorithm optimizes your review intervals.
+				</p>
+			</div>
+
+			<div class="bg-white dark:bg-slate-900 rounded-2xl p-6 shadow-sm border border-slate-200 dark:border-slate-800">
+				<div class="w-12 h-12 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center mb-4">
+					<ZapIcon class="size-6 text-amber-600 dark:text-amber-400" />
+				</div>
+				<h3 class="text-lg font-semibold text-slate-900 dark:text-white mb-2">
+					Focus Mode
+				</h3>
+				<p class="text-slate-600 dark:text-slate-400">
+					Distraction-free review sessions with keyboard shortcuts for maximum efficiency.
+				</p>
+			</div>
+		</div>
+	</main>
+</div>
