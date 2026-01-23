@@ -100,10 +100,10 @@
 	function handleAction(actionId: string) {
 		switch (actionId) {
 			case 'create-card':
-				console.log('Create card');
+				// TODO: Open card creation modal
 				break;
 			case 'add-source':
-				console.log('Add source');
+				// TODO: Open source upload modal
 				break;
 			case 'start-review':
 				onStartReview?.();
@@ -126,8 +126,8 @@
 			goto(`/notebooks/${src.notebookId}`);
 			onClose?.();
 		} else if (result.type === 'card') {
-			// Open card editor (future)
-			console.log('Open card:', result.item);
+			// TODO: Open card editor modal
+			onClose?.();
 		}
 	}
 

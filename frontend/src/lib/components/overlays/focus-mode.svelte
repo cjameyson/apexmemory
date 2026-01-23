@@ -46,9 +46,8 @@
 		isRevealed = true;
 	}
 
-	function handleRate(rating: 1 | 2 | 3 | 4) {
-		// In production, this would send the rating to the backend
-		console.log('Rated card:', currentCard?.id, 'with rating:', rating);
+	function handleRate(_rating: 1 | 2 | 3 | 4) {
+		// TODO: Send rating to backend via API
 
 		// Move to next card
 		if (currentIndex < allCards.length - 1) {

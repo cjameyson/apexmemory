@@ -28,31 +28,35 @@ Refer to `references/monolith_clean_guide.md` for overview of backend structure.
 
 ### Database
 - Avoid JSONB except for flexible config columns (e.g., `render_spec`, `fsrs_params`).
-- `reviews` table will grow large - requires efficient indexes and partitioning considerations.
-- `decks` are hierarchical with `parent_id` and computed `path_display`/`level` columns.
 - All multi-tenant tables use composite PKs `(user_id, id)` for efficient partitioning.
-- Trigger functions live in `app_code` schema (see `db/code/funcs/`).
+- Trigger functions live in `app_code` schema (defined inline in migrations).
+- **Planned:** `reviews` table partitioning, hierarchical `decks` with `parent_id`.
 
-### Frontend (SvelteKit + Tailwind) - NOT YET IMPLEMENTED
-- **Framework:** SvelteKit 5+ (Runes mode: `$state`, `$derived`). BFF pattern.
+### Frontend (SvelteKit + Tailwind)
+- **Framework:** SvelteKit 2 + Svelte 5 (Runes mode: `$state`, `$derived`). BFF pattern.
 - **Styling:** TailwindCSS 4+ (Light/Dark mode support).
-- **Rich Text:** TipTap. Math: KaTeX + MathLive.
-- **State:** Server-side `apiRequest()` (token), Client-side `clientApiRequest()` (proxy).
+- **Rich Text (planned):** TipTap. Math: KaTeX + MathLive.
 - **Routing:** File-based. `hooks.server.ts` validates sessions via `/v1/auth/me`.
+- **API Strategy:** Go API hidden from browser. All requests flow through SvelteKit server.
+  - **Reads:** `+page.server.ts` load functions with `apiRequest()`.
+  - **Mutations (default):** Form actions with `use:enhance`. No client JS needed.
+  - **Mutations (edge cases):** `/api/[...path]` proxy routes for modals, drag-drop, real-time.
+  - **Client helper (planned):** `api()` in `$lib/api/client.ts` for proxy route calls.
 
 
 ## Domain Logic
-Apex Memory is centered around the notebook concept.  Notebooks have sources (pdfs, slides, audio, links, etc).  These sources can be viewed and searched in product, but more importantly can be parsed, chunked, embedded and indexed.  The enables the product to:
+Apex Memory is centered around the notebook concept. Notebooks have sources (pdfs, slides, audio, links, etc). These sources can be viewed and searched in product, but more importantly can be parsed, chunked, embedded and indexed. This enables the product to:
 - generate flashcards with citations
 - enable interactive chat grounded in the source material
 - semantic search
 
-
-The core value proposition of the product is to provide flashcard SRS system with AI enhanced workflows.  
-- **Algorithm:** FSRS v6 (Free Spaced Repetition Scheduler) in `internal/fsrs/`
+The core value proposition is a flashcard SRS system with AI-enhanced workflows.
+- **Algorithm:** FSRS v6 (Free Spaced Repetition Scheduler)
 - **Ratings:** Again (1), Hard (2), Good (3), Easy (4)
 - **Note Types:** `basic`, `cloze`, `image_occlusion`
-- **Field Types:** `plain_text`, `rich_text`, `cloze_text`, `image_occlusion`,
+- **Field Types:** `plain_text`, `rich_text`, `cloze_text`, `image_occlusion`
+
+**Current status:** Auth system implemented. Notebooks, cards, sources, and FSRS are planned.
 
 
 ## Project Structure
@@ -63,19 +67,18 @@ apexmemory/
 │   ├── internal/
 │   │   ├── app/            # HTTP handlers, middleware, routes
 │   │   ├── db/             # sqlc generated code (DO NOT EDIT)
-│   │   ├── fsrs/           # FSRS scheduler implementation
-│   │   └── storage/        # Asset storage abstraction
+│   │   └── testutil/       # Test helpers
 │   ├── db/
 │   │   ├── init/           # Docker initdb scripts
-│   │   ├── migrations/     # Tern migration files (001-006)
+│   │   ├── migrations/     # Tern migration files
 │   │   ├── queries/        # SQL input for sqlc
-│   │   ├── code/funcs/     # Trigger functions (tern code install)
 │   │   ├── backups/        # Database dumps (gitignored)
 │   │   └── schema-dump.sql # Current schema snapshot
 │   ├── sqlc.yml
 │   ├── tern.conf
 │   └── go.mod
 ├── frontend/               # SvelteKit frontend
+├── references/             # Architecture docs
 ├── Makefile                # Task runner
 ├── docker-compose.yml      # PostgreSQL 18
 └── .env                    # Environment variables (gitignored)
@@ -110,9 +113,9 @@ Refer to the Makefile for most dev commands
 - `make test.backend.v` - Verbose test output
 - `make test.backend.cover` - With coverage
 
-**Seeding:**
-- TODO: `make seed.notebooks EMAIL=user@example.com [CLEAR=1]` - Seed example notebooks
-- TODO: `make seed.reviews EMAIL=user@example.com [DAYS=30] [CONSISTENCY=high]` - Generate review history
+**Seeding (planned):**
+- `make seed.notebooks` - Seed example notebooks
+- `make seed.reviews` - Generate review history
 
 ### Backend Dev Cycle
 1. Write migration (if schema changes needed)

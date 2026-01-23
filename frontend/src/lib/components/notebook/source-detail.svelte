@@ -46,7 +46,7 @@
 	}
 
 	function handleGenerateCards() {
-		console.log('Generate cards for source:', source.id);
+		// TODO: Implement AI card generation
 	}
 </script>
 

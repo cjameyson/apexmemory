@@ -48,6 +48,6 @@ export const actions: Actions = {
 
 		setSessionCookie(cookies, result.data.session_token, !dev);
 
-		redirect(302, '/dashboard');
+		redirect(302, '/home');
 	},
 };

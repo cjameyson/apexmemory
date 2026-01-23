@@ -8,11 +8,8 @@
 
 	let { data }: { data: PageData } = $props();
 
-	// Local state for this page
+	// Local state for source selection (page-specific)
 	let selectedSource = $state<Source | null>(null);
-	let sidebarCollapsed = $state(false);
-	let sourceExpanded = $state(false);
-	let cardsViewMode = $state<'all' | 'due' | 'mastered'>('all');
 
 	// Filter cards based on selected source
 	let displayedCards = $derived.by(() => {
@@ -27,29 +24,28 @@
 		selectedSource = source;
 		// Reset expanded state when changing source
 		if (!source) {
-			sourceExpanded = false;
+			appState.sourceExpanded = false;
 		}
 	}
 
 	function handleViewModeChange(mode: 'all' | 'due' | 'mastered') {
-		cardsViewMode = mode;
+		appState.setCardsViewMode(mode);
 	}
 
-	function handleCardClick(card: Card) {
+	function handleCardClick(_card: Card) {
 		// Future: open card editor/viewer
-		console.log('Card clicked:', card.id);
 	}
 
 	function handleSourceClose() {
 		selectedSource = null;
-		sourceExpanded = false;
+		appState.sourceExpanded = false;
 	}
 
 	function handleToggleExpand() {
-		sourceExpanded = !sourceExpanded;
+		appState.toggleSourceExpanded();
 		// Collapse sidebar when expanding source
-		if (sourceExpanded) {
-			sidebarCollapsed = true;
+		if (appState.sourceExpanded) {
+			appState.sidebarCollapsed = true;
 		}
 	}
 
@@ -66,13 +62,13 @@
 
 <div class="flex-1 flex overflow-hidden">
 	<!-- Sidebar (hidden when source is expanded) -->
-	{#if !sourceExpanded}
+	{#if !appState.sourceExpanded}
 		<NotebookSidebar
 			notebook={data.notebook}
 			sources={data.sources}
 			cards={data.cards}
 			{selectedSource}
-			bind:isCollapsed={sidebarCollapsed}
+			bind:isCollapsed={appState.sidebarCollapsed}
 			onSelectSource={handleSelectSource}
 		/>
 	{/if}
@@ -84,7 +80,7 @@
 			<SourceDetail
 				source={selectedSource}
 				cards={data.cards}
-				isExpanded={sourceExpanded}
+				isExpanded={appState.sourceExpanded}
 				onClose={handleSourceClose}
 				onStartReview={handleStartReview}
 				onToggleExpand={handleToggleExpand}
@@ -106,7 +102,7 @@
 			<CardsGridView
 				cards={displayedCards}
 				sources={data.sources}
-				viewMode={cardsViewMode}
+				viewMode={appState.cardsViewMode}
 				onViewModeChange={handleViewModeChange}
 				onCardClick={handleCardClick}
 			/>
