@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import { appState } from '$lib/stores/app.svelte';
 	import NotebookSidebar from '$lib/components/layout/notebook-sidebar.svelte';
@@ -7,6 +8,30 @@
 	import type { Source } from '$lib/types';
 
 	let { data }: { data: PageData } = $props();
+
+	// Derive filters from URL query parameters
+	let searchQuery = $derived(page.url.searchParams.get('search') ?? '');
+	let selectedSourceId = $derived(page.url.searchParams.get('filter') ?? null);
+
+	function handleSearchChange(query: string) {
+		const url = new URL(page.url);
+		if (query) {
+			url.searchParams.set('search', query);
+		} else {
+			url.searchParams.delete('search');
+		}
+		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+	}
+
+	function handleSourceFilterChange(sourceId: string | null) {
+		const url = new URL(page.url);
+		if (sourceId) {
+			url.searchParams.set('filter', sourceId);
+		} else {
+			url.searchParams.delete('filter');
+		}
+		goto(url, { replaceState: true, keepFocus: true, noScroll: true });
+	}
 
 	function handleSelectSource(source: Source | null) {
 		if (source) {
@@ -39,6 +64,13 @@
 			</p>
 		</div>
 
-		<CardBrowser cards={data.cards} sources={data.sources} />
+		<CardBrowser
+			cards={data.cards}
+			sources={data.sources}
+			{searchQuery}
+			{selectedSourceId}
+			onSearchChange={handleSearchChange}
+			onSourceFilterChange={handleSourceFilterChange}
+		/>
 	</div>
 </div>

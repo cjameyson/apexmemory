@@ -1,12 +1,11 @@
 // Global application state using Svelte 5 runes
-// Note: Focus mode state is managed via shallow routing (page.state)
-// See +layout.svelte for focus mode implementation
+// Note: Focus mode and command palette state are managed via shallow routing (page.state)
+// See +layout.svelte for implementation
 
 class AppState {
 	// UI state
 	sidebarCollapsed = $state(false);
 	sourceExpanded = $state(false);
-	cardsViewMode = $state<'all' | 'due' | 'mastered'>('all');
 
 	// Source context sidebar state (right sidebar)
 	sourceContextSidebarWidth = $state(320);
@@ -16,9 +15,6 @@ class AppState {
 	activeSourceSection = $state<string | null>(null);
 	highlightedCardIds = $state<string[]>([]);
 
-	// Overlay state (command palette only - focus mode uses shallow routing)
-	commandPaletteOpen = $state(false);
-
 	// Methods
 	toggleSidebar() {
 		this.sidebarCollapsed = !this.sidebarCollapsed;
@@ -26,22 +22,6 @@ class AppState {
 
 	toggleSourceExpanded() {
 		this.sourceExpanded = !this.sourceExpanded;
-	}
-
-	setCardsViewMode(mode: 'all' | 'due' | 'mastered') {
-		this.cardsViewMode = mode;
-	}
-
-	openCommandPalette() {
-		this.commandPaletteOpen = true;
-	}
-
-	closeCommandPalette() {
-		this.commandPaletteOpen = false;
-	}
-
-	toggleCommandPalette() {
-		this.commandPaletteOpen = !this.commandPaletteOpen;
 	}
 
 	// Source context sidebar methods
@@ -66,7 +46,6 @@ class AppState {
 	// Reset state when navigating away
 	resetNotebookState() {
 		this.sourceExpanded = false;
-		this.cardsViewMode = 'all';
 		this.sourceContextSidebarCollapsed = false;
 		this.activeSourceSection = null;
 		this.highlightedCardIds = [];

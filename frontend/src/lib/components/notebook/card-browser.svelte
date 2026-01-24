@@ -5,12 +5,44 @@
 	interface Props {
 		cards: Card[];
 		sources: Source[];
+		searchQuery?: string;
+		selectedSourceId?: string | null;
+		onSearchChange?: (query: string) => void;
+		onSourceFilterChange?: (sourceId: string | null) => void;
 	}
 
-	let { cards, sources }: Props = $props();
+	let {
+		cards,
+		sources,
+		searchQuery = '',
+		selectedSourceId = null,
+		onSearchChange,
+		onSourceFilterChange
+	}: Props = $props();
 
-	let searchQuery = $state('');
-	let selectedSourceId = $state<string | null>(null);
+	// Local input state for debouncing
+	let localSearchQuery = $state(searchQuery);
+
+	// Sync local state when prop changes
+	$effect(() => {
+		localSearchQuery = searchQuery;
+	});
+
+	// Debounce search input
+	let debounceTimeout: ReturnType<typeof setTimeout>;
+	function handleSearchInput(e: Event) {
+		const value = (e.target as HTMLInputElement).value;
+		localSearchQuery = value;
+		clearTimeout(debounceTimeout);
+		debounceTimeout = setTimeout(() => {
+			onSearchChange?.(value);
+		}, 300);
+	}
+
+	function handleSourceChange(e: Event) {
+		const value = (e.target as HTMLSelectElement).value;
+		onSourceFilterChange?.(value === '' ? null : value);
+	}
 
 	let filteredCards = $derived.by(() => {
 		let result = cards;
@@ -43,16 +75,18 @@
 			<input
 				type="text"
 				placeholder="Search cards..."
-				bind:value={searchQuery}
+				value={localSearchQuery}
+				oninput={handleSearchInput}
 				class="w-full pl-9 pr-4 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
 			/>
 		</div>
 
 		<select
-			bind:value={selectedSourceId}
+			value={selectedSourceId ?? ''}
+			onchange={handleSourceChange}
 			class="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
 		>
-			<option value={null}>All sources</option>
+			<option value="">All sources</option>
 			{#each sources as source (source.id)}
 				<option value={source.id}>{source.name}</option>
 			{/each}

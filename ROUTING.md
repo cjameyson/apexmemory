@@ -1,14 +1,15 @@
 # SvelteKit 2 + Svelte 5 URL, navigation, and history management (modern-only)
 
-## 0) The “source of truth” rule
+## 0) The "source of truth" rule
 - **Durable + shareable state → URL** (path params + `?searchParams`). Survives SSR/reload and enables deep links.
-- **Transient UI state → history state (`page.state`)** via `pushState/replaceState` (e.g., modals, drawers, selected row).
-- **Ephemeral “draft” DOM state you want to restore → snapshots** (notes editor drafts, chat composer, form inputs). :contentReference[oaicite:0]{index=0}
+- **Transient UI state → history state (`page.state`)** via `pushState/replaceState` (e.g., modals, drawers, selected row). Back/forward restores it.
+- **Ephemeral "draft" DOM state you want to restore → snapshots** (notes editor drafts, chat composer, form inputs).
+- **Session-persistent preferences → global store** (sidebar collapsed, theme). These persist across navigations but NOT tied to history (back/forward won't toggle them).
 
 ---
 
-## 1) URL design for an “entities + panes” app
-A clean baseline:
+## 1) URL design for an "entities + panes" app
+A clean baseline (example structure - adapt to your needs):
 - `/app/notebooks`
 - `/app/notebooks/[notebookId]` (overview)
 - `/app/notebooks/[notebookId]/sources/[sourceId]?tab=transcript|summary`
@@ -26,9 +27,15 @@ Use **nested layouts** for your app shell (sidebar / notebook switcher) so the U
   ```ts
   import { page, navigating } from '$app/state';
   // page.url, page.params, page.state, etc.
-````
+  ```
 
-* In `load`, use the `url` argument (don’t reach into component state).
+* **Important**: Changes to `page` require Svelte 5 runes. Legacy `$:` syntax will NOT react to changes:
+  ```ts
+  const id = $derived(page.params.id);     // ✅ Correct - updates reactively
+  $: badId = page.params.id;               // ❌ Wrong - never updates after initial load
+  ```
+
+* In `load`, use the `url` argument (don't reach into component state).
 
 ---
 

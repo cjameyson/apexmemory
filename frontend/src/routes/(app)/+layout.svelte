@@ -5,7 +5,6 @@
 	import TopNavBar from '$lib/components/layout/top-nav-bar.svelte';
 	import CommandPalette from '$lib/components/overlays/command-palette.svelte';
 	import FocusMode from '$lib/components/overlays/focus-mode.svelte';
-	import { appState } from '$lib/stores/app.svelte';
 	import type { Notebook, ReviewScope } from '$lib/types';
 	import { getAllNotebooks, getNotebook } from '$lib/mocks';
 
@@ -93,18 +92,42 @@
 		history.back();
 	}
 
+	// Command palette state derived from shallow routing
+	let commandPaletteOpen = $derived(!!page.state.commandPalette);
+
+	function openCommandPalette() {
+		if (!commandPaletteOpen) {
+			pushState('', { ...page.state, commandPalette: true });
+		}
+	}
+
+	function closeCommandPalette() {
+		if (commandPaletteOpen) {
+			history.back();
+		}
+	}
+
 	// Global keyboard shortcuts
 	onMount(() => {
 		function handleKeydown(e: KeyboardEvent) {
 			// Cmd+K or Ctrl+K to open command palette
 			if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
 				e.preventDefault();
-				appState.toggleCommandPalette();
+				if (commandPaletteOpen) {
+					closeCommandPalette();
+				} else {
+					openCommandPalette();
+				}
 			}
-			// Escape to close focus mode (in addition to individual overlay handling)
-			if (e.key === 'Escape' && page.state.focusMode) {
-				e.preventDefault();
-				exitFocusMode();
+			// Escape to close overlays
+			if (e.key === 'Escape') {
+				if (commandPaletteOpen) {
+					e.preventDefault();
+					closeCommandPalette();
+				} else if (page.state.focusMode) {
+					e.preventDefault();
+					exitFocusMode();
+				}
 			}
 		}
 
@@ -113,7 +136,7 @@
 	});
 
 	function handleStartReview() {
-		appState.closeCommandPalette();
+		closeCommandPalette();
 		startFocusMode({ type: 'all' });
 	}
 </script>
@@ -124,6 +147,7 @@
 		{notebooks}
 		{currentNotebook}
 		onStartFocusMode={startFocusMode}
+		onOpenSearch={openCommandPalette}
 	/>
 
 	<main class="flex-1 flex overflow-hidden">
@@ -131,11 +155,11 @@
 	</main>
 </div>
 
-<!-- Command Palette -->
-{#if appState.commandPaletteOpen}
+<!-- Command Palette (shallow routing - Back button closes) -->
+{#if commandPaletteOpen}
 	<CommandPalette
 		{currentNotebook}
-		onClose={() => appState.closeCommandPalette()}
+		onClose={closeCommandPalette}
 		onStartReview={handleStartReview}
 	/>
 {/if}

@@ -22,7 +22,7 @@
 	let {
 		source,
 		cards,
-		activeTab = $bindable<SidebarTab>('cards'),
+		activeTab = 'cards',
 		isCollapsed = $bindable(false),
 		sidebarWidth = $bindable(320),
 		highlightedCardIds = [],
@@ -72,7 +72,6 @@
 	}
 
 	function handleTabChange(tab: SidebarTab) {
-		activeTab = tab;
 		onTabChange?.(tab);
 	}
 </script>

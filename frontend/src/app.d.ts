@@ -23,6 +23,7 @@ declare global {
 				sourceName?: string;
 				currentIndex?: number;
 			};
+			commandPalette?: boolean;
 		}
 		// interface Platform {}
 	}

@@ -9,22 +9,22 @@
 	import { HomeIcon, BrainIcon, SettingsIcon, LogOutIcon } from '@lucide/svelte';
 	import type { Notebook, ReviewScope } from '$lib/types';
 	import type { User } from '$lib/api/types';
-	import { appState } from '$lib/stores/app.svelte';
 
 	interface Props {
 		user: User;
 		notebooks: Notebook[];
 		currentNotebook?: Notebook;
 		onStartFocusMode?: (scope: ReviewScope) => void;
+		onOpenSearch?: () => void;
 	}
 
-	let { user, notebooks, currentNotebook, onStartFocusMode }: Props = $props();
+	let { user, notebooks, currentNotebook, onStartFocusMode, onOpenSearch }: Props = $props();
 
 	let isHome = $derived(page.url.pathname === '/home');
 	let isInNotebook = $derived(page.url.pathname.startsWith('/notebooks/'));
 
 	function handleOpenSearch() {
-		appState.openCommandPalette();
+		onOpenSearch?.();
 	}
 
 	function handleStartReview(scope: ReviewScope) {

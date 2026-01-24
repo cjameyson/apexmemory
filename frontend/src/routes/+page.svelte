@@ -1,11 +1,6 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { BrainIcon, ZapIcon, BookOpenIcon, SparklesIcon } from '@lucide/svelte';
-
-	// If user is logged in, this page won't be shown (see +page.server.ts)
 </script>
 
 <!-- Landing page for unauthenticated users -->
