@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 	import SidebarSection from '$lib/components/notebook/sidebar-section.svelte';
 	import SourceListItem from '$lib/components/notebook/source-list-item.svelte';
 	import {
@@ -86,123 +87,160 @@
 
 <svelte:window onmousemove={handleResizeMove} onmouseup={handleResizeEnd} />
 
-<aside
-	class={cn(
-		'relative flex flex-col border-r border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900',
-		!isResizing && 'transition-all duration-200',
-		isCollapsed && 'w-12',
-		className
-	)}
-	style={!isCollapsed ? `width: ${sidebarWidth}px` : undefined}
->
-	<!-- Sidebar header -->
-	<div class="flex items-center gap-2 border-b border-slate-200 p-2 dark:border-slate-800">
-		{#if !isCollapsed}
-			<a
-				href="/notebooks/{notebook.id}"
-				class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
-			>
-				<span class="text-xl">{notebook.emoji}</span>
-				<span class="truncate font-semibold text-slate-900 dark:text-white">
-					{notebook.name}
-				</span>
-			</a>
-		{/if}
-
-		{#if !isCollapsed}
-			<!-- Settings button (only when expanded) -->
-			<Button
-				variant="ghost"
-				size="icon"
-				class="size-8 shrink-0"
-				onclick={() => onOpenSettings?.()}
-				aria-label="Notebook settings"
-			>
-				<SettingsIcon class="size-4" />
-			</Button>
-		{/if}
-
-		<!-- Collapse button -->
-		<Button
-			variant="ghost"
-			size="icon"
-			class="size-8 shrink-0"
-			onclick={toggleCollapse}
-			aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-		>
-			{#if isCollapsed}
-				<PanelLeftOpenIcon class="size-4" />
-			{:else}
-				<PanelLeftCloseIcon class="size-4" />
+<Tooltip.Provider delayDuration={300}>
+	<aside
+		class={cn(
+			'relative flex flex-col border-r border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900',
+			!isResizing && 'transition-all duration-200',
+			isCollapsed && 'w-12',
+			className
+		)}
+		style={!isCollapsed ? `width: ${sidebarWidth}px` : undefined}
+	>
+		<!-- Sidebar header -->
+		<div class="flex items-center gap-2 border-b border-slate-200 p-2 dark:border-slate-800">
+			{#if !isCollapsed}
+				<a
+					href="/notebooks/{notebook.id}"
+					class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+				>
+					<span class="text-xl">{notebook.emoji}</span>
+					<span class="truncate font-semibold text-slate-900 dark:text-white">
+						{notebook.name}
+					</span>
+				</a>
 			{/if}
-		</Button>
-	</div>
 
-	<!-- Sidebar content -->
-	<div class="flex-1 overflow-auto py-2">
-		{#if isCollapsed}
-			<!-- Collapsed state: icon buttons only -->
-			<div class="flex flex-col items-center gap-1 px-1.5">
-				<Button variant="ghost" size="icon" class="size-8" aria-label="Sources">
-					<FileStackIcon class="size-4" />
-				</Button>
-				<Button variant="ghost" size="icon" class="size-8" aria-label="Cards">
-					<LayersIcon class="size-4" />
-				</Button>
-			</div>
-		{:else}
-			<!-- Expanded state: full sidebar -->
+			{#if !isCollapsed}
+				<!-- Settings button (only when expanded) -->
+				<Tooltip.Root>
+					<Tooltip.Trigger>
+						{#snippet child({ props })}
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-8 shrink-0"
+								{...props}
+								onclick={() => onOpenSettings?.()}
+							>
+								<SettingsIcon class="size-4" />
+							</Button>
+						{/snippet}
+					</Tooltip.Trigger>
+					<Tooltip.Content>Notebook settings</Tooltip.Content>
+				</Tooltip.Root>
+			{/if}
 
-			<!-- Sources section -->
-			<SidebarSection title="Sources" count={sources.length} bind:isOpen={sourcesOpen}>
-				{#snippet actions()}
-					<Button variant="ghost" size="icon" class="size-6" aria-label="Add source">
-						<PlusIcon class="size-3.5" />
-					</Button>
-				{/snippet}
+			<!-- Collapse button -->
+			<Tooltip.Root>
+				<Tooltip.Trigger>
+					{#snippet child({ props })}
+						<Button
+							variant="ghost"
+							size="icon"
+							class="size-8 shrink-0"
+							{...props}
+							onclick={toggleCollapse}
+						>
+							{#if isCollapsed}
+								<PanelLeftOpenIcon class="size-4" />
+							{:else}
+								<PanelLeftCloseIcon class="size-4" />
+							{/if}
+						</Button>
+					{/snippet}
+				</Tooltip.Trigger>
+				<Tooltip.Content>{isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}</Tooltip.Content>
+			</Tooltip.Root>
+		</div>
 
-				<div class="space-y-0.5 pr-2">
-					{#each sources as source (source.id)}
-						<SourceListItem
-							{source}
-							isSelected={selectedSource?.id === source.id}
-							onclick={() => selectSource(source)}
-						/>
-					{/each}
-
-					{#if sources.length === 0}
-						<div class="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">No sources yet</div>
-					{/if}
+		<!-- Sidebar content -->
+		<div class="flex-1 overflow-auto py-2">
+			{#if isCollapsed}
+				<!-- Collapsed state: icon buttons only -->
+				<div class="flex flex-col items-center gap-1 px-1.5">
+					<Tooltip.Root>
+						<Tooltip.Trigger>
+							{#snippet child({ props })}
+								<Button variant="ghost" size="icon" class="size-8" {...props}>
+									<FileStackIcon class="size-4" />
+								</Button>
+							{/snippet}
+						</Tooltip.Trigger>
+						<Tooltip.Content side="right">Sources</Tooltip.Content>
+					</Tooltip.Root>
+					<Tooltip.Root>
+						<Tooltip.Trigger>
+							{#snippet child({ props })}
+								<Button variant="ghost" size="icon" class="size-8" {...props}>
+									<LayersIcon class="size-4" />
+								</Button>
+							{/snippet}
+						</Tooltip.Trigger>
+						<Tooltip.Content side="right">Cards</Tooltip.Content>
+					</Tooltip.Root>
 				</div>
-			</SidebarSection>
+			{:else}
+				<!-- Expanded state: full sidebar -->
 
-			<!-- Cards section -->
-			<SidebarSection title="Cards" count={cards.length} bind:isOpen={cardsOpen}>
-				<div class="px-2 py-1">
-					<a
-						href="/notebooks/{notebook.id}/cards"
-						class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-					>
-						<SearchIcon class="size-4" />
-						<span>Browse</span>
-					</a>
-				</div>
-			</SidebarSection>
+				<!-- Sources section -->
+				<SidebarSection title="Sources" count={sources.length} bind:isOpen={sourcesOpen}>
+					{#snippet actions()}
+						<Tooltip.Root>
+							<Tooltip.Trigger>
+								{#snippet child({ props })}
+									<Button variant="ghost" size="icon" class="size-6" {...props}>
+										<PlusIcon class="size-3.5" />
+									</Button>
+								{/snippet}
+							</Tooltip.Trigger>
+							<Tooltip.Content>Add source</Tooltip.Content>
+						</Tooltip.Root>
+					{/snippet}
+
+					<div class="space-y-0.5 pr-2">
+						{#each sources as source (source.id)}
+							<SourceListItem
+								{source}
+								isSelected={selectedSource?.id === source.id}
+								onclick={() => selectSource(source)}
+							/>
+						{/each}
+
+						{#if sources.length === 0}
+							<div class="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">No sources yet</div>
+						{/if}
+					</div>
+				</SidebarSection>
+
+				<!-- Cards section -->
+				<SidebarSection title="Cards" count={cards.length} bind:isOpen={cardsOpen}>
+					<div class="px-2 py-1">
+						<a
+							href="/notebooks/{notebook.id}/cards"
+							class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+						>
+							<SearchIcon class="size-4" />
+							<span>Browse</span>
+						</a>
+					</div>
+				</SidebarSection>
+			{/if}
+		</div>
+
+		<!-- Resize handle (only when expanded) -->
+		{#if !isCollapsed}
+			<div
+				class={cn(
+					'absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-sky-500/50',
+					isResizing && 'bg-sky-500/50'
+				)}
+				onmousedown={handleResizeStart}
+				role="separator"
+				aria-orientation="vertical"
+				aria-label="Resize sidebar"
+				tabindex="0"
+			></div>
 		{/if}
-	</div>
-
-	<!-- Resize handle (only when expanded) -->
-	{#if !isCollapsed}
-		<div
-			class={cn(
-				'absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-sky-500/50',
-				isResizing && 'bg-sky-500/50'
-			)}
-			onmousedown={handleResizeStart}
-			role="separator"
-			aria-orientation="vertical"
-			aria-label="Resize sidebar"
-			tabindex="0"
-		></div>
-	{/if}
-</aside>
+	</aside>
+</Tooltip.Provider>

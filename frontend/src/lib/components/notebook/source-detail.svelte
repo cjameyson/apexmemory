@@ -5,7 +5,8 @@
 	import SourceTabs from './source-tabs.svelte';
 	import SourceToolbar from './source-toolbar.svelte';
 	import SourceContent from './source-content.svelte';
-	import { ArrowLeftIcon, ZapIcon, MaximizeIcon, MinimizeIcon } from '@lucide/svelte';
+	import { ArrowLeftIcon, ZapIcon, Maximize2Icon, Minimize2Icon } from '@lucide/svelte';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 	import type { Source, Card } from '$lib/types';
 
 	type Tab = 'source' | 'cards' | 'summary' | 'chat';
@@ -79,19 +80,28 @@
 				</Button>
 			{/if}
 
-			<Button
-				variant="ghost"
-				size="icon"
-				class="size-8"
-				onclick={onToggleExpand}
-				aria-label={isExpanded ? 'Minimize' : 'Maximize'}
-			>
-				{#if isExpanded}
-					<MinimizeIcon class="size-4" />
-				{:else}
-					<MaximizeIcon class="size-4" />
-				{/if}
-			</Button>
+			<Tooltip.Provider delayDuration={300}>
+				<Tooltip.Root>
+					<Tooltip.Trigger>
+						{#snippet child({ props })}
+							<Button
+								variant="ghost"
+								size="icon"
+								class="size-8"
+								{...props}
+								onclick={onToggleExpand}
+							>
+								{#if isExpanded}
+									<Minimize2Icon class="size-4" />
+								{:else}
+									<Maximize2Icon class="size-4" />
+								{/if}
+							</Button>
+						{/snippet}
+					</Tooltip.Trigger>
+					<Tooltip.Content>{isExpanded ? 'Collapse panel' : 'Expand panel'}</Tooltip.Content>
+				</Tooltip.Root>
+			</Tooltip.Provider>
 		</div>
 	</div>
 
