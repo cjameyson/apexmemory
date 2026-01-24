@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
+	import { pushState, replaceState } from '$app/navigation';
 	import TopNavBar from '$lib/components/layout/top-nav-bar.svelte';
 	import CommandPalette from '$lib/components/overlays/command-palette.svelte';
 	import FocusMode from '$lib/components/overlays/focus-mode.svelte';
 	import { appState } from '$lib/stores/app.svelte';
-	import type { Notebook } from '$lib/types';
+	import type { Notebook, ReviewScope } from '$lib/types';
 	import { getAllNotebooks, getNotebook } from '$lib/mocks';
 
 	let { data, children } = $props();
@@ -15,12 +16,82 @@
 
 	// Derive current notebook from URL params
 	let currentNotebook = $derived.by(() => {
-		const match = $page.url.pathname.match(/\/notebooks\/([^/]+)/);
+		const match = page.url.pathname.match(/\/notebooks\/([^/]+)/);
 		if (match) {
 			return getNotebook(match[1]);
 		}
 		return undefined;
 	});
+
+	// Reconstruct ReviewScope from page state for focus mode
+	let focusModeScope = $derived.by((): ReviewScope | null => {
+		const fm = page.state.focusMode;
+		if (!fm) return null;
+
+		if (fm.type === 'all') {
+			return { type: 'all' };
+		} else if (fm.type === 'notebook' && fm.notebookId) {
+			const notebook = getNotebook(fm.notebookId);
+			if (notebook) {
+				return { type: 'notebook', notebook };
+			}
+		} else if (fm.type === 'source' && fm.notebookId && fm.sourceId) {
+			const notebook = getNotebook(fm.notebookId);
+			if (notebook) {
+				return {
+					type: 'source',
+					notebook,
+					source: {
+						id: fm.sourceId,
+						notebookId: fm.notebookId,
+						name: fm.sourceName || 'Source',
+						type: 'pdf',
+						cards: 0,
+						excerpt: '',
+						addedAt: ''
+					}
+				};
+			}
+		}
+		return null;
+	});
+
+	// Start focus mode using shallow routing (pushState)
+	function startFocusMode(scope: ReviewScope) {
+		const focusState: App.PageState['focusMode'] = {
+			type: scope.type,
+			currentIndex: 0
+		};
+
+		if (scope.type === 'notebook') {
+			focusState.notebookId = scope.notebook.id;
+			focusState.notebookName = scope.notebook.name;
+			focusState.notebookEmoji = scope.notebook.emoji;
+		} else if (scope.type === 'source') {
+			focusState.notebookId = scope.notebook.id;
+			focusState.notebookName = scope.notebook.name;
+			focusState.notebookEmoji = scope.notebook.emoji;
+			focusState.sourceId = scope.source.id;
+			focusState.sourceName = scope.source.name;
+		}
+
+		pushState('', { focusMode: focusState });
+	}
+
+	// Update progress without creating new history entry
+	function handleProgressChange(index: number) {
+		if (page.state.focusMode) {
+			replaceState('', {
+				...page.state,
+				focusMode: { ...page.state.focusMode, currentIndex: index }
+			});
+		}
+	}
+
+	// Exit focus mode by going back in history
+	function exitFocusMode() {
+		history.back();
+	}
 
 	// Global keyboard shortcuts
 	onMount(() => {
@@ -30,7 +101,11 @@
 				e.preventDefault();
 				appState.toggleCommandPalette();
 			}
-			// Escape to close overlays (handled by individual overlays)
+			// Escape to close focus mode (in addition to individual overlay handling)
+			if (e.key === 'Escape' && page.state.focusMode) {
+				e.preventDefault();
+				exitFocusMode();
+			}
 		}
 
 		window.addEventListener('keydown', handleKeydown);
@@ -39,7 +114,7 @@
 
 	function handleStartReview() {
 		appState.closeCommandPalette();
-		appState.startFocusMode({ type: 'all' });
+		startFocusMode({ type: 'all' });
 	}
 </script>
 
@@ -48,6 +123,7 @@
 		user={data.user}
 		{notebooks}
 		{currentNotebook}
+		onStartFocusMode={startFocusMode}
 	/>
 
 	<main class="flex-1 flex overflow-hidden">
@@ -64,10 +140,12 @@
 	/>
 {/if}
 
-<!-- Focus Mode -->
-{#if appState.focusMode.active && appState.focusMode.scope}
+<!-- Focus Mode (rendered based on shallow routing state) -->
+{#if focusModeScope}
 	<FocusMode
-		scope={appState.focusMode.scope}
-		onClose={() => appState.exitFocusMode()}
+		scope={focusModeScope}
+		initialIndex={page.state.focusMode?.currentIndex ?? 0}
+		onProgressChange={handleProgressChange}
+		onClose={exitFocusMode}
 	/>
 {/if}

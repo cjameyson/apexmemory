@@ -1,6 +1,6 @@
 // Global application state using Svelte 5 runes
-
-import type { ReviewScope } from '$lib/types';
+// Note: Focus mode state is managed via shallow routing (page.state)
+// See +layout.svelte for focus mode implementation
 
 class AppState {
 	// UI state
@@ -16,12 +16,8 @@ class AppState {
 	activeSourceSection = $state<string | null>(null);
 	highlightedCardIds = $state<string[]>([]);
 
-	// Overlay state
+	// Overlay state (command palette only - focus mode uses shallow routing)
 	commandPaletteOpen = $state(false);
-	focusMode = $state<{
-		active: boolean;
-		scope: ReviewScope | null;
-	}>({ active: false, scope: null });
 
 	// Methods
 	toggleSidebar() {
@@ -46,14 +42,6 @@ class AppState {
 
 	toggleCommandPalette() {
 		this.commandPaletteOpen = !this.commandPaletteOpen;
-	}
-
-	startFocusMode(scope: ReviewScope) {
-		this.focusMode = { active: true, scope };
-	}
-
-	exitFocusMode() {
-		this.focusMode = { active: false, scope: null };
 	}
 
 	// Source context sidebar methods

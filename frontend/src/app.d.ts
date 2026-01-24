@@ -13,7 +13,17 @@ declare global {
 		interface PageData {
 			user: User | null;
 		}
-		// interface PageState {}
+		interface PageState {
+			focusMode?: {
+				type: 'all' | 'notebook' | 'source';
+				notebookId?: string;
+				notebookName?: string;
+				notebookEmoji?: string;
+				sourceId?: string;
+				sourceName?: string;
+				currentIndex?: number;
+			};
+		}
 		// interface Platform {}
 	}
 }

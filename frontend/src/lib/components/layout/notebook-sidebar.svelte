@@ -184,7 +184,7 @@
 				<!-- Expanded state: full sidebar -->
 
 				<!-- Sources section -->
-				<SidebarSection title="Sources" count={sources.length} bind:isOpen={sourcesOpen}>
+				<SidebarSection title="Sources" count={sources.length} bind:isOpen={sourcesOpen} class="border-b border-slate-200 pb-2 dark:border-slate-800">
 					{#snippet actions()}
 						<Tooltip.Root>
 							<Tooltip.Trigger>

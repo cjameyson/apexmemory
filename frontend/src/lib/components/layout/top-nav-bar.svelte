@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { page } from '$app/state';
 	import { cn } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
@@ -15,19 +15,20 @@
 		user: User;
 		notebooks: Notebook[];
 		currentNotebook?: Notebook;
+		onStartFocusMode?: (scope: ReviewScope) => void;
 	}
 
-	let { user, notebooks, currentNotebook }: Props = $props();
+	let { user, notebooks, currentNotebook, onStartFocusMode }: Props = $props();
 
-	let isHome = $derived($page.url.pathname === '/home');
-	let isInNotebook = $derived($page.url.pathname.startsWith('/notebooks/'));
+	let isHome = $derived(page.url.pathname === '/home');
+	let isInNotebook = $derived(page.url.pathname.startsWith('/notebooks/'));
 
 	function handleOpenSearch() {
 		appState.openCommandPalette();
 	}
 
 	function handleStartReview(scope: ReviewScope) {
-		appState.startFocusMode(scope);
+		onStartFocusMode?.(scope);
 	}
 
 	function getInitials(u: User): string {

@@ -8,11 +8,13 @@
 
 	interface Props {
 		scope: ReviewScope;
+		initialIndex?: number;
+		onProgressChange?: (index: number) => void;
 		onClose?: () => void;
 		class?: string;
 	}
 
-	let { scope, onClose, class: className }: Props = $props();
+	let { scope, initialIndex = 0, onProgressChange, onClose, class: className }: Props = $props();
 
 	// Get cards based on scope
 	let allCards = $derived.by(() => {
@@ -26,10 +28,10 @@
 		return [];
 	});
 
-	// Session state
-	let currentIndex = $state(0);
+	// Session state - initialize from prop for session restore
+	let currentIndex = $state(initialIndex);
 	let isRevealed = $state(false);
-	let sessionComplete = $state(false);
+	let sessionComplete = $state(initialIndex >= allCards.length && allCards.length > 0);
 
 	let currentCard = $derived(allCards[currentIndex] as Card | undefined);
 	let progress = $derived(allCards.length > 0 ? ((currentIndex) / allCards.length) * 100 : 0);
@@ -53,6 +55,8 @@
 		if (currentIndex < allCards.length - 1) {
 			currentIndex++;
 			isRevealed = false;
+			// Update URL state for session restore (without creating history entry)
+			onProgressChange?.(currentIndex);
 		} else {
 			sessionComplete = true;
 		}

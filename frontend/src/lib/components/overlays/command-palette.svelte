@@ -190,7 +190,7 @@
 				onkeydown={handleKeydown}
 				type="text"
 				placeholder={currentNotebook ? `Search in ${currentNotebook.name}...` : 'Search everywhere...'}
-				class="flex-1 bg-transparent border-0 focus:ring-0 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm"
+				class="flex-1 bg-transparent border-0 outline-none text-slate-900 dark:text-white placeholder:text-slate-400 text-sm"
 			/>
 
 			<!-- Scope toggle -->

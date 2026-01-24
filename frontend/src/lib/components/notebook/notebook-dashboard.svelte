@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type { Notebook, Source, Card } from '$lib/types';
+	import { pushState } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
 	import { PlayIcon, TrendingUpIcon, LayersIcon, FileStackIcon, CalendarIcon } from '@lucide/svelte';
-	import { appState } from '$lib/stores/app.svelte';
 
 	interface Props {
 		notebook: Notebook;
@@ -18,7 +18,15 @@
 	let reviewsThisWeek = [12, 8, 15, 20, 5, 18, 10];
 
 	function handleStartReview() {
-		appState.startFocusMode({ type: 'notebook', notebook });
+		pushState('', {
+			focusMode: {
+				type: 'notebook',
+				notebookId: notebook.id,
+				notebookName: notebook.name,
+				notebookEmoji: notebook.emoji,
+				currentIndex: 0
+			}
+		});
 	}
 </script>
 

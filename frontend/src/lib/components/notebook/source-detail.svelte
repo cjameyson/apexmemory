@@ -2,10 +2,8 @@
 	import { cn } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
 	import SourceViewer from './source-viewer.svelte';
-	import SourceContextSidebar from './source-context-sidebar.svelte';
 	import { ZapIcon, Maximize2Icon, Minimize2Icon } from '@lucide/svelte';
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import { appState } from '$lib/stores/app.svelte';
 	import type { Source, Card } from '$lib/types';
 
 	interface Props {
@@ -34,11 +32,6 @@
 
 	function handleGenerateCards() {
 		// TODO: Implement AI card generation
-	}
-
-	function handleCardClick(card: Card) {
-		// Future: Scroll source viewer to card's linked section
-		// appState.setActiveSourceSection(card.sourceSection);
 	}
 </script>
 
@@ -100,20 +93,6 @@
 		</div>
 	</div>
 
-	<!-- Two-pane content area -->
-	<div class="flex flex-1 overflow-hidden">
-		<!-- Left pane: Source viewer (always visible) -->
-		<SourceViewer {source} onGenerateCards={handleGenerateCards} class="min-w-0 flex-1" />
-
-		<!-- Right pane: Context sidebar (collapsible/resizable) -->
-		<SourceContextSidebar
-			{source}
-			{cards}
-			bind:isCollapsed={appState.sourceContextSidebarCollapsed}
-			bind:sidebarWidth={appState.sourceContextSidebarWidth}
-			highlightedCardIds={appState.highlightedCardIds}
-			onCardClick={handleCardClick}
-			class="hidden md:flex"
-		/>
-	</div>
+	<!-- Source viewer (full width now, sidebar is at page level) -->
+	<SourceViewer {source} onGenerateCards={handleGenerateCards} class="flex-1" />
 </div>

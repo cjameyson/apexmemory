@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
+	import { goto } from '$app/navigation';
 	import { appState } from '$lib/stores/app.svelte';
 	import NotebookSidebar from '$lib/components/layout/notebook-sidebar.svelte';
 	import CardBrowser from '$lib/components/notebook/card-browser.svelte';
@@ -7,10 +8,10 @@
 
 	let { data }: { data: PageData } = $props();
 
-	let selectedSource = $state<Source | null>(null);
-
 	function handleSelectSource(source: Source | null) {
-		selectedSource = source;
+		if (source) {
+			goto(`/notebooks/${data.notebook.id}?source=${source.id}`);
+		}
 	}
 
 	function handleOpenSettings() {
@@ -23,7 +24,6 @@
 		notebook={data.notebook}
 		sources={data.sources}
 		cards={data.cards}
-		{selectedSource}
 		bind:isCollapsed={appState.sidebarCollapsed}
 		onSelectSource={handleSelectSource}
 		onOpenSettings={handleOpenSettings}
