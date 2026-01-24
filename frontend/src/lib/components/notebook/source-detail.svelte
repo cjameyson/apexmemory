@@ -5,12 +5,7 @@
 	import SourceTabs from './source-tabs.svelte';
 	import SourceToolbar from './source-toolbar.svelte';
 	import SourceContent from './source-content.svelte';
-	import {
-		ArrowLeftIcon,
-		ZapIcon,
-		MaximizeIcon,
-		MinimizeIcon
-	} from '@lucide/svelte';
+	import { ArrowLeftIcon, ZapIcon, MaximizeIcon, MinimizeIcon } from '@lucide/svelte';
 	import type { Source, Card } from '$lib/types';
 
 	type Tab = 'source' | 'cards' | 'summary' | 'chat';
@@ -50,25 +45,19 @@
 	}
 </script>
 
-<div class={cn('flex-1 flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden', className)}>
+<div
+	id="source-detail"
+	class={cn(
+		'flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
+		className
+	)}
+>
 	<!-- Header -->
-	<div class="flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-		<!-- Back button -->
-		<Button
-			variant="ghost"
-			size="icon"
-			class="size-8 shrink-0"
-			onclick={onClose}
-			aria-label="Back to cards"
-		>
-			<ArrowLeftIcon class="size-4" />
-		</Button>
-
+	<div class="flex items-center gap-3 border-none border-slate-200 px-4 py-3 dark:border-slate-800">
 		<!-- Source info -->
-		<div class="flex items-center gap-2 flex-1 min-w-0">
-			<SourceIcon type={source.type} class="shrink-0" />
+		<div class="flex min-w-0 flex-1 items-center gap-2">
 			<div class="min-w-0">
-				<h2 class="font-semibold text-slate-900 dark:text-white truncate">
+				<h2 class="truncate font-semibold text-slate-900 dark:text-white">
 					{source.name}
 				</h2>
 				<div class="text-xs text-slate-500 dark:text-slate-400">
@@ -82,11 +71,12 @@
 
 		<!-- Actions -->
 		<div class="flex items-center gap-2">
-			{#if dueCount > 0}
+			<!-- disable for now -->
+			{#if dueCount < 0}
 				<Button
 					variant="default"
 					size="sm"
-					class="gap-1.5 bg-sky-500 hover:bg-sky-600"
+					class="hidden gap-1.5 bg-sky-500 hover:bg-sky-600 sm:inline-flex"
 					onclick={onStartReview}
 				>
 					<ZapIcon class="size-4" />

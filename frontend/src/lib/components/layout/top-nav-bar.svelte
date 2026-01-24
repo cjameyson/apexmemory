@@ -43,38 +43,22 @@
 	}
 </script>
 
-<header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 py-2 shrink-0">
+<header
+	class="shrink-0 border-b border-slate-200 bg-white px-2 py-2 dark:border-slate-800 dark:bg-slate-900"
+>
 	<div class="flex items-center justify-between">
 		<!-- Left group -->
 		<div class="flex items-center gap-1">
 			<!-- Logo -->
 			<a
 				href="/home"
-				class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+				class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-slate-900 transition-colors hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800"
 			>
 				<BrainIcon class="size-6 text-sky-500" />
 			</a>
 
-			<!-- Home button -->
-			<Button
-				href="/home"
-				variant="ghost"
-				size="sm"
-				class={cn(
-					'gap-2',
-					isHome && 'bg-slate-100 dark:bg-slate-800'
-				)}
-			>
-				<HomeIcon class="size-4" />
-				<span class="hidden sm:inline">Home</span>
-			</Button>
-
 			<!-- Notebooks dropdown -->
-			<NotebooksDropdown
-				{notebooks}
-				current={currentNotebook}
-				{isInNotebook}
-			/>
+			<NotebooksDropdown {notebooks} current={currentNotebook} {isInNotebook} />
 		</div>
 
 		<!-- Right group -->
@@ -83,11 +67,7 @@
 			<SearchTrigger onclick={handleOpenSearch} />
 
 			<!-- Review launcher -->
-			<ReviewLauncher
-				{notebooks}
-				{currentNotebook}
-				onStartReview={handleStartReview}
-			/>
+			<ReviewLauncher {notebooks} {currentNotebook} onStartReview={handleStartReview} />
 
 			<!-- User avatar dropdown -->
 			<DropdownMenu.Root>
@@ -95,7 +75,7 @@
 					{#snippet child({ props })}
 						<button
 							{...props}
-							class="size-8 rounded-full bg-sky-500 text-white text-sm font-medium flex items-center justify-center hover:bg-sky-600 transition-colors"
+							class="flex size-8 items-center justify-center rounded-full bg-sky-500 text-sm font-medium text-white transition-colors hover:bg-sky-600"
 						>
 							{getInitials(user)}
 						</button>
@@ -106,17 +86,17 @@
 					<DropdownMenu.Label class="font-normal">
 						<div class="flex flex-col space-y-1">
 							<p class="text-sm font-medium">{user.username || 'User'}</p>
-							<p class="text-xs text-slate-500 truncate">{user.email}</p>
+							<p class="truncate text-xs text-slate-500">{user.email}</p>
 						</div>
 					</DropdownMenu.Label>
 					<DropdownMenu.Separator />
-					<DropdownMenu.Item class="gap-2 cursor-pointer">
+					<DropdownMenu.Item class="cursor-pointer gap-2">
 						<SettingsIcon class="size-4" />
 						Settings
 					</DropdownMenu.Item>
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item
-						class="gap-2 cursor-pointer text-red-600 dark:text-red-400"
+						class="cursor-pointer gap-2 text-red-600 dark:text-red-400"
 						onclick={handleLogout}
 					>
 						<LogOutIcon class="size-4" />

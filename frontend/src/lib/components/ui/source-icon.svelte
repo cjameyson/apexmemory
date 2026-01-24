@@ -18,16 +18,7 @@
 		notes: StickyNoteIcon
 	};
 
-	const colorMap = {
-		pdf: 'text-red-500',
-		youtube: 'text-red-600',
-		url: 'text-blue-500',
-		audio: 'text-purple-500',
-		notes: 'text-amber-500'
-	};
-
 	let Icon = $derived(iconMap[type] || FileTextIcon);
-	let colorClass = $derived(colorMap[type] || 'text-slate-500');
 </script>
 
-<Icon class={cn('size-4', colorClass, className)} />
+<Icon class={cn('size-4 text-slate-500 dark:text-slate-400', className)} />

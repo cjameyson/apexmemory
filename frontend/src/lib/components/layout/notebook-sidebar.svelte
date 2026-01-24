@@ -41,20 +41,34 @@
 	}: Props = $props();
 
 	let isResizing = $state(false);
+	let rafId: number | null = null;
 
 	function handleResizeStart(e: MouseEvent) {
 		isResizing = true;
+		document.body.style.userSelect = 'none';
+		document.body.style.cursor = 'col-resize';
 		e.preventDefault();
 	}
 
 	function handleResizeMove(e: MouseEvent) {
 		if (!isResizing) return;
-		const newWidth = Math.min(400, Math.max(200, e.clientX));
-		sidebarWidth = newWidth;
+		if (rafId) return;
+
+		rafId = requestAnimationFrame(() => {
+			const newWidth = Math.min(400, Math.max(200, e.clientX));
+			sidebarWidth = newWidth;
+			rafId = null;
+		});
 	}
 
 	function handleResizeEnd() {
 		isResizing = false;
+		document.body.style.userSelect = '';
+		document.body.style.cursor = '';
+		if (rafId) {
+			cancelAnimationFrame(rafId);
+			rafId = null;
+		}
 	}
 
 	let sourcesOpen = $state(true);
@@ -77,7 +91,8 @@
 
 <aside
 	class={cn(
-		'bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col transition-all duration-200 relative',
+		'bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col relative',
+		!isResizing && 'transition-all duration-200',
 		isCollapsed && 'w-12',
 		className
 	)}

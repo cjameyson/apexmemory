@@ -30,7 +30,12 @@
 	let { type, onGenerateCards, class: className }: Props = $props();
 </script>
 
-<div class={cn('flex items-center justify-between gap-2 px-4 py-2 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700', className)}>
+<div
+	class={cn(
+		'flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 dark:border-slate-700 dark:bg-slate-800',
+		className
+	)}
+>
 	<!-- Type-specific controls -->
 	<div class="flex items-center gap-1">
 		{#if type === 'pdf'}
@@ -40,15 +45,15 @@
 			<Button variant="ghost" size="icon" class="size-8" aria-label="Zoom in">
 				<ZoomInIcon class="size-4" />
 			</Button>
-			<div class="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+			<div class="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
 			<Button variant="ghost" size="icon" class="size-8" aria-label="Previous page">
 				<ChevronLeftIcon class="size-4" />
 			</Button>
-			<span class="text-sm text-slate-500 dark:text-slate-400 px-2">1 / 87</span>
+			<span class="px-2 text-sm text-slate-500 dark:text-slate-400">1 / 87</span>
 			<Button variant="ghost" size="icon" class="size-8" aria-label="Next page">
 				<ChevronRightIcon class="size-4" />
 			</Button>
-			<div class="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
+			<div class="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
 			<Button variant="ghost" size="icon" class="size-8" aria-label="Search">
 				<SearchIcon class="size-4" />
 			</Button>
@@ -62,12 +67,12 @@
 			<Button variant="ghost" size="icon" class="size-8" aria-label="Play">
 				<PlayIcon class="size-4" />
 			</Button>
-			<span class="text-sm text-slate-500 dark:text-slate-400 px-2">0:00 / 14:32</span>
+			<span class="px-2 text-sm text-slate-500 dark:text-slate-400">0:00 / 14:32</span>
 			<Button variant="ghost" size="icon" class="size-8" aria-label="Volume">
 				<Volume2Icon class="size-4" />
 			</Button>
-			<div class="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
-			<Button variant="ghost" size="sm" class="text-xs h-7">1x</Button>
+			<div class="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
+			<Button variant="ghost" size="sm" class="h-7 text-xs">1x</Button>
 			<Button variant="ghost" size="icon" class="size-8" aria-label="Bookmark">
 				<BookmarkIcon class="size-4" />
 			</Button>
@@ -75,12 +80,12 @@
 			<Button variant="ghost" size="icon" class="size-8" aria-label="Play">
 				<PlayIcon class="size-4" />
 			</Button>
-			<span class="text-sm text-slate-500 dark:text-slate-400 px-2">0:00 / 28:15</span>
+			<span class="px-2 text-sm text-slate-500 dark:text-slate-400">0:00 / 28:15</span>
 			<Button variant="ghost" size="icon" class="size-8" aria-label="Volume">
 				<Volume2Icon class="size-4" />
 			</Button>
-			<div class="w-px h-4 bg-slate-300 dark:bg-slate-600 mx-1"></div>
-			<Button variant="ghost" size="sm" class="text-xs h-7">1x</Button>
+			<div class="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
+			<Button variant="ghost" size="sm" class="h-7 text-xs">1x</Button>
 		{:else if type === 'url'}
 			<Button variant="ghost" size="icon" class="size-8" aria-label="Open original">
 				<ExternalLinkIcon class="size-4" />
@@ -105,10 +110,10 @@
 	<Button
 		variant="default"
 		size="sm"
-		class="gap-1.5 bg-sky-500 hover:bg-sky-600"
+		class="hidden gap-1.5 bg-sky-500 hover:bg-sky-600"
 		onclick={onGenerateCards}
 	>
 		<SparklesIcon class="size-4" />
-		<span class="hidden sm:inline">Generate Cards</span>
+		<span class="sm:inline">Generate Cards</span>
 	</Button>
 </div>

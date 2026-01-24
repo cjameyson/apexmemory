@@ -14,8 +14,6 @@
 
 	let { notebooks, current, isInNotebook }: Props = $props();
 
-	let totalDue = $derived(notebooks.reduce((sum, nb) => sum + nb.dueCount, 0));
-
 	function handleSelect(notebook: Notebook) {
 		goto(`/notebooks/${notebook.id}`);
 	}
@@ -33,18 +31,8 @@
 					isInNotebook && 'bg-slate-100 dark:bg-slate-800'
 				)}
 			>
-				{#if isInNotebook && current}
-					<span class="text-base">{current.emoji}</span>
-					<span class="hidden sm:inline max-w-32 truncate">{current.name}</span>
-				{:else}
-					<BookOpenIcon class="size-4" />
-					<span class="hidden sm:inline">Notebooks</span>
-				{/if}
-				{#if totalDue > 0 && !isInNotebook}
-					<span class="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium bg-sky-100 dark:bg-sky-900 text-sky-700 dark:text-sky-300 rounded-full">
-						{totalDue}
-					</span>
-				{/if}
+				<BookOpenIcon class="size-4" />
+				<span class="hidden sm:inline">Notebooks</span>
 				<ChevronDownIcon class="size-4 text-slate-400" />
 			</Button>
 		{/snippet}
