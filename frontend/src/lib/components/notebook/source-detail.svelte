@@ -48,7 +48,7 @@
 <div
 	id="source-detail"
 	class={cn(
-		'flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
+		'flex flex-1 flex-col overflow-hidden rounded-none border-none border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
 		className
 	)}
 >
@@ -72,13 +72,8 @@
 		<!-- Actions -->
 		<div class="flex items-center gap-2">
 			<!-- disable for now -->
-			{#if dueCount < 0}
-				<Button
-					variant="default"
-					size="sm"
-					class="hidden gap-1.5 bg-sky-500 hover:bg-sky-600 sm:inline-flex"
-					onclick={onStartReview}
-				>
+			{#if dueCount > 0}
+				<Button variant="outline" size="sm" class="hidden sm:inline-flex" onclick={onStartReview}>
 					<ZapIcon class="size-4" />
 					<span class="hidden sm:inline">Review ({dueCount})</span>
 				</Button>

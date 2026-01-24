@@ -84,14 +84,11 @@
 	}
 </script>
 
-<svelte:window
-	onmousemove={handleResizeMove}
-	onmouseup={handleResizeEnd}
-/>
+<svelte:window onmousemove={handleResizeMove} onmouseup={handleResizeEnd} />
 
 <aside
 	class={cn(
-		'bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col relative',
+		'relative flex flex-col border-r border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900',
 		!isResizing && 'transition-all duration-200',
 		isCollapsed && 'w-12',
 		className
@@ -99,14 +96,14 @@
 	style={!isCollapsed ? `width: ${sidebarWidth}px` : undefined}
 >
 	<!-- Sidebar header -->
-	<div class="p-2 flex items-center gap-2 border-b border-slate-200 dark:border-slate-800">
+	<div class="flex items-center gap-2 border-b border-slate-200 p-2 dark:border-slate-800">
 		{#if !isCollapsed}
 			<a
 				href="/notebooks/{notebook.id}"
-				class="flex items-center gap-2 flex-1 min-w-0 px-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+				class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
 			>
 				<span class="text-xl">{notebook.emoji}</span>
-				<span class="font-semibold text-slate-900 dark:text-white truncate">
+				<span class="truncate font-semibold text-slate-900 dark:text-white">
 					{notebook.name}
 				</span>
 			</a>
@@ -117,7 +114,7 @@
 			<Button
 				variant="ghost"
 				size="icon"
-				class="shrink-0 size-8 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+				class="size-8 shrink-0"
 				onclick={() => onOpenSettings?.()}
 				aria-label="Notebook settings"
 			>
@@ -129,7 +126,7 @@
 		<Button
 			variant="ghost"
 			size="icon"
-			class="shrink-0 size-8 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+			class="size-8 shrink-0"
 			onclick={toggleCollapse}
 			aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
 		>
@@ -146,20 +143,10 @@
 		{#if isCollapsed}
 			<!-- Collapsed state: icon buttons only -->
 			<div class="flex flex-col items-center gap-1 px-1.5">
-				<Button
-					variant="ghost"
-					size="icon"
-					class="size-8"
-					aria-label="Sources"
-				>
+				<Button variant="ghost" size="icon" class="size-8" aria-label="Sources">
 					<FileStackIcon class="size-4" />
 				</Button>
-				<Button
-					variant="ghost"
-					size="icon"
-					class="size-8"
-					aria-label="Cards"
-				>
+				<Button variant="ghost" size="icon" class="size-8" aria-label="Cards">
 					<LayersIcon class="size-4" />
 				</Button>
 			</div>
@@ -167,11 +154,7 @@
 			<!-- Expanded state: full sidebar -->
 
 			<!-- Sources section -->
-			<SidebarSection
-				title="Sources"
-				count={sources.length}
-				bind:isOpen={sourcesOpen}
-			>
+			<SidebarSection title="Sources" count={sources.length} bind:isOpen={sourcesOpen}>
 				{#snippet actions()}
 					<Button variant="ghost" size="icon" class="size-6" aria-label="Add source">
 						<PlusIcon class="size-3.5" />
@@ -188,23 +171,17 @@
 					{/each}
 
 					{#if sources.length === 0}
-						<div class="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">
-							No sources yet
-						</div>
+						<div class="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">No sources yet</div>
 					{/if}
 				</div>
 			</SidebarSection>
 
 			<!-- Cards section -->
-			<SidebarSection
-				title="Cards"
-				count={cards.length}
-				bind:isOpen={cardsOpen}
-			>
+			<SidebarSection title="Cards" count={cards.length} bind:isOpen={cardsOpen}>
 				<div class="px-2 py-1">
 					<a
 						href="/notebooks/{notebook.id}/cards"
-						class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+						class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
 					>
 						<SearchIcon class="size-4" />
 						<span>Browse</span>
@@ -218,7 +195,7 @@
 	{#if !isCollapsed}
 		<div
 			class={cn(
-				'absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-sky-500/50 transition-colors',
+				'absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-sky-500/50',
 				isResizing && 'bg-sky-500/50'
 			)}
 			onmousedown={handleResizeStart}

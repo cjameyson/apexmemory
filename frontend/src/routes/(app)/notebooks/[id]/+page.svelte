@@ -48,7 +48,7 @@
 	}
 </script>
 
-<div class="flex-1 flex overflow-hidden">
+<div id="notebook-page" class="flex flex-1 overflow-hidden">
 	<!-- Sidebar (hidden when source is expanded) -->
 	{#if !appState.sourceExpanded}
 		<NotebookSidebar
@@ -63,7 +63,7 @@
 	{/if}
 
 	<!-- Main content -->
-	<div class="flex-1 flex flex-col overflow-auto p-6">
+	<div id="notebook-main" class="flex flex-1 flex-col overflow-auto">
 		{#if selectedSource}
 			<!-- Source detail view -->
 			<SourceDetail
@@ -76,11 +76,7 @@
 			/>
 		{:else}
 			<!-- Notebook dashboard -->
-			<NotebookDashboard
-				notebook={data.notebook}
-				sources={data.sources}
-				cards={data.cards}
-			/>
+			<NotebookDashboard notebook={data.notebook} sources={data.sources} cards={data.cards} />
 		{/if}
 	</div>
 </div>
