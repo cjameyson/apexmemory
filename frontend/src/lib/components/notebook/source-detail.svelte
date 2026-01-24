@@ -1,15 +1,12 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
-	import SourceIcon from '$lib/components/ui/source-icon.svelte';
-	import SourceTabs from './source-tabs.svelte';
-	import SourceToolbar from './source-toolbar.svelte';
-	import SourceContent from './source-content.svelte';
-	import { ArrowLeftIcon, ZapIcon, Maximize2Icon, Minimize2Icon } from '@lucide/svelte';
+	import SourceViewer from './source-viewer.svelte';
+	import SourceContextSidebar from './source-context-sidebar.svelte';
+	import { ZapIcon, Maximize2Icon, Minimize2Icon } from '@lucide/svelte';
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { appState } from '$lib/stores/app.svelte';
 	import type { Source, Card } from '$lib/types';
-
-	type Tab = 'source' | 'cards' | 'summary' | 'chat';
 
 	interface Props {
 		source: Source;
@@ -31,18 +28,17 @@
 		class: className
 	}: Props = $props();
 
-	let activeTab = $state<Tab>('source');
-
 	// Count cards for this source
 	let sourceCardsCount = $derived(cards.filter((c) => c.sourceId === source.id).length);
 	let dueCount = $derived(cards.filter((c) => c.sourceId === source.id && c.due).length);
 
-	function handleTabChange(tab: Tab) {
-		activeTab = tab;
-	}
-
 	function handleGenerateCards() {
 		// TODO: Implement AI card generation
+	}
+
+	function handleCardClick(card: Card) {
+		// Future: Scroll source viewer to card's linked section
+		// appState.setActiveSourceSection(card.sourceSection);
 	}
 </script>
 
@@ -54,7 +50,7 @@
 	)}
 >
 	<!-- Header -->
-	<div class="flex items-center gap-3 border-none border-slate-200 px-4 py-3 dark:border-slate-800">
+	<div class="flex items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
 		<!-- Source info -->
 		<div class="flex min-w-0 flex-1 items-center gap-2">
 			<div class="min-w-0">
@@ -72,7 +68,6 @@
 
 		<!-- Actions -->
 		<div class="flex items-center gap-2">
-			<!-- disable for now -->
 			{#if dueCount > 0}
 				<Button variant="outline" size="sm" class="hidden sm:inline-flex" onclick={onStartReview}>
 					<ZapIcon class="size-4" />
@@ -105,14 +100,20 @@
 		</div>
 	</div>
 
-	<!-- Tabs -->
-	<SourceTabs {activeTab} onTabChange={handleTabChange} />
+	<!-- Two-pane content area -->
+	<div class="flex flex-1 overflow-hidden">
+		<!-- Left pane: Source viewer (always visible) -->
+		<SourceViewer {source} onGenerateCards={handleGenerateCards} class="min-w-0 flex-1" />
 
-	<!-- Toolbar (only on source tab) -->
-	{#if activeTab === 'source'}
-		<SourceToolbar type={source.type} onGenerateCards={handleGenerateCards} />
-	{/if}
-
-	<!-- Content -->
-	<SourceContent {source} {cards} {activeTab} />
+		<!-- Right pane: Context sidebar (collapsible/resizable) -->
+		<SourceContextSidebar
+			{source}
+			{cards}
+			bind:isCollapsed={appState.sourceContextSidebarCollapsed}
+			bind:sidebarWidth={appState.sourceContextSidebarWidth}
+			highlightedCardIds={appState.highlightedCardIds}
+			onCardClick={handleCardClick}
+			class="hidden md:flex"
+		/>
+	</div>
 </div>
