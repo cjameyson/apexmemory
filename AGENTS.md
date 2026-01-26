@@ -30,6 +30,7 @@ The core value proposition is a flashcard SRS system with AI-enhanced workflows.
 - **Migrations:** `tern` (Two-way migrations in `backend/db/migrations`).
 - **Auth:** Session-based. `app.user_sessions` table. Token passed via `Authorization: Bearer`.
 - **TERN:** Uses magic comment `---- create above / drop below ----` where up SQL is above the comment and down SQL is below.
+- **PATCH APIs:** Use `OptionalString`/`OptionalUUID` types in `helpers.go` to distinguish missing vs explicit null in JSON requests.
 
 Refer to `references/monolith_clean_guide.md` for overview of backend structure.
 

@@ -20,5 +20,12 @@ func (app *Application) Routes() http.Handler {
 	mux.Handle("POST /v1/auth/logout-all", app.RequireAuth(apiRL(http.HandlerFunc(app.LogoutAllHandler))))
 	mux.Handle("GET /v1/auth/me", app.RequireAuth(apiRL(http.HandlerFunc(app.GetCurrentUserHandler))))
 
+	// Notebooks
+	mux.Handle("POST /v1/notebooks", app.RequireAuth(apiRL(http.HandlerFunc(app.CreateNotebookHandler))))
+	mux.Handle("GET /v1/notebooks", app.RequireAuth(apiRL(http.HandlerFunc(app.ListNotebooksHandler))))
+	mux.Handle("GET /v1/notebooks/{id}", app.RequireAuth(apiRL(http.HandlerFunc(app.GetNotebookHandler))))
+	mux.Handle("PATCH /v1/notebooks/{id}", app.RequireAuth(apiRL(http.HandlerFunc(app.UpdateNotebookHandler))))
+	mux.Handle("DELETE /v1/notebooks/{id}", app.RequireAuth(apiRL(http.HandlerFunc(app.DeleteNotebookHandler))))
+
 	return app.RecoverPanic(app.LogRequests(app.Authenticate(mux)))
 }

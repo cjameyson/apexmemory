@@ -69,6 +69,18 @@ type AuthIdentity struct {
 	UpdatedAt       time.Time          `json:"updated_at"`
 }
 
+type Notebook struct {
+	UserID       uuid.UUID          `json:"user_id"`
+	ID           uuid.UUID          `json:"id"`
+	Name         string             `json:"name"`
+	Description  pgtype.Text        `json:"description"`
+	FsrsSettings []byte             `json:"fsrs_settings"`
+	Position     int32              `json:"position"`
+	ArchivedAt   pgtype.Timestamptz `json:"archived_at"`
+	CreatedAt    time.Time          `json:"created_at"`
+	UpdatedAt    time.Time          `json:"updated_at"`
+}
+
 type User struct {
 	ID              uuid.UUID          `json:"id"`
 	Email           string             `json:"email"`

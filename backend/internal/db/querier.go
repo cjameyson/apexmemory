@@ -12,7 +12,10 @@ import (
 )
 
 type Querier interface {
+	ArchiveNotebook(ctx context.Context, arg ArchiveNotebookParams) (int64, error)
 	CreateAuthIdentity(ctx context.Context, arg CreateAuthIdentityParams) (AuthIdentity, error)
+	// Note: fsrs_settings is always provided from Go code (source of truth for defaults)
+	CreateNotebook(ctx context.Context, arg CreateNotebookParams) (Notebook, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (UserSession, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// Creates a user and their password auth identity in a single transaction-friendly call
@@ -22,13 +25,22 @@ type Querier interface {
 	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
 	GetAuthIdentityByEmail(ctx context.Context, email pgtype.Text) (GetAuthIdentityByEmailRow, error)
 	GetAuthIdentityByProviderID(ctx context.Context, arg GetAuthIdentityByProviderIDParams) (GetAuthIdentityByProviderIDRow, error)
+	GetNotebook(ctx context.Context, arg GetNotebookParams) (Notebook, error)
 	GetSessionByToken(ctx context.Context, tokenHash []byte) (GetSessionByTokenRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	// Get user with password hash for authentication
 	GetUserByEmailPassword(ctx context.Context, email pgtype.Text) (GetUserByEmailPasswordRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
+	// Returns whether a notebook exists and its archived status.
+	// Used for idempotent archive operations.
+	IsNotebookArchived(ctx context.Context, arg IsNotebookArchivedParams) (IsNotebookArchivedRow, error)
+	ListNotebooks(ctx context.Context, userID uuid.UUID) ([]Notebook, error)
 	SoftDeleteUser(ctx context.Context, id uuid.UUID) error
+	UnarchiveNotebook(ctx context.Context, arg UnarchiveNotebookParams) error
+	// Updates notebook fields atomically. For fsrs_settings, only desired_retention
+	// is updated (version/weights preserved) using jsonb_set when provided.
+	UpdateNotebook(ctx context.Context, arg UpdateNotebookParams) (Notebook, error)
 	UpdateSessionLastUsed(ctx context.Context, tokenHash []byte) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 }

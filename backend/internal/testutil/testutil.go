@@ -79,6 +79,7 @@ func TruncateTables(ctx context.Context, p *pgxpool.Pool) error {
 	// Using a single TRUNCATE with CASCADE is more efficient
 	_, err := p.Exec(ctx, `
 		TRUNCATE TABLE
+			app.notebooks,
 			app.user_sessions,
 			app.auth_identities,
 			app.users
