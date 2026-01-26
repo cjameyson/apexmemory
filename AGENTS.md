@@ -6,15 +6,22 @@
 **Type:** SaaS $12/mo, Mobile-first PWA, Solo-dev (Closed Source).
 **Core Values:** Progress > Perfection, Performance First, Clean/Composable Code (No over-abstraction).
 
+
+## Domain
+Apex Memory is centered around the notebook concept. A notebooks is typically created by a user for a particular subject, class or area of study.  Notebooks contain sources (pdfs, slides, audio, links, etc), flashcards, notes, etc.  These sources can be viewed and searched in the product, but more importantly can be parsed, chunked, embedded and indexed. This enables the product to:
+- generate flashcards with citations
+- enable interactive chat grounded in the source material
+- semantic search
+- gap identification of flashcards based on source material
+
+The core value proposition is a flashcard SRS system with AI-enhanced workflows.
+- **Algorithm:** FSRS v6 (Free Spaced Repetition Scheduler)
+- **Ratings:** Again (1), Hard (2), Good (3), Easy (4)
+- **Note Types:** `basic`, `cloze`, `image_occlusion`
+- **Field Types:** `plain_text`, `rich_text`, `cloze_text`, `image_occlusion`
+
+
 ## Tech Stack & Architecture
-
-### Logging
-Our logging strategy is optimized for fast human debugging **and** for AI agents to automatically diagnose, root-cause, and propose fixes. Logs should be structured, consistent, and rich in context, so an agent can reliably correlate events across services, reconstruct intent, and pinpoint failures without needing to “guess” from freeform text.
-
-* **Use structured logging** with stable field names (avoid ad-hoc keys). Prefer machine-parseable values over prose.
-* **Make every error actionable**: log `error_code`, exception type, message, and a concise `remediation_hint` when known; include `retryable` and `severity` to drive automated handling.
-* **Log the “why” and “what”**: record intent + inputs at boundaries (API handlers, queue consumers) and key decision points (routing, validation, fallbacks), but avoid dumping entire payloads—log summaries + hashes.
-* **Be safe and complete**: never log secrets/PII; mask sensitive values. Include environment/runtime context (`service`, `version`, `env`, `region`) so agents can match issues to deployments quickly.
 
 ### Backend (Go + PostgreSQL)
 - **Runtime:** Go 1.25+ (Standard `net/http`, avoid heavy frameworks).
@@ -42,21 +49,6 @@ Refer to `references/monolith_clean_guide.md` for overview of backend structure.
   - **Mutations (default):** Form actions with `use:enhance`. No client JS needed.
   - **Mutations (edge cases):** `/api/[...path]` proxy routes for modals, drag-drop, real-time.
   - **Client helper (planned):** `api()` in `$lib/api/client.ts` for proxy route calls.
-
-
-## Domain Logic
-Apex Memory is centered around the notebook concept. Notebooks have sources (pdfs, slides, audio, links, etc). These sources can be viewed and searched in product, but more importantly can be parsed, chunked, embedded and indexed. This enables the product to:
-- generate flashcards with citations
-- enable interactive chat grounded in the source material
-- semantic search
-
-The core value proposition is a flashcard SRS system with AI-enhanced workflows.
-- **Algorithm:** FSRS v6 (Free Spaced Repetition Scheduler)
-- **Ratings:** Again (1), Hard (2), Good (3), Easy (4)
-- **Note Types:** `basic`, `cloze`, `image_occlusion`
-- **Field Types:** `plain_text`, `rich_text`, `cloze_text`, `image_occlusion`
-
-**Current status:** Auth system implemented. Notebooks, cards, sources, and FSRS are planned.
 
 
 ## Project Structure
@@ -126,6 +118,15 @@ Refer to the Makefile for most dev commands
 6. Write tests (`*_test.go`)
 7. `make test.backend` to verify
 8. `make dev.backend` to restart
+
+
+### Logging
+Our logging strategy is optimized for fast human debugging **and** for AI agents to automatically diagnose, root-cause, and propose fixes. Logs should be structured, consistent, and rich in context, so an agent can reliably correlate events across services, reconstruct intent, and pinpoint failures without needing to “guess” from freeform text.
+
+* **Use structured logging** with stable field names (avoid ad-hoc keys). Prefer machine-parseable values over prose.
+* **Make every error actionable**: log `error_code`, exception type, message, and a concise `remediation_hint` when known; include `retryable` and `severity` to drive automated handling.
+* **Log the “why” and “what”**: record intent + inputs at boundaries (API handlers, queue consumers) and key decision points (routing, validation, fallbacks), but avoid dumping entire payloads—log summaries + hashes.
+* **Be safe and complete**: never log secrets/PII; mask sensitive values. Include environment/runtime context (`service`, `version`, `env`, `region`) so agents can match issues to deployments quickly.
 
 ## Agent Behavior & Persona
 

@@ -1,55 +1,56 @@
-## Frontend
- [x] Any buttons that are only icon based should ALWAYS have a tooltip with a clear, concise description of what the button does.
- [x] Use lucide-maximize2 and lucide-minimize2 for expand and collapse panel buttons
- [x] Update source tabs to be pill based instead of underline
- [ ] improve source tab styling
- [ ] main pane expand, auto collapses side panels when they should remember their state after main pane is minimized
+# TODO
 
- - Source detail panel needs to be refactored
+## Ideas
 
+### Source Decomposition
+Large PDFs (up to 1GB, 500 pages) should be broken into logical chunks (chapters, sections) for easier processing and chat navigation. Detection via PDF inspection, OCR, and LLM. Requires a sophisticated source processing pipeline.
 
-**NOTE:**
- - need generic capability of 'select text' -> take action (create cards, add to notes, summarize, explain, etc)
- - need capability to grab rectangular portion of screen to create image occlusion cards (could be from pdf, notes, video, etc)
-
-
-## Large Sources
- - ideally large pdfs can be supported
- - they should be broken up into chapters and 
- - TODO: sources will likely be fairly common across users at a school, so we need a way to avoid duplicate processing of large files, OCR, embedding, etc.  For example, all nursing students in the same class will have the same PDF or video of a lecture.  
-
-
-### Source Detail Refactor
- - Currently have 4 tabs, source, cards, summary, and chat
- - This forces the user to toggle between tabs to view different information about the source
- - To improve this UX for the user, lets add a new right sidebar that can be collapsed and expanded and resized (like the left sidebar)
- - The source should always be visible in the left pane and in the right pane the user can view cards, summary, and chat linked to that source as a set of tabs
- - Don't implement this now, but keep in mind for the design - the left source pane should be able to send information to the right sidebar and vice versa
-  - for example, user could click on a card in the right sidebar and the left source pane should scroll to the section of the source that the card is linked to
-  - or the as the user scrolls through the source in the left pane, the cards tab in the right sidebar should update to show cards linked to the current section of the source
-  - the key is that information may need to flow between these 2 components, so bake this into the design from the start
- - As always, use best practices for svelte and component design.  Keep an eye on correctness, performance and simplicity.
-
-
-
+### Deduplication
+Sources are commonly shared across users at a school (e.g., nursing students with same lecture PDF/video). Need strategy to avoid duplicate processing of large files, OCR, and embedding.
 
 ### Source Viewers / Content Components
+Automatic card recommendation based on current card set and source content. Find potential gaps in knowledge and suggest cards to fill those gaps.
+
 **PDF and Document Based Sources**
- - PDF displayed in the left pane
- - the right pane, would show cards, summary, and chat linked to that source
- - viewer allows for interactions to select text -> take action
- - viewer allows for interactions to select image -> take action
- - as user scrolls cards tab should update to show cards linked to that section of the pdf (later, more advanced features)
+- PDF displayed in left pane, cards/summary/chat in right pane
+- Select text -> take action; select image -> take action
+- Cards tab updates as user scrolls to show linked cards (advanced)
 
 **Audio**
- - left pane has audio player with optional transcript below it
- - users can select text in transcript -> take action (should also capture timestamp if possible) 
- - as user scrolls cards tab should update to show cards linked to that section of the audio (later, more advanced features)
+- Audio player with optional transcript
+- Select text in transcript -> take action (capture timestamp)
+- Cards tab updates as user scrolls (advanced)
 
 **Video**
- - left pane has video player with optional transcript below it
- - users can select text in transcript -> take action (should also capture timestamp if possible) 
- - as user watches video the cards tab should update to show cards linked to the current section of the video (later, more advanced features)
+- Video player with optional transcript
+- Select text in transcript -> take action (capture timestamp)
+- Cards tab updates as user watches to show linked cards (advanced)
 
+### Practice / Past Tests
+Add a special source type for practice tests or previous exams. This allows the AI system to process them specifically to:
+- Extract key insights on test problems and patterns.
+- Compare test content to existing flashcards to identify gaps.
 
+---
 
+## Active
+
+### Bugs
+- [ ] When clicking the Review dropdown in the topnav, we enter focus mode, but if I press space to start a review, the dropdown is shown again ontop of the review interface.
+
+### Frontend
+- [ ] Generic 'select text' -> take action capability (create cards, add to notes, summarize, explain)
+- [ ] Screen grab capability for image occlusion cards (or support paste from native screenshot tool)
+
+### Backend
+- [ ] Determine best way to automatically apply migrations to the test database during unit tests
+
+---
+
+## Done
+- [x] Source detail refactor: two-pane layout with collapsible right sidebar
+- [x] Icon-only buttons always have tooltips
+- [x] Use lucide-maximize2/minimize2 for expand/collapse buttons
+- [x] Update source tabs to pill-based styling
+- [x] Improve source tab styling
+- [x] Main pane expand remembers side panel state
