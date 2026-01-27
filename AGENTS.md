@@ -45,7 +45,7 @@ Refer to `references/monolith_clean_guide.md` for overview of backend structure.
 - **Styling:** TailwindCSS 4+ (Light/Dark mode support).
 - **Rich Text (planned):** TipTap. Math: KaTeX + MathLive.
 - **Routing:** File-based. `hooks.server.ts` validates sessions via `/v1/auth/me`.
-- **LayerChart:** for charting (https://www.layerchart.com/)
+- **LayerChart:** for charting (https://next.layerchart.com/).  Ensure svelte 5 version is used.
 - **API Strategy:** Go API hidden from browser. All requests flow through SvelteKit server.
   - **Reads:** `+page.server.ts` load functions with `apiRequest()`.
   - **Mutations (default):** Form actions with `use:enhance`. No client JS needed.

@@ -90,7 +90,7 @@
 <Tooltip.Provider delayDuration={300}>
 	<aside
 		class={cn(
-			'relative flex flex-col border-r border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900',
+			'relative flex flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
 			!isResizing && 'transition-all duration-200',
 			isCollapsed && 'w-12',
 			className

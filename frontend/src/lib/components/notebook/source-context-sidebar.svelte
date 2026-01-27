@@ -81,7 +81,7 @@
 <Tooltip.Provider delayDuration={300}>
 	<aside
 		class={cn(
-			'relative flex flex-col border-l border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900',
+			'relative flex flex-col border-l border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
 			!isResizing && 'transition-all duration-200',
 			isCollapsed && 'w-10',
 			className
@@ -92,7 +92,7 @@
 		{#if !isCollapsed}
 			<div
 				class={cn(
-					'absolute left-0 top-0 h-full w-1 cursor-col-resize transition-colors hover:bg-sky-500/50',
+					'absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors hover:bg-sky-500/50',
 					isResizing && 'bg-sky-500/50'
 				)}
 				onmousedown={handleResizeStart}

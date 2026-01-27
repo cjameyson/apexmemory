@@ -154,7 +154,7 @@
 	}
 </script>
 
-<div class="h-screen flex flex-col bg-slate-100 dark:bg-slate-950">
+<div class="flex h-screen flex-col bg-white dark:bg-slate-950">
 	<TopNavBar
 		user={data.user}
 		{notebooks}
@@ -164,7 +164,7 @@
 		onCreateNotebook={handleCreateNotebook}
 	/>
 
-	<main class="flex-1 flex overflow-hidden">
+	<main class="flex flex-1 overflow-hidden">
 		{@render children()}
 	</main>
 </div>
