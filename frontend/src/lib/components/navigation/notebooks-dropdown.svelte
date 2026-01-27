@@ -4,7 +4,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { ChevronDownIcon, BookOpenIcon, PlusIcon, SearchIcon } from '@lucide/svelte';
+	import { ChevronDownIcon, BookOpenIcon, PlusIcon, SearchIcon, CheckIcon } from '@lucide/svelte';
 	import type { Notebook } from '$lib/types';
 
 	interface Props {
@@ -104,10 +104,12 @@
 								)}%{/if}
 						</div>
 					</div>
-					{#if notebook.dueCount >= 0}
-						<span class="text-xs font-medium text-primary">
+					{#if notebook.dueCount > 0}
+						<span class="text-primary text-xs font-medium">
 							{notebook.dueCount} due
 						</span>
+					{:else if notebook.dueCount === 0}
+						<CheckIcon class="size-4" />
 					{/if}
 				</DropdownMenu.Item>
 			{/each}
