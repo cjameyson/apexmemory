@@ -39,7 +39,6 @@ NOTE: frontend mockup used emoji and color, but these are not supported in the A
 
 **Goal:** Replace mock data with real API calls and simplify dropdown to navigation-only.
 
-
 ### Deliverables
 
 1. **Update `(app)/+layout.server.ts`**
@@ -53,15 +52,15 @@ NOTE: frontend mockup used emoji and color, but these are not supported in the A
    - Pass to dropdown component
 
 3. **Update `$lib/components/navigation/notebooks-dropdown.svelte`**
-   - **Remove:** Any edit/settings icons, inline actions
    - **Keep:** List of notebooks, due count badges, click-to-navigate
-   - **Add:** Footer with "Create notebook" link (triggers event, modal comes later) and "Manage notebooks →" link to `/notebooks`
+   - **Add:** Footer with "Create notebook" link (triggers event, modal comes later) and "Manage notebooks →" link to `/notebooks`.  Add separator to separate the list from the footer. Use lucide icon for "Create notebook" and "Manage notebooks".
    - **Add:** Search filter when > 8 notebooks
    - **Add:** Empty state with friendly message and CTA
 
 ### Behavior Spec
 - Lists active notebooks alphabetically
 - Shows due count badge per notebook
+- Under notebook name, show total cards and retention as "123 cards • 87%"
 - Click notebook → navigate to notebook dashboard
 - No management actions in dropdown
 

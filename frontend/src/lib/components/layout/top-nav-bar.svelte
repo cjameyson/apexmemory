@@ -16,9 +16,17 @@
 		currentNotebook?: Notebook;
 		onStartFocusMode?: (scope: ReviewScope) => void;
 		onOpenSearch?: () => void;
+		onCreateNotebook?: () => void;
 	}
 
-	let { user, notebooks, currentNotebook, onStartFocusMode, onOpenSearch }: Props = $props();
+	let {
+		user,
+		notebooks,
+		currentNotebook,
+		onStartFocusMode,
+		onOpenSearch,
+		onCreateNotebook
+	}: Props = $props();
 
 	let isHome = $derived(page.url.pathname === '/home');
 	let isInNotebook = $derived(page.url.pathname.startsWith('/notebooks/'));
@@ -55,11 +63,11 @@
 				href="/home"
 				class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-slate-900 transition-colors hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800"
 			>
-				<BrainIcon class="size-6 text-sky-500" />
+				<BrainIcon class="text-primary size-6" />
 			</a>
 
 			<!-- Notebooks dropdown -->
-			<NotebooksDropdown {notebooks} current={currentNotebook} {isInNotebook} />
+			<NotebooksDropdown {notebooks} current={currentNotebook} {isInNotebook} {onCreateNotebook} />
 		</div>
 
 		<!-- Right group -->
@@ -76,7 +84,7 @@
 					{#snippet child({ props })}
 						<button
 							{...props}
-							class="flex size-8 items-center justify-center rounded-full bg-sky-500 text-sm font-medium text-white transition-colors hover:bg-sky-600"
+							class="bg-primary hover:bg-primary/80 flex size-8 items-center justify-center rounded-full text-sm font-medium text-white transition-colors"
 						>
 							{getInitials(user)}
 						</button>

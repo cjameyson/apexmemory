@@ -6,12 +6,20 @@
 	import CommandPalette from '$lib/components/overlays/command-palette.svelte';
 	import FocusMode from '$lib/components/overlays/focus-mode.svelte';
 	import type { Notebook, ReviewScope } from '$lib/types';
-	import { getAllNotebooks, getNotebook } from '$lib/mocks';
+	import { toNotebooks } from '$lib/services/notebooks';
 
 	let { data, children } = $props();
 
-	// Get notebooks from mock data
-	let notebooks: Notebook[] = $state(getAllNotebooks());
+	// Transform API data to frontend types
+	let notebooks = $derived(toNotebooks(data.notebooks));
+
+	// Create lookup map for notebook by ID
+	let notebookMap = $derived(new Map(notebooks.map((n) => [n.id, n])));
+
+	// Helper to get notebook by ID (replaces mock getNotebook)
+	function getNotebook(id: string) {
+		return notebookMap.get(id);
+	}
 
 	// Derive current notebook from URL params
 	let currentNotebook = $derived.by(() => {
@@ -139,6 +147,11 @@
 		closeCommandPalette();
 		startFocusMode({ type: 'all' });
 	}
+
+	function handleCreateNotebook() {
+		// TODO: Wire up create notebook modal
+		console.log('TODO: Create notebook');
+	}
 </script>
 
 <div class="h-screen flex flex-col bg-slate-100 dark:bg-slate-950">
@@ -148,6 +161,7 @@
 		{currentNotebook}
 		onStartFocusMode={startFocusMode}
 		onOpenSearch={openCommandPalette}
+		onCreateNotebook={handleCreateNotebook}
 	/>
 
 	<main class="flex-1 flex overflow-hidden">

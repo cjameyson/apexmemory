@@ -36,14 +36,14 @@
 				{...props}
 				variant="default"
 				size="sm"
-				class={cn('gap-2 bg-sky-500 hover:bg-sky-600 text-white', className)}
+				class={cn('gap-2', className)}
 			>
 				<ZapIcon class="size-4" />
 				<span class="hidden sm:inline">Review</span>
 				{#if totalDue > 0}
-					<span class="hidden sm:inline text-white/80">({totalDue})</span>
+					<span class="hidden sm:inline text-primary-foreground/80">({totalDue})</span>
 				{/if}
-				<ChevronDownIcon class="size-4 text-white/70" />
+				<ChevronDownIcon class="size-4 text-primary-foreground/70" />
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
@@ -54,8 +54,8 @@
 			class="gap-3 cursor-pointer"
 			onclick={startReviewAll}
 		>
-			<div class="w-8 h-8 bg-gradient-to-br from-sky-500 to-cyan-600 rounded-lg flex items-center justify-center">
-				<ZapIcon class="size-4 text-white" />
+			<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+				<ZapIcon class="size-4 text-primary-foreground" />
 			</div>
 			<div class="flex-1">
 				<div class="font-medium">Review All</div>
@@ -73,7 +73,7 @@
 				<DropdownMenu.Item
 					class={cn(
 						'gap-3 cursor-pointer',
-						currentNotebook?.id === notebook.id && 'bg-sky-50 dark:bg-sky-900/20'
+						currentNotebook?.id === notebook.id && 'bg-primary/10 dark:bg-primary/20'
 					)}
 					onclick={() => startReviewNotebook(notebook)}
 				>
@@ -81,7 +81,7 @@
 					<div class="flex-1 min-w-0">
 						<div class="font-medium truncate">{notebook.name}</div>
 					</div>
-					<span class="text-sm font-medium text-sky-600 dark:text-sky-400">
+					<span class="text-sm font-medium text-primary">
 						{notebook.dueCount}
 					</span>
 				</DropdownMenu.Item>

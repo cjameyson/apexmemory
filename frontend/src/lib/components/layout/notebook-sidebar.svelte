@@ -111,26 +111,6 @@
 				</a>
 			{/if}
 
-			{#if !isCollapsed}
-				<!-- Settings button (only when expanded) -->
-				<Tooltip.Root>
-					<Tooltip.Trigger>
-						{#snippet child({ props })}
-							<Button
-								variant="ghost"
-								size="icon"
-								class="size-8 shrink-0"
-								{...props}
-								onclick={() => onOpenSettings?.()}
-							>
-								<SettingsIcon class="size-4" />
-							</Button>
-						{/snippet}
-					</Tooltip.Trigger>
-					<Tooltip.Content>Notebook settings</Tooltip.Content>
-				</Tooltip.Root>
-			{/if}
-
 			<!-- Collapse button -->
 			<Tooltip.Root>
 				<Tooltip.Trigger>
@@ -184,7 +164,12 @@
 				<!-- Expanded state: full sidebar -->
 
 				<!-- Sources section -->
-				<SidebarSection title="Sources" count={sources.length} bind:isOpen={sourcesOpen} class="border-b border-slate-200 pb-2 dark:border-slate-800">
+				<SidebarSection
+					title="Sources"
+					count={sources.length}
+					bind:isOpen={sourcesOpen}
+					class="border-b border-slate-200 pb-2 dark:border-slate-800"
+				>
 					{#snippet actions()}
 						<Tooltip.Root>
 							<Tooltip.Trigger>
