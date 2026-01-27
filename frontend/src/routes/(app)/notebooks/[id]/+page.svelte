@@ -12,6 +12,31 @@
 
 	let { data }: { data: PageData } = $props();
 
+	// Track which notebook layout is loaded to avoid save-on-load
+	let layoutLoadedForId = $state<string | null>(null);
+
+	// Load notebook layout on notebook change
+	$effect(() => {
+		const id = data.notebook.id;
+		layoutLoadedForId = null;
+		appState.loadNotebookLayout(id);
+		// Use tick to defer setting loaded flag until after save effect re-runs
+		layoutLoadedForId = id;
+	});
+
+	// Auto-save layout when any layout value changes
+	$effect(() => {
+		// Read all layout values to track them
+		const collapsed = appState.sidebarCollapsed;
+		const width = appState.sidebarWidth;
+		const ctxCollapsed = appState.sourceContextSidebarCollapsed;
+		const ctxWidth = appState.sourceContextSidebarWidth;
+		// Only save after initial load is complete for this notebook
+		if (layoutLoadedForId && layoutLoadedForId === data.notebook.id) {
+			appState.saveNotebookLayout(data.notebook.id);
+		}
+	});
+
 	// Derive selected source from URL query parameter (source of truth)
 	let selectedSource = $derived.by(() => {
 		const sourceId = page.url.searchParams.get('source');
@@ -99,6 +124,7 @@
 			cards={data.cards}
 			{selectedSource}
 			bind:isCollapsed={appState.sidebarCollapsed}
+			bind:sidebarWidth={appState.sidebarWidth}
 			onSelectSource={handleSelectSource}
 			onOpenSettings={handleOpenSettings}
 		/>

@@ -42,7 +42,7 @@
 	)}
 >
 	<!-- Header -->
-	<div class="flex items-center gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+	<div class="flex h-12 items-center gap-3 border-b border-slate-200 px-4 dark:border-slate-800">
 		<!-- Source info -->
 		<div class="flex min-w-0 flex-1 items-center gap-2">
 			<div class="min-w-0">

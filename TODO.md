@@ -36,7 +36,6 @@ Add a special source type for practice tests or previous exams. This allows the 
 ## Active
 
 ### Bugs
-- [ ] When clicking the Review dropdown in the topnav, we enter focus mode, but if I press space to start a review, the dropdown is shown again ontop of the review interface.
 
 ### Frontend
 - [ ] Generic 'select text' -> take action capability (create cards, add to notes, summarize, explain)
@@ -44,7 +43,6 @@ Add a special source type for practice tests or previous exams. This allows the 
 
 ### Backend
 - [ ] Determine best way to automatically apply migrations to the test database during unit tests
-- [ ] Use middleware chaining library like 'alice' for cleaner middleware setup and reduce auth check boilerplate in handlers
 - [ ] Add pagination to ListNotebooks endpoint (deferred: max notebooks per user is sub-100)
 - [ ] Consider storing desired_retention as separate column for performance optimization on high-volume lists
 - [ ] Add PUT /v1/notebooks/{id}/unarchive endpoint (query exists but not exposed)
@@ -52,9 +50,12 @@ Add a special source type for practice tests or previous exams. This allows the 
 ---
 
 ## Done
+- [x] Use middleware chaining library like 'alice' for cleaner middleware setup and reduce auth check boilerplate in handlers
 - [x] Source detail refactor: two-pane layout with collapsible right sidebar
 - [x] Icon-only buttons always have tooltips
 - [x] Use lucide-maximize2/minimize2 for expand/collapse buttons
 - [x] Update source tabs to pill-based styling
 - [x] Improve source tab styling
 - [x] Main pane expand remembers side panel state
+- [x] When clicking the Review dropdown in the topnav, we enter focus mode, but if I press space to start a review, the dropdown is shown again ontop of the review interface.
+

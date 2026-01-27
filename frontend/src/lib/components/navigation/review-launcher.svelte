@@ -14,6 +14,8 @@
 
 	let { notebooks, currentNotebook, onStartReview, class: className }: Props = $props();
 
+	let open = $state(false);
+
 	// Calculate total due across all notebooks
 	let totalDue = $derived(notebooks.reduce((sum, nb) => sum + nb.dueCount, 0));
 
@@ -21,15 +23,17 @@
 	let notebooksWithDue = $derived(notebooks.filter((nb) => nb.dueCount > 0));
 
 	function startReviewAll() {
+		open = false;
 		onStartReview?.({ type: 'all' });
 	}
 
 	function startReviewNotebook(notebook: Notebook) {
+		open = false;
 		onStartReview?.({ type: 'notebook', notebook });
 	}
 </script>
 
-<DropdownMenu.Root>
+<DropdownMenu.Root bind:open>
 	<DropdownMenu.Trigger>
 		{#snippet child({ props })}
 			<Button

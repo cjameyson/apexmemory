@@ -96,7 +96,7 @@
 	style={!isCollapsed ? `width: ${sidebarWidth}px` : undefined}
 >
 	<!-- Sidebar header -->
-	<div class="flex items-center gap-2 border-b border-slate-200 p-2 dark:border-slate-800">
+	<div class="flex h-12 items-center gap-2 border-b border-slate-200 px-2 dark:border-slate-800">
 		{#if !isCollapsed}
 			<a
 				href="/notebooks/{notebook.id}"

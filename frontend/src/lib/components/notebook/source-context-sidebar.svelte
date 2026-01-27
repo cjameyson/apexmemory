@@ -118,7 +118,7 @@
 		<!-- Expanded state -->
 		<!-- Header with collapse button -->
 		<div
-			class="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-700"
+			class="flex h-12 items-center justify-between border-b border-slate-200 px-3 dark:border-slate-700"
 		>
 			<SourceSidebarTabs {activeTab} onTabChange={handleTabChange} />
 			<Button

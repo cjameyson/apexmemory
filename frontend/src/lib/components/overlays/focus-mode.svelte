@@ -66,8 +66,12 @@
 		onClose?.();
 	}
 
-	// Keyboard shortcuts
+	let dialogEl = $state<HTMLDivElement>();
+
+	// Focus the dialog on mount to capture keyboard events and prevent trigger re-activation
 	onMount(() => {
+		dialogEl?.focus();
+
 		function handleKeydown(e: KeyboardEvent) {
 			if (sessionComplete) return;
 
@@ -94,6 +98,8 @@
 		'fixed inset-0 z-50 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col',
 		className
 	)}
+	bind:this={dialogEl}
+	tabindex="-1"
 	role="dialog"
 	aria-modal="true"
 	aria-label="Focus mode review session"

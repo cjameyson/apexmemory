@@ -2,9 +2,12 @@
 // Note: Focus mode and command palette state are managed via shallow routing (page.state)
 // See +layout.svelte for implementation
 
+import { getNotebookPreferences, setNotebookPreferences } from '$lib/services/notebooks';
+
 class AppState {
 	// UI state
 	sidebarCollapsed = $state(false);
+	sidebarWidth = $state(288);
 	sourceExpanded = $state(false);
 
 	// Source context sidebar state (right sidebar)
@@ -41,6 +44,25 @@ class AppState {
 	// Future: Called when cards in viewport change
 	setHighlightedCards(cardIds: string[]) {
 		this.highlightedCardIds = cardIds;
+	}
+
+	// Notebook layout persistence
+	loadNotebookLayout(notebookId: string) {
+		const prefs = getNotebookPreferences(notebookId);
+		this.sidebarCollapsed = prefs?.sidebarCollapsed ?? false;
+		this.sidebarWidth = prefs?.sidebarWidth ?? 288;
+		this.sourceExpanded = false;
+		this.sourceContextSidebarCollapsed = prefs?.contextSidebarCollapsed ?? false;
+		this.sourceContextSidebarWidth = prefs?.contextSidebarWidth ?? 320;
+	}
+
+	saveNotebookLayout(notebookId: string) {
+		setNotebookPreferences(notebookId, {
+			sidebarCollapsed: this.sidebarCollapsed,
+			sidebarWidth: this.sidebarWidth,
+			contextSidebarCollapsed: this.sourceContextSidebarCollapsed,
+			contextSidebarWidth: this.sourceContextSidebarWidth
+		});
 	}
 
 	// Reset state when navigating away

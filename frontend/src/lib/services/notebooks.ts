@@ -45,7 +45,9 @@ const STORAGE_KEY = 'notebook-preferences';
 
 export interface NotebookPreference {
 	sidebarCollapsed?: boolean;
-	lastViewedSourceId?: string;
+	sidebarWidth?: number;
+	contextSidebarCollapsed?: boolean;
+	contextSidebarWidth?: number;
 }
 
 type NotebookPreferences = Record<string, NotebookPreference>;
