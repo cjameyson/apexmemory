@@ -10,7 +10,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	}
 
 	// Fetch notebooks - graceful fallback on error
-	const result = await apiRequest<ApiNotebook[]>('/v1/notebooks', {
+	const result = await apiRequest<ApiNotebook[]>('/v1/notebooks?ui=true', {
 		token: locals.sessionToken!
 	});
 

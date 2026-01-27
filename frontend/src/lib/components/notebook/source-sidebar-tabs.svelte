@@ -24,7 +24,7 @@
 
 <div
 	class={cn(
-		'flex items-center gap-1 border-b border-slate-200 px-2 py-1.5 dark:border-slate-700',
+		'flex items-center gap-1 border-none border-slate-200 px-2 py-1.5 dark:border-slate-700',
 		className
 	)}
 >

@@ -3,7 +3,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import SourceViewer from './source-viewer.svelte';
 	import { ZapIcon, Maximize2Icon, Minimize2Icon } from '@lucide/svelte';
-	import * as Tooltip from '$lib/components/ui/tooltip';
 	import type { Source, Card } from '$lib/types';
 
 	interface Props {
@@ -68,28 +67,19 @@
 				</Button>
 			{/if}
 
-			<Tooltip.Provider delayDuration={300}>
-				<Tooltip.Root>
-					<Tooltip.Trigger>
-						{#snippet child({ props })}
-							<Button
-								variant="ghost"
-								size="icon"
-								class="size-8"
-								{...props}
-								onclick={onToggleExpand}
-							>
-								{#if isExpanded}
-									<Minimize2Icon class="size-4" />
-								{:else}
-									<Maximize2Icon class="size-4" />
-								{/if}
-							</Button>
-						{/snippet}
-					</Tooltip.Trigger>
-					<Tooltip.Content>{isExpanded ? 'Collapse panel' : 'Expand panel'}</Tooltip.Content>
-				</Tooltip.Root>
-			</Tooltip.Provider>
+			<Button
+				variant="ghost"
+				size="icon"
+				class="size-8"
+				title={isExpanded ? 'Collapse panel' : 'Expand panel'}
+				onclick={onToggleExpand}
+			>
+				{#if isExpanded}
+					<Minimize2Icon class="size-4" />
+				{:else}
+					<Maximize2Icon class="size-4" />
+				{/if}
+			</Button>
 		</div>
 	</div>
 

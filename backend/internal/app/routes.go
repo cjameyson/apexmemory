@@ -1,31 +1,36 @@
 package app
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/justinas/alice"
+)
 
 func (app *Application) Routes() http.Handler {
 	mux := http.NewServeMux()
 
-	// Middleware shortcuts
-	authRL := app.RateLimitByIP(app.RateLimiters.Auth)
-	registerRL := app.RateLimitByIP(app.RateLimiters.Register)
-	apiRL := app.RateLimitByUser(app.RateLimiters.API)
+	// Middleware chains
+	global := alice.New(app.RecoverPanic, app.LogRequests, app.Authenticate)
+	protected := alice.New(app.RequireAuth, app.RateLimitByUser(app.RateLimiters.API))
+	authChain := alice.New(app.RateLimitByIP(app.RateLimiters.Auth))
+	registerChain := alice.New(app.RateLimitByIP(app.RateLimiters.Register))
 
 	// Public endpoints
 	mux.HandleFunc("GET /v1/healthcheck", app.HealthcheckHandler)
-	mux.Handle("POST /v1/auth/register", registerRL(http.HandlerFunc(app.RegisterHandler)))
-	mux.Handle("POST /v1/auth/login", authRL(http.HandlerFunc(app.LoginHandler)))
+	mux.Handle("POST /v1/auth/register", registerChain.ThenFunc(app.RegisterHandler))
+	mux.Handle("POST /v1/auth/login", authChain.ThenFunc(app.LoginHandler))
 
-	// Protected endpoints (wrapped with RequireAuth for defense-in-depth)
-	mux.Handle("POST /v1/auth/logout", app.RequireAuth(apiRL(http.HandlerFunc(app.LogoutHandler))))
-	mux.Handle("POST /v1/auth/logout-all", app.RequireAuth(apiRL(http.HandlerFunc(app.LogoutAllHandler))))
-	mux.Handle("GET /v1/auth/me", app.RequireAuth(apiRL(http.HandlerFunc(app.GetCurrentUserHandler))))
+	// Protected endpoints
+	mux.Handle("POST /v1/auth/logout", protected.ThenFunc(app.LogoutHandler))
+	mux.Handle("POST /v1/auth/logout-all", protected.ThenFunc(app.LogoutAllHandler))
+	mux.Handle("GET /v1/auth/me", protected.ThenFunc(app.GetCurrentUserHandler))
 
 	// Notebooks
-	mux.Handle("POST /v1/notebooks", app.RequireAuth(apiRL(http.HandlerFunc(app.CreateNotebookHandler))))
-	mux.Handle("GET /v1/notebooks", app.RequireAuth(apiRL(http.HandlerFunc(app.ListNotebooksHandler))))
-	mux.Handle("GET /v1/notebooks/{id}", app.RequireAuth(apiRL(http.HandlerFunc(app.GetNotebookHandler))))
-	mux.Handle("PATCH /v1/notebooks/{id}", app.RequireAuth(apiRL(http.HandlerFunc(app.UpdateNotebookHandler))))
-	mux.Handle("DELETE /v1/notebooks/{id}", app.RequireAuth(apiRL(http.HandlerFunc(app.DeleteNotebookHandler))))
+	mux.Handle("POST /v1/notebooks", protected.ThenFunc(app.CreateNotebookHandler))
+	mux.Handle("GET /v1/notebooks", protected.ThenFunc(app.ListNotebooksHandler))
+	mux.Handle("GET /v1/notebooks/{id}", protected.ThenFunc(app.GetNotebookHandler))
+	mux.Handle("PATCH /v1/notebooks/{id}", protected.ThenFunc(app.UpdateNotebookHandler))
+	mux.Handle("DELETE /v1/notebooks/{id}", protected.ThenFunc(app.DeleteNotebookHandler))
 
-	return app.RecoverPanic(app.LogRequests(app.Authenticate(mux)))
+	return global.Then(mux)
 }
