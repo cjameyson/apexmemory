@@ -1,14 +1,22 @@
 // Notebook and related domain types
 
 export interface Notebook {
+	// === API fields (from ApiNotebook, snake_case -> camelCase) ===
 	id: string;
 	name: string;
-	emoji: string;
-	color: string;
-	dueCount: number;
-	streak: number;
-	totalCards: number;
-	retention: number;
+	description: string | null;
+	desiredRetention: number;
+	position: number;
+	createdAt: string;
+	updatedAt: string;
+
+	// === UI-only fields (computed/mock until stats API exists) ===
+	emoji: string; // Static '📘' for now
+	color: string; // Deferred - keep for component compatibility
+	dueCount: number; // Mock until stats endpoint
+	streak: number; // Mock until stats endpoint
+	totalCards: number; // Mock until stats endpoint
+	retention: number; // Mock until stats endpoint (uses desiredRetention as fallback)
 }
 
 export type SourceType = 'pdf' | 'youtube' | 'url' | 'audio' | 'notes';

@@ -20,6 +20,35 @@ export interface ApiError {
 	fieldErrors?: Record<string, string>;
 }
 
+// ============================================================================
+// Notebook API Types
+// ============================================================================
+
+// Mirror backend NotebookResponse exactly
+export interface ApiNotebook {
+	id: string;
+	name: string;
+	description: string | null;
+	desired_retention: number;
+	position: number;
+	created_at: string;
+	updated_at: string;
+}
+
+// POST /v1/notebooks request body
+export interface CreateNotebookRequest {
+	name: string;
+	description?: string;
+}
+
+// PATCH /v1/notebooks/{id} request body
+export interface UpdateNotebookRequest {
+	name?: string;
+	description?: string | null; // null = clear, undefined = no change
+	desired_retention?: number;
+	position?: number;
+}
+
 // Discriminated union for API results
 export type ApiResult<T> =
 	| { ok: true; data: T }

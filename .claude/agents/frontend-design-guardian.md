@@ -16,7 +16,7 @@ Refer to: https://www.shadcn-svelte.com/llms.txt for shadcn-svelte documentation
 - **Components:** shadcn-svelte (`$lib/components/ui/`) - built on Bits UI
 - **Layout:** Custom primitives (`$lib/components/layout/`)
 - **Theming:** `.dark` class on `<html>`, CSS custom properties
-- **Forms:** Superforms + Formsnap for validation
+- **Forms:** Superforms + Zod for validation
 
 ## Recommended structure
 - frontend/src/lib/server/api.ts (server-only): the only place that talks to the Go API.
@@ -323,7 +323,7 @@ All shadcn components accept a `class` prop that merges with defaults:
 <Input class="font-mono" />
 ```
 
-### Form Integration (Superforms + Formsnap)
+### Form Integration (Superforms + zod)
 ```svelte
 <script lang="ts">
   import * as Form from '$lib/components/ui/form';
