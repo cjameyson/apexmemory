@@ -6,16 +6,9 @@ CREATE TABLE app.notebooks (
     description text,
     emoji text,
     color text,
-    fsrs_settings jsonb NOT NULL DEFAULT '{
-        "desired_retention": 0.9,
-        "version": "6",
-        "params": [0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001, 1.8722, 0.1666, 0.796, 1.4835, 0.0614, 0.2629, 1.6483, 0.6014, 1.8729, 0.5425, 0.0912, 0.0658, 0.1542],
-        "learning_steps": [60, 600],
-        "relearning_steps": [600],
-        "maximum_interval": 36500,
-        "enable_fuzzing": true
-    }'::jsonb,
     position integer NOT NULL DEFAULT 0,
+    total_cards integer NOT NULL DEFAULT 0, -- denormalized for performance
+    fsrs_settings jsonb NOT NULL DEFAULT '{}'::jsonb,
     archived_at timestamptz,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
