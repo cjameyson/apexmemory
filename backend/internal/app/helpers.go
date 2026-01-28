@@ -16,7 +16,8 @@ const maxJSONBodySize = 1 * 1024 * 1024
 
 func (app *Application) ReadJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	r.Body = http.MaxBytesReader(w, r.Body, maxJSONBodySize)
-	err := json.NewDecoder(r.Body).Decode(dst)
+	dec := json.NewDecoder(r.Body)
+	err := dec.Decode(dst)
 	if err != nil {
 		var syntaxError *json.SyntaxError
 		var unmarshalTypeError *json.UnmarshalTypeError
@@ -39,6 +40,10 @@ func (app *Application) ReadJSON(w http.ResponseWriter, r *http.Request, dst any
 		default:
 			return err
 		}
+	}
+
+	if dec.More() {
+		return errors.New("body must contain a single JSON value")
 	}
 
 	return nil

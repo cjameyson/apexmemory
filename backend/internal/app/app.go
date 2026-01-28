@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -132,10 +133,14 @@ func (app *Application) CloseDB() {
 }
 
 func maskDSN(dsn string) string {
-	if len(dsn) > 20 {
-		return dsn[:10] + "***" + dsn[len(dsn)-7:]
+	u, err := url.Parse(dsn)
+	if err != nil || u.User == nil {
+		return "***"
 	}
-	return "***"
+	if _, hasPass := u.User.Password(); hasPass {
+		u.User = url.UserPassword(u.User.Username(), "***")
+	}
+	return u.String()
 }
 
 // HealthcheckHandler returns the health status of the API.
@@ -152,8 +157,13 @@ func (app *Application) HealthcheckHandler(w http.ResponseWriter, r *http.Reques
 		dbStatus = "not configured"
 	}
 
+	status := "available"
+	if dbStatus != "available" {
+		status = "degraded"
+	}
+
 	data := map[string]any{
-		"status": "available",
+		"status": status,
 		"system_info": map[string]any{
 			"environment": app.Config.Env,
 			"version":     Version,

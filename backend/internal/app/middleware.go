@@ -18,11 +18,9 @@ func (app *Application) LogRequests(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 
-		// Generate request ID (UUIDv7 for time-ordering)
+		// Generate request ID (UUIDv7 for time-ordering).
+		// Ignore client-provided X-Request-ID to prevent log injection.
 		requestID := uuid.Must(uuid.NewV7()).String()
-		if incomingID := r.Header.Get("X-Request-ID"); incomingID != "" {
-			requestID = incomingID
-		}
 
 		traceID := extractTraceID(r)
 		if traceID == "" {
@@ -48,12 +46,8 @@ func (app *Application) LogRequests(next http.Handler) http.Handler {
 		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(sw, r)
 
-		// Rebuild logger with final user_id (may have been set by Authenticate)
-		finalLogCtx := GetLogContext(r.Context())
-		if finalLogCtx == nil {
-			finalLogCtx = logCtx
-		}
-		app.buildRequestLogger(finalLogCtx).Info("request_completed",
+		// logCtx is a pointer mutated by Authenticate middleware to set UserID
+		app.buildRequestLogger(logCtx).Info("request_completed",
 			"status", sw.status,
 			"duration_ms", time.Since(start).Milliseconds(),
 		)

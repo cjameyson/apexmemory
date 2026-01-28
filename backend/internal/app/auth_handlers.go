@@ -40,8 +40,10 @@ func (app *Application) RegisterHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Validate email format
-	if _, err := mail.ParseAddress(input.Email); err != nil {
+	// Normalize and validate email format
+	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
+	addr, err := mail.ParseAddress(input.Email)
+	if err != nil || addr.Address != input.Email {
 		app.RespondError(w, r, http.StatusBadRequest, "Invalid email format")
 		return
 	}
@@ -97,17 +99,7 @@ func (app *Application) RegisterHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	response := map[string]interface{}{
-		"user": map[string]interface{}{
-			"id":       user.ID,
-			"email":    user.Email,
-			"username": user.Username,
-		},
-		"session_token": sessionToken,
-		"expires_at":    time.Now().Add(SessionDuration),
-	}
-
-	app.RespondJSON(w, r, http.StatusCreated, response)
+	app.RespondJSON(w, r, http.StatusCreated, sessionResponse(user, sessionToken))
 }
 
 func (app *Application) LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -126,6 +118,8 @@ func (app *Application) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		app.RespondError(w, r, http.StatusBadRequest, "Email and password are required")
 		return
 	}
+
+	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
 
 	user, err := app.AuthenticateUser(r.Context(), input.Email, input.Password)
 	if err != nil {
@@ -146,17 +140,19 @@ func (app *Application) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := map[string]interface{}{
+	app.RespondJSON(w, r, http.StatusOK, sessionResponse(user, sessionToken))
+}
+
+func sessionResponse(user *AppUser, token string) map[string]interface{} {
+	return map[string]interface{}{
 		"user": map[string]interface{}{
 			"id":       user.ID,
 			"email":    user.Email,
 			"username": user.Username,
 		},
-		"session_token": sessionToken,
+		"session_token": token,
 		"expires_at":    time.Now().Add(SessionDuration),
 	}
-
-	app.RespondJSON(w, r, http.StatusOK, response)
 }
 
 // LogoutHandler invalidates the current session.

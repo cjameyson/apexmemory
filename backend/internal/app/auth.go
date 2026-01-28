@@ -33,18 +33,16 @@ type PasswordConfig struct {
 	KeyLength   uint32
 }
 
-func DefaultPasswordConfig() *PasswordConfig {
-	return &PasswordConfig{
-		Memory:      64 * 1024, // 64 MB
-		Iterations:  3,
-		Parallelism: 2,
-		SaltLength:  16,
-		KeyLength:   32,
-	}
+var defaultPasswordConfig = &PasswordConfig{
+	Memory:      64 * 1024, // 64 MB
+	Iterations:  3,
+	Parallelism: 2,
+	SaltLength:  16,
+	KeyLength:   32,
 }
 
 func (app *Application) HashPassword(password string) (string, error) {
-	config := DefaultPasswordConfig()
+	config := defaultPasswordConfig
 
 	salt := make([]byte, config.SaltLength)
 	if _, err := rand.Read(salt); err != nil {

@@ -75,16 +75,6 @@ func (app *Application) ListNotebooksHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// TODO(seed): Remove this block once auto-seed script is created.
-	// Auto-create example notebooks for new users (only when ui=true).
-	if len(notebooks) == 0 && r.URL.Query().Get("ui") == "true" {
-		notebooks, err = app.seedExampleNotebooks(r.Context(), user.ID)
-		if err != nil {
-			app.RespondServerError(w, r, ErrDBQuery("seed notebooks", err))
-			return
-		}
-	}
-
 	// Convert to response format
 	response := make([]NotebookResponse, len(notebooks))
 	for i, n := range notebooks {
