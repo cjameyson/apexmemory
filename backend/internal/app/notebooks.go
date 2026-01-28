@@ -256,7 +256,7 @@ func (app *Application) seedExampleNotebooks(ctx context.Context, userID uuid.UU
 	}{
 		{"🧬", "Biology 101", "Cell biology, genetics, and evolution fundamentals", 0},
 		{"🇪🇸", "Spanish B2", "Intermediate Spanish vocabulary and grammar", 1},
-		{"🧮", "Calculus", "Derivatives, integrals, and limits", 2},
+		{"♾️", "Calculus", "Derivatives, integrals, and limits", 2},
 		{"🇺🇸", "US History", "American history from colonial era to present", 3},
 	}
 
