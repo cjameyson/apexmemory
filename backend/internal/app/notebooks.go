@@ -254,10 +254,17 @@ func (app *Application) seedExampleNotebooks(ctx context.Context, userID uuid.UU
 		description string
 		position    int32
 	}{
-		{"🧬", "Biology 101", "Cell biology, genetics, and evolution fundamentals", 0},
+		{"🧬", "Biology 202", "Cell biology, genetics, and evolution fundamentals", 0},
 		{"🇪🇸", "Spanish B2", "Intermediate Spanish vocabulary and grammar", 1},
 		{"♾️", "Calculus", "Derivatives, integrals, and limits", 2},
 		{"🇺🇸", "US History", "American history from colonial era to present", 3},
+		{"🌍", "World History", "World history from colonial era to present", 4},
+		{"🇺🇸", "Civil War", "American Civil War history", 5},
+		{"🌡️", "Thermodynamics", "Thermodynamics and heat transfer", 6},
+		// create
+		{"🚀", "Quantum Mechanics", "Quantum mechanics and quantum field theory", 7},
+		{"⚡", "Electrodynamics", "Electrodynamics and electromagnetism", 8},
+		{"⚓", "Nautical Archaeology", "Nautical archaeology and shipwreck history", 9},
 	}
 
 	notebooks := make([]db.Notebook, 0, len(examples))

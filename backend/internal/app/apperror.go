@@ -21,7 +21,7 @@ const (
 type AppError struct {
 	Err             error    // underlying cause
 	Message         string   // log message
-	Code            string   // e.g., DECK_NOT_FOUND, DB_QUERY_FAILED
+	Code            string   // e.g., NOTEBOOK_NOT_FOUND, DB_QUERY_FAILED
 	HTTPStatus      int      // maps to HTTP response code
 	Severity        Severity // low, medium, high, critical
 	Retryable       bool

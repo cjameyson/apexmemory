@@ -37,8 +37,8 @@ Refer to `references/monolith_clean_guide.md` for overview of backend structure.
 ### Database
 - Avoid JSONB except for flexible config columns (e.g., `render_spec`, `fsrs_params`).
 - All multi-tenant tables use composite PKs `(user_id, id)` for efficient partitioning.
-- Trigger functions live in `app_code` schema (defined inline in migrations).
-- **Planned:** `reviews` table partitioning, hierarchical `decks` with `parent_id`.
+- Database code (functions, triggers, etc) live in `app_code` schema and must be installed with `make tern.install.code`.
+- **Planned:** `reviews` table partitioning
 
 ### Frontend (SvelteKit + Tailwind)
 - **Framework:** SvelteKit 2 + Svelte 5 (Runes mode: `$state`, `$derived`). BFF pattern.

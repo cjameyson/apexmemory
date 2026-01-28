@@ -426,16 +426,16 @@ db.sqlc:
 
 
 # ---------- Seed Data ----------
-.PHONY: seed.decks seed.reviews
+.PHONY: seed.notebooks seed.reviews
 
-# Seed decks for a user: make seed.decks EMAIL=user@example.com [CLEAR=1]
-# CLEAR=1: Wipe existing decks, notes, cards, reviews before seeding
-seed.decks:
+# Seed notebooks for a user: make seed.notebooks EMAIL=user@example.com [CLEAR=1]
+# CLEAR=1: Wipe existing notebooks before seeding
+seed.notebooks:
 ifndef EMAIL
-	$(error EMAIL is required. Usage: make seed.decks EMAIL=user@example.com [CLEAR=1])
+	$(error EMAIL is required. Usage: make seed.notebooks EMAIL=user@example.com [CLEAR=1])
 endif
-	@echo "🌱 Seeding decks for $(EMAIL)..."
-	@$(ENV_SH); cd $(BACKEND); go run ./scripts/seed-decks -email $(EMAIL) $(if $(CLEAR),-clear,)
+	@echo "🌱 Seeding notebooks for $(EMAIL)..."
+	@$(ENV_SH); cd $(BACKEND); go run ./scripts/seed-notebooks -email $(EMAIL) $(if $(CLEAR),-clear,)
 
 # Generate review history: make seed.reviews EMAIL=user@example.com [DAYS=30] [CONSISTENCY=high]
 # DAYS: number of days of history (default: 30)
