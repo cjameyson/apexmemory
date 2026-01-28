@@ -95,6 +95,7 @@ Refer to the Makefile for most dev commands
 - `make tern.rollback` - Roll back one migration
 - `make tern.status` - Show migration status
 - `make db.sqlc` - Generate Go code from SQL
+- `make db.psql.claude SQL="..."` - Run a SQL query non-interactively (use this to inspect the database)
 
 **Development:**
 - `make dev.up` - Start backend + frontend

@@ -35,6 +35,30 @@ CREATE TYPE app.auth_provider AS ENUM (
 );
 
 
+--
+-- Name: card_state; Type: TYPE; Schema: app; Owner: -
+--
+
+CREATE TYPE app.card_state AS ENUM (
+    'new',
+    'learning',
+    'review',
+    'relearning'
+);
+
+
+--
+-- Name: rating; Type: TYPE; Schema: app; Owner: -
+--
+
+CREATE TYPE app.rating AS ENUM (
+    'again',
+    'hard',
+    'good',
+    'easy'
+);
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -58,6 +82,36 @@ CREATE TABLE app.auth_identities (
 
 
 --
+-- Name: cards; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.cards (
+    user_id uuid NOT NULL,
+    id uuid DEFAULT uuidv7() NOT NULL,
+    notebook_id uuid NOT NULL,
+    note_id uuid NOT NULL,
+    ordinal smallint DEFAULT 0 NOT NULL,
+    state app.card_state DEFAULT 'new'::app.card_state NOT NULL,
+    stability real,
+    difficulty real,
+    step smallint,
+    due timestamp with time zone,
+    last_review timestamp with time zone,
+    elapsed_days real DEFAULT 0 NOT NULL,
+    scheduled_days real DEFAULT 0 NOT NULL,
+    reps integer DEFAULT 0 NOT NULL,
+    lapses integer DEFAULT 0 NOT NULL,
+    suspended_at timestamp with time zone,
+    buried_until date,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT cards_valid_difficulty CHECK (((difficulty IS NULL) OR ((difficulty >= (1.0)::double precision) AND (difficulty <= (10.0)::double precision)))),
+    CONSTRAINT cards_valid_stability CHECK (((stability IS NULL) OR (stability >= (0)::double precision))),
+    CONSTRAINT cards_valid_step_state CHECK ((((state = ANY (ARRAY['learning'::app.card_state, 'relearning'::app.card_state])) AND (step IS NOT NULL) AND (step >= 0)) OR ((state = ANY (ARRAY['new'::app.card_state, 'review'::app.card_state])) AND (step IS NULL))))
+);
+
+
+--
 -- Name: notebooks; Type: TABLE; Schema: app; Owner: -
 --
 
@@ -75,7 +129,52 @@ CREATE TABLE app.notebooks (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT notebooks_name_length CHECK ((length(name) <= 255)),
-    CONSTRAINT notebooks_name_not_empty CHECK ((length(TRIM(BOTH FROM name)) > 0))
+    CONSTRAINT notebooks_name_not_empty CHECK ((length(TRIM(BOTH FROM name)) > 0)),
+    CONSTRAINT notebooks_total_cards_non_negative CHECK ((total_cards >= 0))
+);
+
+
+--
+-- Name: notes; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.notes (
+    user_id uuid NOT NULL,
+    id uuid DEFAULT uuidv7() NOT NULL,
+    notebook_id uuid NOT NULL,
+    note_type text DEFAULT 'basic'::text NOT NULL,
+    content jsonb NOT NULL,
+    source_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT notes_valid_content CHECK (((jsonb_typeof((content -> 'version'::text)) = 'number'::text) AND (jsonb_typeof((content -> 'fields'::text)) = 'array'::text))),
+    CONSTRAINT notes_valid_type CHECK ((note_type = ANY (ARRAY['basic'::text, 'cloze'::text, 'image_occlusion'::text])))
+);
+
+
+--
+-- Name: reviews; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.reviews (
+    user_id uuid NOT NULL,
+    id uuid DEFAULT uuidv7() NOT NULL,
+    card_id uuid NOT NULL,
+    notebook_id uuid NOT NULL,
+    reviewed_at timestamp with time zone DEFAULT now() NOT NULL,
+    rating app.rating NOT NULL,
+    review_duration_ms integer,
+    state_before app.card_state NOT NULL,
+    stability_before real,
+    difficulty_before real,
+    elapsed_days real NOT NULL,
+    scheduled_days real NOT NULL,
+    state_after app.card_state NOT NULL,
+    stability_after real NOT NULL,
+    difficulty_after real NOT NULL,
+    interval_days real NOT NULL,
+    retrievability real,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
 
@@ -147,11 +246,43 @@ ALTER TABLE ONLY app.auth_identities
 
 
 --
+-- Name: cards cards_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.cards
+    ADD CONSTRAINT cards_pkey PRIMARY KEY (user_id, id);
+
+
+--
+-- Name: cards cards_user_id_note_id_ordinal_key; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.cards
+    ADD CONSTRAINT cards_user_id_note_id_ordinal_key UNIQUE (user_id, note_id, ordinal);
+
+
+--
 -- Name: notebooks notebooks_pkey; Type: CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.notebooks
     ADD CONSTRAINT notebooks_pkey PRIMARY KEY (user_id, id);
+
+
+--
+-- Name: notes notes_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.notes
+    ADD CONSTRAINT notes_pkey PRIMARY KEY (user_id, id);
+
+
+--
+-- Name: reviews reviews_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.reviews
+    ADD CONSTRAINT reviews_pkey PRIMARY KEY (user_id, id);
 
 
 --
@@ -202,10 +333,59 @@ CREATE INDEX ix_auth_identities_user ON app.auth_identities USING btree (user_id
 
 
 --
+-- Name: ix_cards_due; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_cards_due ON app.cards USING btree (user_id, notebook_id, due) WHERE ((suspended_at IS NULL) AND (buried_until IS NULL));
+
+
+--
+-- Name: ix_cards_note; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_cards_note ON app.cards USING btree (user_id, note_id);
+
+
+--
+-- Name: ix_cards_state; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_cards_state ON app.cards USING btree (user_id, notebook_id, state);
+
+
+--
 -- Name: ix_notebooks_user_list; Type: INDEX; Schema: app; Owner: -
 --
 
 CREATE INDEX ix_notebooks_user_list ON app.notebooks USING btree (user_id, archived_at, "position");
+
+
+--
+-- Name: ix_notes_notebook; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_notes_notebook ON app.notes USING btree (user_id, notebook_id, created_at DESC);
+
+
+--
+-- Name: ix_reviews_card; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_reviews_card ON app.reviews USING btree (user_id, card_id, reviewed_at DESC);
+
+
+--
+-- Name: ix_reviews_notebook_time; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_reviews_notebook_time ON app.reviews USING btree (user_id, notebook_id, reviewed_at DESC);
+
+
+--
+-- Name: ix_reviews_optimizer; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_reviews_optimizer ON app.reviews USING btree (user_id, notebook_id, state_before, rating) WHERE (scheduled_days >= (1)::double precision);
 
 
 --
@@ -230,10 +410,17 @@ CREATE UNIQUE INDEX ux_auth_identities_password_email ON app.auth_identities USI
 
 
 --
--- Name: auth_identities trg_auth_identities_set_updated_at; Type: TRIGGER; Schema: app; Owner: -
+-- Name: cards trg_cards_set_updated_at; Type: TRIGGER; Schema: app; Owner: -
 --
 
-CREATE TRIGGER trg_auth_identities_set_updated_at BEFORE UPDATE ON app.auth_identities FOR EACH ROW EXECUTE FUNCTION app_code.tg_set_updated_at();
+CREATE TRIGGER trg_cards_set_updated_at BEFORE UPDATE ON app.cards FOR EACH ROW EXECUTE FUNCTION app_code.tg_set_updated_at();
+
+
+--
+-- Name: cards trg_cards_sync_notebook_count; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_cards_sync_notebook_count AFTER INSERT OR DELETE OR UPDATE OF notebook_id ON app.cards FOR EACH ROW EXECUTE FUNCTION app_code.tg_sync_notebook_card_count();
 
 
 --
@@ -244,10 +431,10 @@ CREATE TRIGGER trg_notebooks_set_updated_at BEFORE UPDATE ON app.notebooks FOR E
 
 
 --
--- Name: users trg_users_set_updated_at; Type: TRIGGER; Schema: app; Owner: -
+-- Name: notes trg_notes_set_updated_at; Type: TRIGGER; Schema: app; Owner: -
 --
 
-CREATE TRIGGER trg_users_set_updated_at BEFORE UPDATE ON app.users FOR EACH ROW EXECUTE FUNCTION app_code.tg_set_updated_at();
+CREATE TRIGGER trg_notes_set_updated_at BEFORE UPDATE ON app.notes FOR EACH ROW EXECUTE FUNCTION app_code.tg_set_updated_at();
 
 
 --
@@ -259,11 +446,43 @@ ALTER TABLE ONLY app.auth_identities
 
 
 --
+-- Name: cards cards_user_id_note_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.cards
+    ADD CONSTRAINT cards_user_id_note_id_fkey FOREIGN KEY (user_id, note_id) REFERENCES app.notes(user_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: cards cards_user_id_notebook_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.cards
+    ADD CONSTRAINT cards_user_id_notebook_id_fkey FOREIGN KEY (user_id, notebook_id) REFERENCES app.notebooks(user_id, id) ON DELETE CASCADE;
+
+
+--
 -- Name: notebooks notebooks_user_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.notebooks
     ADD CONSTRAINT notebooks_user_id_fkey FOREIGN KEY (user_id) REFERENCES app.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: notes notes_user_id_notebook_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.notes
+    ADD CONSTRAINT notes_user_id_notebook_id_fkey FOREIGN KEY (user_id, notebook_id) REFERENCES app.notebooks(user_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: reviews reviews_user_id_card_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.reviews
+    ADD CONSTRAINT reviews_user_id_card_id_fkey FOREIGN KEY (user_id, card_id) REFERENCES app.cards(user_id, id) ON DELETE CASCADE;
 
 
 --

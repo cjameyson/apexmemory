@@ -374,7 +374,7 @@ tern.reset:
 	$(ENV_SH); TERN_CONFIG=$(TERN_CONF) TERN_MIGRATIONS=$(MIGR_DIR) tern migrate
 
 # ---------- psql helpers (using docker exec) ----------
-.PHONY: db.psql.app db.psql.migrator db.psql.super
+.PHONY: db.psql.app db.psql.migrator db.psql.super db.psql.claude
 db.psql.app:
 	@echo "🐘 Connecting to PostgreSQL as app user..."
 	@$(ENV_SH); docker exec -it $(PG_CONTAINER) psql -U "$$PG_APP_USER" -d "$$PG_DATABASE"
@@ -386,6 +386,13 @@ db.psql.migrator:
 db.psql.super:
 	@echo "🐘 Connecting to PostgreSQL as superuser..."
 	@$(ENV_SH); docker exec -it $(PG_CONTAINER) psql -U "$$PG_SUPER_USER" -d "$$PG_DATABASE"
+
+# Non-interactive psql for scripts/agents: make db.psql.claude SQL="SELECT 1"
+db.psql.claude:
+ifndef SQL
+	$(error SQL is required. Usage: make db.psql.claude SQL="SELECT 1")
+endif
+	@$(ENV_SH); docker exec $(PG_CONTAINER) psql -U "$$PG_APP_USER" -d "$$PG_DATABASE" -c "$(SQL)"
 
 # Quick database inspection commands
 .PHONY: db.tables db.users db.schemas
