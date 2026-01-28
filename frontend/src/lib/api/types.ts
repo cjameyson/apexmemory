@@ -24,12 +24,25 @@ export interface ApiError {
 // Notebook API Types
 // ============================================================================
 
+// Mirror backend FSRSSettings struct
+export interface ApiFSRSSettings {
+	desired_retention: number;
+	version: number;
+	params: number[];
+	learning_steps: number[];
+	relearning_steps: number[];
+	maximum_interval: number;
+	enable_fuzzing: boolean;
+}
+
 // Mirror backend NotebookResponse exactly
 export interface ApiNotebook {
 	id: string;
 	name: string;
 	description: string | null;
-	desired_retention: number;
+	emoji: string | null;
+	color: string | null;
+	fsrs_settings: ApiFSRSSettings;
 	position: number;
 	created_at: string;
 	updated_at: string;
@@ -39,6 +52,8 @@ export interface ApiNotebook {
 export interface CreateNotebookRequest {
 	name: string;
 	description?: string;
+	emoji?: string | null;
+	color?: string | null;
 }
 
 // PATCH /v1/notebooks/{id} request body
@@ -47,6 +62,8 @@ export interface UpdateNotebookRequest {
 	description?: string | null; // null = clear, undefined = no change
 	desired_retention?: number;
 	position?: number;
+	emoji?: string | null;
+	color?: string | null;
 }
 
 // Discriminated union for API results

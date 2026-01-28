@@ -95,7 +95,7 @@
 					)}
 					onclick={() => handleSelect(notebook)}
 				>
-					<span class="hidden text-lg">{notebook.emoji}</span>
+					<span class="text-lg">{notebook.emoji}</span>
 					<div class="min-w-0 flex-1">
 						<div class="truncate font-medium">{notebook.name}</div>
 						<div class="text-xs text-slate-500 dark:text-slate-400">

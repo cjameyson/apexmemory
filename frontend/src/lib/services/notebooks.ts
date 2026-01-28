@@ -10,23 +10,40 @@ import type { Notebook } from '$lib/types/notebook';
  * Handles snake_case -> camelCase conversion and adds UI-only fields.
  */
 export function toNotebook(api: ApiNotebook): Notebook {
+	const fs = api.fsrs_settings ?? {
+		desired_retention: 0.9,
+		version: 6,
+		params: [],
+		learning_steps: [1, 10],
+		relearning_steps: [10],
+		maximum_interval: 36500,
+		enable_fuzzing: true
+	};
 	return {
 		// API fields (snake_case -> camelCase)
 		id: api.id,
 		name: api.name,
 		description: api.description,
-		desiredRetention: api.desired_retention,
+		emoji: api.emoji ?? '\u{1F4D8}',
+		color: api.color ?? 'blue',
+		fsrsSettings: {
+			desiredRetention: fs.desired_retention,
+			version: fs.version,
+			params: fs.params,
+			learningSteps: fs.learning_steps,
+			relearningSteps: fs.relearning_steps,
+			maximumInterval: fs.maximum_interval,
+			enableFuzzing: fs.enable_fuzzing
+		},
 		position: api.position,
 		createdAt: api.created_at,
 		updatedAt: api.updated_at,
 
 		// UI fields (mock until stats API)
-		emoji: '\u{1F4D8}',
-		color: 'blue',
 		dueCount: 0,
 		streak: 0,
 		totalCards: 0,
-		retention: api.desired_retention
+		retention: fs.desired_retention
 	};
 }
 

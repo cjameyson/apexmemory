@@ -249,23 +249,26 @@ var errNotebookNotFound = errors.New("notebook not found")
 // seedExampleNotebooks creates 4 example notebooks for new users.
 func (app *Application) seedExampleNotebooks(ctx context.Context, userID uuid.UUID) ([]db.Notebook, error) {
 	examples := []struct {
+		emoji       string
 		name        string
 		description string
 		position    int32
 	}{
-		{"Biology 101", "Cell biology, genetics, and evolution fundamentals", 0},
-		{"Spanish B2", "Intermediate Spanish vocabulary and grammar", 1},
-		{"Calculus", "Derivatives, integrals, and limits", 2},
-		{"US History", "American history from colonial era to present", 3},
+		{"🧬", "Biology 101", "Cell biology, genetics, and evolution fundamentals", 0},
+		{"🇪🇸", "Spanish B2", "Intermediate Spanish vocabulary and grammar", 1},
+		{"🧮", "Calculus", "Derivatives, integrals, and limits", 2},
+		{"🇺🇸", "US History", "American history from colonial era to present", 3},
 	}
 
 	notebooks := make([]db.Notebook, 0, len(examples))
 	for _, ex := range examples {
 		desc := ex.description
+		emoji := ex.emoji
 		pos := ex.position
 		nb, err := app.CreateNotebook(ctx, userID, CreateNotebookParams{
 			Name:        ex.name,
 			Description: &desc,
+			Emoji:       &emoji,
 			Position:    &pos,
 		})
 		if err != nil {
