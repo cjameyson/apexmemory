@@ -32,21 +32,25 @@ func (q *Queries) ArchiveNotebook(ctx context.Context, arg ArchiveNotebookParams
 }
 
 const createNotebook = `-- name: CreateNotebook :one
-INSERT INTO app.notebooks (user_id, name, description, position, fsrs_settings)
+INSERT INTO app.notebooks (user_id, name, description, emoji, color, position, fsrs_settings)
 VALUES (
     $1,
     $2,
     $3,
-    COALESCE($4, 0),
-    $5
+    $4,
+    $5,
+    COALESCE($6, 0),
+    $7
 )
-RETURNING user_id, id, name, description, fsrs_settings, position, archived_at, created_at, updated_at
+RETURNING user_id, id, name, description, emoji, color, fsrs_settings, position, archived_at, created_at, updated_at
 `
 
 type CreateNotebookParams struct {
 	UserID       uuid.UUID   `json:"user_id"`
 	Name         string      `json:"name"`
 	Description  pgtype.Text `json:"description"`
+	Emoji        pgtype.Text `json:"emoji"`
+	Color        pgtype.Text `json:"color"`
 	Position     interface{} `json:"position"`
 	FsrsSettings []byte      `json:"fsrs_settings"`
 }
@@ -57,6 +61,8 @@ func (q *Queries) CreateNotebook(ctx context.Context, arg CreateNotebookParams) 
 		arg.UserID,
 		arg.Name,
 		arg.Description,
+		arg.Emoji,
+		arg.Color,
 		arg.Position,
 		arg.FsrsSettings,
 	)
@@ -66,6 +72,8 @@ func (q *Queries) CreateNotebook(ctx context.Context, arg CreateNotebookParams) 
 		&i.ID,
 		&i.Name,
 		&i.Description,
+		&i.Emoji,
+		&i.Color,
 		&i.FsrsSettings,
 		&i.Position,
 		&i.ArchivedAt,
@@ -76,7 +84,7 @@ func (q *Queries) CreateNotebook(ctx context.Context, arg CreateNotebookParams) 
 }
 
 const getNotebook = `-- name: GetNotebook :one
-SELECT user_id, id, name, description, fsrs_settings, position, archived_at, created_at, updated_at FROM app.notebooks
+SELECT user_id, id, name, description, emoji, color, fsrs_settings, position, archived_at, created_at, updated_at FROM app.notebooks
 WHERE user_id = $1 AND id = $2 AND archived_at IS NULL
 `
 
@@ -93,6 +101,8 @@ func (q *Queries) GetNotebook(ctx context.Context, arg GetNotebookParams) (Noteb
 		&i.ID,
 		&i.Name,
 		&i.Description,
+		&i.Emoji,
+		&i.Color,
 		&i.FsrsSettings,
 		&i.Position,
 		&i.ArchivedAt,
@@ -127,7 +137,7 @@ func (q *Queries) IsNotebookArchived(ctx context.Context, arg IsNotebookArchived
 }
 
 const listNotebooks = `-- name: ListNotebooks :many
-SELECT user_id, id, name, description, fsrs_settings, position, archived_at, created_at, updated_at FROM app.notebooks
+SELECT user_id, id, name, description, emoji, color, fsrs_settings, position, archived_at, created_at, updated_at FROM app.notebooks
 WHERE user_id = $1 AND archived_at IS NULL
 ORDER BY position ASC, created_at DESC
 `
@@ -146,6 +156,8 @@ func (q *Queries) ListNotebooks(ctx context.Context, userID uuid.UUID) ([]Notebo
 			&i.ID,
 			&i.Name,
 			&i.Description,
+			&i.Emoji,
+			&i.Color,
 			&i.FsrsSettings,
 			&i.Position,
 			&i.ArchivedAt,
@@ -185,20 +197,32 @@ SET name = COALESCE($1, name),
         WHEN $2::boolean THEN NULL
         ELSE COALESCE($3, description)
     END,
-    position = COALESCE($4, position),
+    emoji = CASE
+        WHEN $4::boolean THEN NULL
+        ELSE COALESCE($5, emoji)
+    END,
+    color = CASE
+        WHEN $6::boolean THEN NULL
+        ELSE COALESCE($7, color)
+    END,
+    position = COALESCE($8, position),
     fsrs_settings = CASE
-        WHEN $5::boolean
-        THEN jsonb_set(fsrs_settings, '{desired_retention}', to_jsonb($6::float8))
+        WHEN $9::boolean
+        THEN jsonb_set(fsrs_settings, '{desired_retention}', to_jsonb($10::float8))
         ELSE fsrs_settings
     END
-WHERE user_id = $7 AND id = $8 AND archived_at IS NULL
-RETURNING user_id, id, name, description, fsrs_settings, position, archived_at, created_at, updated_at
+WHERE user_id = $11 AND id = $12 AND archived_at IS NULL
+RETURNING user_id, id, name, description, emoji, color, fsrs_settings, position, archived_at, created_at, updated_at
 `
 
 type UpdateNotebookParams struct {
 	Name             pgtype.Text `json:"name"`
 	ClearDescription bool        `json:"clear_description"`
 	Description      pgtype.Text `json:"description"`
+	ClearEmoji       bool        `json:"clear_emoji"`
+	Emoji            pgtype.Text `json:"emoji"`
+	ClearColor       bool        `json:"clear_color"`
+	Color            pgtype.Text `json:"color"`
 	Position         pgtype.Int4 `json:"position"`
 	UpdateRetention  bool        `json:"update_retention"`
 	DesiredRetention float64     `json:"desired_retention"`
@@ -206,13 +230,15 @@ type UpdateNotebookParams struct {
 	ID               uuid.UUID   `json:"id"`
 }
 
-// Updates notebook fields atomically. For fsrs_settings, only desired_retention
-// is updated (version/weights preserved) using jsonb_set when provided.
 func (q *Queries) UpdateNotebook(ctx context.Context, arg UpdateNotebookParams) (Notebook, error) {
 	row := q.db.QueryRow(ctx, updateNotebook,
 		arg.Name,
 		arg.ClearDescription,
 		arg.Description,
+		arg.ClearEmoji,
+		arg.Emoji,
+		arg.ClearColor,
+		arg.Color,
 		arg.Position,
 		arg.UpdateRetention,
 		arg.DesiredRetention,
@@ -225,6 +251,8 @@ func (q *Queries) UpdateNotebook(ctx context.Context, arg UpdateNotebookParams) 
 		&i.ID,
 		&i.Name,
 		&i.Description,
+		&i.Emoji,
+		&i.Color,
 		&i.FsrsSettings,
 		&i.Position,
 		&i.ArchivedAt,

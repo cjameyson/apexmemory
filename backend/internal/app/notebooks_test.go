@@ -31,6 +31,8 @@ func TestCreateNotebookHandler(t *testing.T) {
 			body: map[string]any{
 				"name":        "Full Notebook",
 				"description": "A detailed description",
+				"emoji":       "📚",
+				"color":       "#FF5733",
 				"position":    5,
 			},
 			wantStatus: http.StatusCreated,
@@ -108,6 +110,16 @@ func TestCreateNotebookHandler(t *testing.T) {
 				if desc, ok := tt.body["description"]; ok {
 					if resp["description"] != desc {
 						t.Errorf("expected description %v, got %v", desc, resp["description"])
+					}
+				}
+				if emoji, ok := tt.body["emoji"]; ok {
+					if resp["emoji"] != emoji {
+						t.Errorf("expected emoji %v, got %v", emoji, resp["emoji"])
+					}
+				}
+				if color, ok := tt.body["color"]; ok {
+					if resp["color"] != color {
+						t.Errorf("expected color %v, got %v", color, resp["color"])
 					}
 				}
 			}
@@ -400,8 +412,69 @@ func TestUpdateNotebookHandler(t *testing.T) {
 		var resp map[string]any
 		decodeResponse(t, rr, &resp)
 
-		if resp["desired_retention"] != 0.85 {
-			t.Errorf("expected desired_retention 0.85, got %v", resp["desired_retention"])
+		fsrs, ok := resp["fsrs_settings"].(map[string]any)
+		if !ok {
+			t.Fatalf("expected fsrs_settings object, got %v", resp["fsrs_settings"])
+		}
+		if fsrs["desired_retention"] != 0.85 {
+			t.Errorf("expected desired_retention 0.85, got %v", fsrs["desired_retention"])
+		}
+	})
+
+	t.Run("success set and clear emoji and color", func(t *testing.T) {
+		notebook, err := app.CreateNotebook(t.Context(), user.ID, CreateNotebookParams{
+			Name: "Emoji Color Test",
+		})
+		if err != nil {
+			t.Fatalf("failed to create notebook: %v", err)
+		}
+
+		// Set emoji and color
+		req := jsonRequest(t, "PATCH", "/v1/notebooks/"+notebook.ID.String(), map[string]any{
+			"emoji": "📚",
+			"color": "#FF5733",
+		})
+		req.SetPathValue("id", notebook.ID.String())
+		req = app.WithUser(req, user)
+		rr := httptest.NewRecorder()
+
+		app.UpdateNotebookHandler(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d. Body: %s", http.StatusOK, rr.Code, rr.Body.String())
+		}
+
+		var resp map[string]any
+		decodeResponse(t, rr, &resp)
+
+		if resp["emoji"] != "📚" {
+			t.Errorf("expected emoji 📚, got %v", resp["emoji"])
+		}
+		if resp["color"] != "#FF5733" {
+			t.Errorf("expected color #FF5733, got %v", resp["color"])
+		}
+
+		// Clear emoji by setting to null
+		req = jsonRequest(t, "PATCH", "/v1/notebooks/"+notebook.ID.String(), map[string]any{
+			"emoji": nil,
+		})
+		req.SetPathValue("id", notebook.ID.String())
+		req = app.WithUser(req, user)
+		rr = httptest.NewRecorder()
+
+		app.UpdateNotebookHandler(rr, req)
+
+		if rr.Code != http.StatusOK {
+			t.Errorf("expected status %d, got %d. Body: %s", http.StatusOK, rr.Code, rr.Body.String())
+		}
+
+		decodeResponse(t, rr, &resp)
+
+		if resp["emoji"] != nil {
+			t.Errorf("expected emoji to be nil, got %v", resp["emoji"])
+		}
+		if resp["color"] != "#FF5733" {
+			t.Errorf("expected color preserved as #FF5733, got %v", resp["color"])
 		}
 	})
 

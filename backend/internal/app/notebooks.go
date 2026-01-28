@@ -17,7 +17,11 @@ import (
 type FSRSSettings struct {
 	DesiredRetention float64   `json:"desired_retention"`
 	Version          string    `json:"version"`
-	Weights          []float64 `json:"weights"`
+	Params           []float64 `json:"params"`
+	LearningSteps    []int     `json:"learning_steps"`
+	RelearningSteps  []int     `json:"relearning_steps"`
+	MaximumInterval  int       `json:"maximum_interval"`
+	EnableFuzzing    bool      `json:"enable_fuzzing"`
 }
 
 // DefaultFSRSSettings returns the default FSRS v6 settings.
@@ -26,23 +30,29 @@ func DefaultFSRSSettings() FSRSSettings {
 	return FSRSSettings{
 		DesiredRetention: 0.9,
 		Version:          "6",
-		Weights: []float64{
+		Params: []float64{
 			0.212, 1.2931, 2.3065, 8.2956, 6.4133, 0.8334, 3.0194, 0.001,
 			1.8722, 0.1666, 0.796, 1.4835, 0.0614, 0.2629, 1.6483, 0.6014,
 			1.8729, 0.5425, 0.0912, 0.0658, 0.1542,
 		},
+		LearningSteps:   []int{60, 600},
+		RelearningSteps: []int{600},
+		MaximumInterval: 36500,
+		EnableFuzzing:   true,
 	}
 }
 
 // NotebookResponse is the API response representation of a notebook.
 type NotebookResponse struct {
-	ID               uuid.UUID `json:"id"`
-	Name             string    `json:"name"`
-	Description      *string   `json:"description"`
-	DesiredRetention float64   `json:"desired_retention"`
-	Position         int32     `json:"position"`
-	CreatedAt        time.Time `json:"created_at"`
-	UpdatedAt        time.Time `json:"updated_at"`
+	ID           uuid.UUID    `json:"id"`
+	Name         string       `json:"name"`
+	Description  *string      `json:"description"`
+	Emoji        *string      `json:"emoji"`
+	Color        *string      `json:"color"`
+	FSRSSettings FSRSSettings `json:"fsrs_settings"`
+	Position     int32        `json:"position"`
+	CreatedAt    time.Time    `json:"created_at"`
+	UpdatedAt    time.Time    `json:"updated_at"`
 }
 
 // toNotebookResponse converts a db.Notebook to a NotebookResponse.
@@ -58,15 +68,18 @@ func toNotebookResponse(n db.Notebook) NotebookResponse {
 	if n.Description.Valid {
 		resp.Description = &n.Description.String
 	}
-
-	// Parse FSRS settings to extract desired_retention
-	// Note: For high-volume lists, consider storing desired_retention as a separate column
-	var settings FSRSSettings
-	if err := json.Unmarshal(n.FsrsSettings, &settings); err == nil {
-		resp.DesiredRetention = settings.DesiredRetention
-	} else {
-		resp.DesiredRetention = DefaultFSRSSettings().DesiredRetention
+	if n.Emoji.Valid {
+		resp.Emoji = &n.Emoji.String
 	}
+	if n.Color.Valid {
+		resp.Color = &n.Color.String
+	}
+
+	var settings FSRSSettings
+	if err := json.Unmarshal(n.FsrsSettings, &settings); err != nil {
+		settings = DefaultFSRSSettings()
+	}
+	resp.FSRSSettings = settings
 
 	return resp
 }
@@ -75,6 +88,8 @@ func toNotebookResponse(n db.Notebook) NotebookResponse {
 type CreateNotebookParams struct {
 	Name        string
 	Description *string
+	Emoji       *string
+	Color       *string
 	Position    *int32
 }
 
@@ -94,6 +109,14 @@ func (app *Application) CreateNotebook(ctx context.Context, userID uuid.UUID, pa
 
 	if params.Description != nil {
 		dbParams.Description = pgtype.Text{String: *params.Description, Valid: true}
+	}
+
+	if params.Emoji != nil {
+		dbParams.Emoji = pgtype.Text{String: *params.Emoji, Valid: true}
+	}
+
+	if params.Color != nil {
+		dbParams.Color = pgtype.Text{String: *params.Color, Valid: true}
 	}
 
 	if params.Position != nil {
@@ -128,6 +151,8 @@ func (app *Application) ListNotebooks(ctx context.Context, userID uuid.UUID) ([]
 type UpdateNotebookParams struct {
 	Name             *string
 	Description      OptionalString // Supports clearing via explicit null
+	Emoji            OptionalString // Supports clearing via explicit null
+	Color            OptionalString // Supports clearing via explicit null
 	Position         *int32
 	DesiredRetention *float64
 }
@@ -150,6 +175,22 @@ func (app *Application) UpdateNotebook(ctx context.Context, userID, notebookID u
 			dbParams.ClearDescription = true
 		} else {
 			dbParams.Description = pgtype.Text{String: *params.Description.Value, Valid: true}
+		}
+	}
+
+	if params.Emoji.Set {
+		if params.Emoji.Value == nil {
+			dbParams.ClearEmoji = true
+		} else {
+			dbParams.Emoji = pgtype.Text{String: *params.Emoji.Value, Valid: true}
+		}
+	}
+
+	if params.Color.Set {
+		if params.Color.Value == nil {
+			dbParams.ClearColor = true
+		} else {
+			dbParams.Color = pgtype.Text{String: *params.Color.Value, Valid: true}
 		}
 	}
 

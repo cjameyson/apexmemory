@@ -38,8 +38,6 @@ type Querier interface {
 	ListNotebooks(ctx context.Context, userID uuid.UUID) ([]Notebook, error)
 	SoftDeleteUser(ctx context.Context, id uuid.UUID) error
 	UnarchiveNotebook(ctx context.Context, arg UnarchiveNotebookParams) error
-	// Updates notebook fields atomically. For fsrs_settings, only desired_retention
-	// is updated (version/weights preserved) using jsonb_set when provided.
 	UpdateNotebook(ctx context.Context, arg UpdateNotebookParams) (Notebook, error)
 	UpdateSessionLastUsed(ctx context.Context, tokenHash []byte) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)

@@ -22,6 +22,8 @@ func (app *Application) CreateNotebookHandler(w http.ResponseWriter, r *http.Req
 	var input struct {
 		Name        string  `json:"name"`
 		Description *string `json:"description"`
+		Emoji       *string `json:"emoji"`
+		Color       *string `json:"color"`
 		Position    *int32  `json:"position"`
 	}
 
@@ -51,6 +53,8 @@ func (app *Application) CreateNotebookHandler(w http.ResponseWriter, r *http.Req
 	notebook, err := app.CreateNotebook(r.Context(), user.ID, CreateNotebookParams{
 		Name:        input.Name,
 		Description: input.Description,
+		Emoji:       input.Emoji,
+		Color:       input.Color,
 		Position:    input.Position,
 	})
 	if err != nil {
@@ -136,6 +140,8 @@ func (app *Application) UpdateNotebookHandler(w http.ResponseWriter, r *http.Req
 	var input struct {
 		Name             *string        `json:"name"`
 		Description      OptionalString `json:"description"`
+		Emoji            OptionalString `json:"emoji"`
+		Color            OptionalString `json:"color"`
 		Position         *int32         `json:"position"`
 		DesiredRetention *float64       `json:"desired_retention"`
 	}
@@ -176,6 +182,8 @@ func (app *Application) UpdateNotebookHandler(w http.ResponseWriter, r *http.Req
 	notebook, err := app.UpdateNotebook(r.Context(), user.ID, notebookID, UpdateNotebookParams{
 		Name:             input.Name,
 		Description:      input.Description,
+		Emoji:            input.Emoji,
+		Color:            input.Color,
 		Position:         input.Position,
 		DesiredRetention: input.DesiredRetention,
 	})

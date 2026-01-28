@@ -74,6 +74,8 @@ type Notebook struct {
 	ID           uuid.UUID          `json:"id"`
 	Name         string             `json:"name"`
 	Description  pgtype.Text        `json:"description"`
+	Emoji        pgtype.Text        `json:"emoji"`
+	Color        pgtype.Text        `json:"color"`
 	FsrsSettings []byte             `json:"fsrs_settings"`
 	Position     int32              `json:"position"`
 	ArchivedAt   pgtype.Timestamptz `json:"archived_at"`

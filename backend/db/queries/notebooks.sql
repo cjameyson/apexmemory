@@ -1,10 +1,12 @@
 -- name: CreateNotebook :one
 -- Note: fsrs_settings is always provided from Go code (source of truth for defaults)
-INSERT INTO app.notebooks (user_id, name, description, position, fsrs_settings)
+INSERT INTO app.notebooks (user_id, name, description, emoji, color, position, fsrs_settings)
 VALUES (
     @user_id,
     @name,
     sqlc.narg('description'),
+    sqlc.narg('emoji'),
+    sqlc.narg('color'),
     COALESCE(sqlc.narg('position'), 0),
     @fsrs_settings
 )
@@ -20,13 +22,19 @@ WHERE user_id = @user_id AND archived_at IS NULL
 ORDER BY position ASC, created_at DESC;
 
 -- name: UpdateNotebook :one
--- Updates notebook fields atomically. For fsrs_settings, only desired_retention
--- is updated (version/weights preserved) using jsonb_set when provided.
 UPDATE app.notebooks
 SET name = COALESCE(sqlc.narg('name'), name),
     description = CASE
         WHEN sqlc.arg('clear_description')::boolean THEN NULL
         ELSE COALESCE(sqlc.narg('description'), description)
+    END,
+    emoji = CASE
+        WHEN sqlc.arg('clear_emoji')::boolean THEN NULL
+        ELSE COALESCE(sqlc.narg('emoji'), emoji)
+    END,
+    color = CASE
+        WHEN sqlc.arg('clear_color')::boolean THEN NULL
+        ELSE COALESCE(sqlc.narg('color'), color)
     END,
     position = COALESCE(sqlc.narg('position'), position),
     fsrs_settings = CASE
