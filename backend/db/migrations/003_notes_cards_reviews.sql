@@ -9,6 +9,37 @@
 CREATE TYPE app.card_state AS ENUM ('new', 'learning', 'review', 'relearning');
 CREATE TYPE app.rating AS ENUM ('again', 'hard', 'good', 'easy');
 
+-- Function needed by trg_cards_sync_notebook_count trigger below.
+-- Migrations must be self-contained: every object a migration references must be
+-- created within a migration. db/code/ holds the "current" version of this function
+-- which tern code install deploys on every release (CREATE OR REPLACE).
+CREATE OR REPLACE FUNCTION app_code.tg_sync_notebook_card_count()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        UPDATE app.notebooks
+        SET total_cards = total_cards + 1, updated_at = now()
+        WHERE user_id = NEW.user_id AND id = NEW.notebook_id;
+        RETURN NEW;
+    ELSIF TG_OP = 'DELETE' THEN
+        UPDATE app.notebooks
+        SET total_cards = total_cards - 1, updated_at = now()
+        WHERE user_id = OLD.user_id AND id = OLD.notebook_id;
+        RETURN OLD;
+    ELSIF TG_OP = 'UPDATE' AND OLD.notebook_id IS DISTINCT FROM NEW.notebook_id THEN
+        UPDATE app.notebooks
+        SET total_cards = total_cards - 1, updated_at = now()
+        WHERE user_id = OLD.user_id AND id = OLD.notebook_id;
+        UPDATE app.notebooks
+        SET total_cards = total_cards + 1, updated_at = now()
+        WHERE user_id = NEW.user_id AND id = NEW.notebook_id;
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END$$;
+
 -- -----------------------------------------------------------------------------
 -- NOTES
 -- -----------------------------------------------------------------------------

@@ -1,6 +1,9 @@
+//go:build integration
+
 package app
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -8,27 +11,28 @@ import (
 )
 
 // TestMain runs before all tests in the app package.
-// It sets up the shared test database connection and ensures cleanup.
+// It starts a disposable PostgreSQL container, applies migrations and app_code,
+// then runs all tests.
 func TestMain(m *testing.M) {
-	// Check if test database is available
-	if testutil.TestDSN() == "" {
-		// Run tests anyway - individual tests will skip if they need DB
-		os.Exit(m.Run())
-	}
+	ctx := context.Background()
 
-	// Verify we can connect to test database
-	_, err := testutil.Pool()
+	cleanup, err := testutil.StartContainer(ctx)
 	if err != nil {
-		// Print error but don't fail - let individual tests skip
-		os.Stderr.WriteString("warning: test database not available: " + err.Error() + "\n")
-		os.Exit(m.Run())
+		os.Stderr.WriteString("failed to start test container: " + err.Error() + "\n")
+		os.Exit(1)
 	}
 
-	// Run all tests
+	// Verify we can connect
+	if _, err := testutil.Pool(); err != nil {
+		os.Stderr.WriteString("failed to connect to test database: " + err.Error() + "\n")
+		cleanup()
+		os.Exit(1)
+	}
+
 	code := m.Run()
 
-	// Cleanup
 	testutil.Close()
+	cleanup()
 
 	os.Exit(code)
 }

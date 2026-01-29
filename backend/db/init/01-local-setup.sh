@@ -2,8 +2,14 @@
 set -euo pipefail
 
 # This script runs inside the PostgreSQL container during first-time init.
+# It bootstraps roles, schemas, and permissions required before migrations can run.
+#
 # PostgreSQL automatically provides: $POSTGRES_USER, $POSTGRES_PASSWORD, $POSTGRES_DB
-# We get our custom variables from docker-compose environment section
+# We get our custom variables from docker-compose environment section.
+#
+# NOTE: This is local-dev infrastructure provisioning. In production, this
+# responsibility is handled by infrastructure tooling (e.g. Terraform, Pulumi,
+# or the hosting provider's managed database setup).
 
 echo "Setting up ApexMemory database users and schema..."
 

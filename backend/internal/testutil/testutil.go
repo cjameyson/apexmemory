@@ -16,11 +16,21 @@ var (
 	pool     *pgxpool.Pool
 	poolOnce sync.Once
 	poolErr  error
+	dsnOverride string
 )
 
+// SetDSN overrides the connection string used by Pool().
+// Called by StartContainer to inject the testcontainer's DSN.
+func SetDSN(dsn string) {
+	dsnOverride = dsn
+}
+
 // TestDSN returns the test database connection string.
-// Returns empty string if TEST_DATABASE_URL is not set.
+// Prefers the DSN set by SetDSN (from testcontainers), falls back to TEST_DATABASE_URL env var.
 func TestDSN() string {
+	if dsnOverride != "" {
+		return dsnOverride
+	}
 	return os.Getenv("TEST_DATABASE_URL")
 }
 
@@ -79,6 +89,9 @@ func TruncateTables(ctx context.Context, p *pgxpool.Pool) error {
 	// Using a single TRUNCATE with CASCADE is more efficient
 	_, err := p.Exec(ctx, `
 		TRUNCATE TABLE
+			app.reviews,
+			app.cards,
+			app.notes,
 			app.notebooks,
 			app.user_sessions,
 			app.auth_identities,

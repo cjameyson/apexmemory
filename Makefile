@@ -61,13 +61,10 @@ help:
 	@echo "  dev.stop         - stop API and Frontend"
 	@echo "  dev.check        - quick checks (Go vet, Svelte check)"
 	@echo ""
-	@echo "  test.backend       - run all backend tests (requires test DB)"
+	@echo "  test.unit          - run backend unit tests (no Docker)"
+	@echo "  test.backend       - run all backend tests (needs Docker daemon)"
 	@echo "  test.backend.v     - run backend tests (verbose)"
 	@echo "  test.backend.cover - run backend tests with coverage"
-	@echo "  test.db.setup      - create test database (first time setup)"
-	@echo "  test.db.migrate    - apply migrations to test database"
-	@echo "  test.db.reset      - reset test database (migrate to 0, then up)"
-	@echo "  test.db.status     - show test database migration status"
 	@echo "  test.frontend      - run frontend unit tests (Vitest)"
 	@echo "  test.frontend.e2e  - run frontend e2e tests (Playwright)"
 	@echo "  test.all           - run all tests (backend + frontend)"
@@ -246,77 +243,37 @@ dev.check:
 	@cd $(FRONTEND); npm run --silent check || true
 
 # ---------- Testing ----------
-.PHONY: test.backend test.backend.v test.backend.cover test.frontend test.frontend.e2e test.all
-.PHONY: test.db.setup test.db.migrate test.db.reset test.db.status
+.PHONY: test.unit test.backend test.backend.v test.backend.cover test.frontend test.frontend.e2e test.all
 
-# Test database DSN (uses _test suffix on database name)
-TEST_DB_DSN = postgres://$(shell $(ENV_SH); echo $$PG_APP_USER):$(shell $(ENV_SH); echo $$PG_APP_PASSWORD)@localhost/$(shell $(ENV_SH); echo $$PG_DATABASE)_test?sslmode=disable
+# Unit tests only (no Docker required)
+test.unit:
+	@echo "Running unit tests..."
+	@cd $(BACKEND) && go test ./...
 
+# All tests including integration (requires Docker daemon running)
 test.backend:
-	@echo "🧪 Running backend tests..."
-	@$(ENV_SH); cd $(BACKEND); TEST_DATABASE_URL="$(TEST_DB_DSN)" go test ./...
+	@echo "Running backend tests (unit + integration)..."
+	@cd $(BACKEND) && go test -tags integration ./...
 
 test.backend.v:
-	@echo "🧪 Running backend tests (verbose)..."
-	@$(ENV_SH); cd $(BACKEND); TEST_DATABASE_URL="$(TEST_DB_DSN)" go test -v ./...
+	@echo "Running backend tests (verbose)..."
+	@cd $(BACKEND) && go test -tags integration -v ./...
 
 test.backend.cover:
-	@echo "🧪 Running backend tests with coverage..."
-	@$(ENV_SH); cd $(BACKEND); TEST_DATABASE_URL="$(TEST_DB_DSN)" go test -coverprofile=coverage.out ./...
-	@cd $(BACKEND); go tool cover -func=coverage.out
-	@echo "📊 Coverage report: $(BACKEND)/coverage.out"
-	@echo "💡 View HTML report: cd $(BACKEND) && go tool cover -html=coverage.out"
+	@echo "Running backend tests with coverage..."
+	@cd $(BACKEND) && go test -tags integration -coverprofile=coverage.out ./...
+	@cd $(BACKEND) && go tool cover -func=coverage.out
 
 test.frontend:
-	@echo "🧪 Running frontend unit tests..."
-	@cd $(FRONTEND); npm run test
+	@echo "Running frontend unit tests..."
+	@cd $(FRONTEND) && npm run test
 
 test.frontend.e2e:
-	@echo "🧪 Running frontend e2e tests..."
-	@cd $(FRONTEND); npm run test:e2e
+	@echo "Running frontend e2e tests..."
+	@cd $(FRONTEND) && npm run test:e2e
 
 test.all: test.backend test.frontend
-	@echo "✅ All tests completed"
-
-# --- Test Database Setup ---
-# First-time setup: creates test database (requires docker.up first)
-test.db.setup:
-	@echo "🗄️  Setting up test database..."
-	@$(ENV_SH); \
-	if docker exec $(PG_CONTAINER) psql -U "$$PG_SUPER_USER" -lqt | cut -d \| -f 1 | grep -qw "$${PG_DATABASE}_test"; then \
-		echo "   Test database already exists"; \
-	else \
-		echo "   Creating test database..."; \
-		docker exec $(PG_CONTAINER) psql -U "$$PG_SUPER_USER" -c "CREATE DATABASE $${PG_DATABASE}_test"; \
-	fi
-	@echo "🔧 Configuring test database schemas and permissions..."
-	@$(ENV_SH); docker exec $(PG_CONTAINER) psql -U "$$PG_SUPER_USER" -d "$${PG_DATABASE}_test" \
-		-v dbname="$${PG_DATABASE}_test" \
-		-v migrator="$$PG_MIGRATOR_USER" \
-		-v appuser="$$PG_APP_USER" \
-		-v appschema="$$PG_APP_SCHEMA" \
-		-v codeschema="$$PG_APP_CODE_SCHEMA" \
-		-f /docker-entrypoint-initdb.d/setup-test-db.sql
-	@echo "⬆️  Running migrations on test database..."
-	@$(MAKE) test.db.migrate
-	@echo "✅ Test database setup complete!"
-
-# Apply migrations to test database
-test.db.migrate:
-	@echo "⬆️  Running migrations on test database..."
-	$(ENV_SH); TERN_CONFIG=$(TERN_TEST_CONF) TERN_MIGRATIONS=$(MIGR_DIR) tern migrate
-
-# Show test database migration status
-test.db.status:
-	@echo "📊 Test database migration status:"
-	$(ENV_SH); TERN_CONFIG=$(TERN_TEST_CONF) TERN_MIGRATIONS=$(MIGR_DIR) tern status
-
-# Reset test database (migrate to 0, then back up)
-test.db.reset:
-	@echo "🔄 Resetting test database..."
-	$(ENV_SH); TERN_CONFIG=$(TERN_TEST_CONF) TERN_MIGRATIONS=$(MIGR_DIR) tern migrate --destination 0
-	$(ENV_SH); TERN_CONFIG=$(TERN_TEST_CONF) TERN_MIGRATIONS=$(MIGR_DIR) tern migrate
-	@echo "✅ Test database reset complete"
+	@echo "All tests completed"
 
 # ---------- Frontend Linting & Formatting ----------
 .PHONY: lint.frontend format.frontend validate.frontend
