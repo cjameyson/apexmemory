@@ -32,5 +32,16 @@ func (app *Application) Routes() http.Handler {
 	mux.Handle("PATCH /v1/notebooks/{id}", protected.ThenFunc(app.UpdateNotebookHandler))
 	mux.Handle("DELETE /v1/notebooks/{id}", protected.ThenFunc(app.DeleteNotebookHandler))
 
+	// Notes
+	mux.Handle("POST /v1/notebooks/{notebook_id}/notes", protected.ThenFunc(app.CreateNoteHandler))
+	mux.Handle("GET /v1/notebooks/{notebook_id}/notes", protected.ThenFunc(app.ListNotesHandler))
+	mux.Handle("GET /v1/notebooks/{notebook_id}/notes/{id}", protected.ThenFunc(app.GetNoteHandler))
+	mux.Handle("PATCH /v1/notebooks/{notebook_id}/notes/{id}", protected.ThenFunc(app.UpdateNoteHandler))
+	mux.Handle("DELETE /v1/notebooks/{notebook_id}/notes/{id}", protected.ThenFunc(app.DeleteNoteHandler))
+
+	// Cards
+	mux.Handle("GET /v1/notebooks/{notebook_id}/cards", protected.ThenFunc(app.ListCardsHandler))
+	mux.Handle("GET /v1/notebooks/{notebook_id}/cards/{id}", protected.ThenFunc(app.GetCardHandler))
+
 	return global.Then(mux)
 }

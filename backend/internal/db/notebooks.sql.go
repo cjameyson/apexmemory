@@ -42,7 +42,7 @@ VALUES (
     COALESCE($6, 0),
     $7
 )
-RETURNING user_id, id, name, description, emoji, color, fsrs_settings, position, archived_at, created_at, updated_at
+RETURNING user_id, id, name, description, emoji, color, position, total_cards, fsrs_settings, archived_at, created_at, updated_at
 `
 
 type CreateNotebookParams struct {
@@ -74,8 +74,9 @@ func (q *Queries) CreateNotebook(ctx context.Context, arg CreateNotebookParams) 
 		&i.Description,
 		&i.Emoji,
 		&i.Color,
-		&i.FsrsSettings,
 		&i.Position,
+		&i.TotalCards,
+		&i.FsrsSettings,
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -84,7 +85,7 @@ func (q *Queries) CreateNotebook(ctx context.Context, arg CreateNotebookParams) 
 }
 
 const getNotebook = `-- name: GetNotebook :one
-SELECT user_id, id, name, description, emoji, color, fsrs_settings, position, archived_at, created_at, updated_at FROM app.notebooks
+SELECT user_id, id, name, description, emoji, color, position, total_cards, fsrs_settings, archived_at, created_at, updated_at FROM app.notebooks
 WHERE user_id = $1 AND id = $2 AND archived_at IS NULL
 `
 
@@ -103,8 +104,9 @@ func (q *Queries) GetNotebook(ctx context.Context, arg GetNotebookParams) (Noteb
 		&i.Description,
 		&i.Emoji,
 		&i.Color,
-		&i.FsrsSettings,
 		&i.Position,
+		&i.TotalCards,
+		&i.FsrsSettings,
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -137,7 +139,7 @@ func (q *Queries) IsNotebookArchived(ctx context.Context, arg IsNotebookArchived
 }
 
 const listNotebooks = `-- name: ListNotebooks :many
-SELECT user_id, id, name, description, emoji, color, fsrs_settings, position, archived_at, created_at, updated_at FROM app.notebooks
+SELECT user_id, id, name, description, emoji, color, position, total_cards, fsrs_settings, archived_at, created_at, updated_at FROM app.notebooks
 WHERE user_id = $1 AND archived_at IS NULL
 ORDER BY position ASC, created_at DESC
 `
@@ -158,8 +160,9 @@ func (q *Queries) ListNotebooks(ctx context.Context, userID uuid.UUID) ([]Notebo
 			&i.Description,
 			&i.Emoji,
 			&i.Color,
-			&i.FsrsSettings,
 			&i.Position,
+			&i.TotalCards,
+			&i.FsrsSettings,
 			&i.ArchivedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -212,7 +215,7 @@ SET name = COALESCE($1, name),
         ELSE fsrs_settings
     END
 WHERE user_id = $11 AND id = $12 AND archived_at IS NULL
-RETURNING user_id, id, name, description, emoji, color, fsrs_settings, position, archived_at, created_at, updated_at
+RETURNING user_id, id, name, description, emoji, color, position, total_cards, fsrs_settings, archived_at, created_at, updated_at
 `
 
 type UpdateNotebookParams struct {
@@ -253,8 +256,9 @@ func (q *Queries) UpdateNotebook(ctx context.Context, arg UpdateNotebookParams) 
 		&i.Description,
 		&i.Emoji,
 		&i.Color,
-		&i.FsrsSettings,
 		&i.Position,
+		&i.TotalCards,
+		&i.FsrsSettings,
 		&i.ArchivedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,

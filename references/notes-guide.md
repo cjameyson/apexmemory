@@ -50,6 +50,8 @@ element_ids = ["c1", "c2"]
 ```
 
 **Image Occlusion:** Read region IDs from content.
+Read @./references/image-occlusion-note.md for full schema details.
+
 ```json
 {
   "fields": [{
@@ -156,7 +158,6 @@ When cards are deleted (directly or via note update), their reviews are **not de
 | `card_id` | Set to NULL |
 | `note_id` | Set to NULL (if note deleted) |
 | `notebook_id` | Preserved (was already denormalized) |
-| `element_id` | Preserved (denormalized snapshot) |
 | All review data | Preserved |
 
 This allows:
