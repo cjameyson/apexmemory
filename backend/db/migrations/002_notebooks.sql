@@ -18,6 +18,9 @@ CREATE TABLE app.notebooks (
     CONSTRAINT notebooks_name_length CHECK (length(name) <= 255)
 );
 
+ALTER TABLE app.notebooks
+    ADD CONSTRAINT notebooks_total_cards_non_negative CHECK (total_cards >= 0);
+
 CREATE INDEX ix_notebooks_user_list ON app.notebooks (user_id, archived_at, position);
 
 CREATE TRIGGER trg_notebooks_set_updated_at

@@ -3,13 +3,6 @@
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
--- NOTEBOOKS: add guard against negative card count
--- -----------------------------------------------------------------------------
-
-ALTER TABLE app.notebooks
-    ADD CONSTRAINT notebooks_total_cards_non_negative CHECK (total_cards >= 0);
-
--- -----------------------------------------------------------------------------
 -- TYPES
 -- -----------------------------------------------------------------------------
 
@@ -19,6 +12,13 @@ CREATE TYPE app.rating AS ENUM ('again', 'hard', 'good', 'easy');
 -- -----------------------------------------------------------------------------
 -- NOTES
 -- -----------------------------------------------------------------------------
+-- One note can generate one or more cards:
+--   - basic:           1 note → 1 card (element_id = '')
+--   - cloze:           1 note → N cards (element_id = 'c1', 'c2', ...)
+--   - image_occlusion: 1 note → N cards (element_id = 'm_<nanoid>' per mask region)
+--
+-- Note type changes are NOT allowed after creation.
+-- Maximum 128 cards per note (enforced in application layer).
 
 CREATE TABLE app.notes (
     user_id       UUID NOT NULL,
@@ -54,6 +54,13 @@ CREATE TRIGGER trg_notes_set_updated_at
 -- -----------------------------------------------------------------------------
 -- CARDS
 -- -----------------------------------------------------------------------------
+-- element_id identifies which part of the note this card tests:
+--   - basic:           '' (empty string, single card per note)
+--   - cloze:           'c1', 'c2', etc. (matches c1::... in content)
+--   - image_occlusion: 'm_<nanoid>' (matches region id in content)
+--
+-- element_id is stable: deleting one element doesn't affect others' IDs.
+-- This preserves review history for unchanged cards when notes are edited.
 
 CREATE TABLE app.cards (
     user_id           UUID NOT NULL,
@@ -62,7 +69,9 @@ CREATE TABLE app.cards (
     -- Notes are not expected to move between notebooks.
     notebook_id       UUID NOT NULL,
     note_id           UUID NOT NULL,
-    ordinal           SMALLINT NOT NULL DEFAULT 0,
+    -- Identifies which element of the note this card represents.
+    -- Empty string for basic notes, 'c1'/'c2'/etc for cloze, 'm_xxx' for image masks.
+    element_id        TEXT NOT NULL DEFAULT '',
     state             app.card_state NOT NULL DEFAULT 'new',
     stability         REAL,
     difficulty        REAL,
@@ -85,7 +94,7 @@ CREATE TABLE app.cards (
     FOREIGN KEY (user_id, note_id)
         REFERENCES app.notes(user_id, id) ON DELETE CASCADE,
 
-    UNIQUE (user_id, note_id, ordinal),
+    UNIQUE (user_id, note_id, element_id),
 
     CONSTRAINT cards_valid_difficulty CHECK (
         difficulty IS NULL OR (difficulty >= 1.0 AND difficulty <= 10.0)
@@ -96,6 +105,13 @@ CREATE TABLE app.cards (
     CONSTRAINT cards_valid_step_state CHECK (
         (state IN ('learning', 'relearning') AND step IS NOT NULL AND step >= 0) OR
         (state IN ('new', 'review') AND step IS NULL)
+    ),
+    -- element_id format validation:
+    --   '' for basic, 'c1'-'c999' for cloze, 'm_' + alphanumeric for image masks
+    CONSTRAINT cards_valid_element_id CHECK (
+        element_id = '' OR                           -- basic
+        element_id ~ '^c[1-9][0-9]{0,2}$' OR         -- cloze: c1 to c999
+        element_id ~ '^m_[a-zA-Z0-9_-]{6,24}$'       -- image mask: m_ + nanoid
     )
 );
 
@@ -117,23 +133,45 @@ CREATE TRIGGER trg_cards_sync_notebook_count
 -- -----------------------------------------------------------------------------
 -- REVIEWS
 -- -----------------------------------------------------------------------------
+-- Reviews are immutable learning history used for:
+--   1. User statistics and progress tracking
+--   2. FSRS optimizer training data
+--   3. Retention analysis
+--
+-- Denormalization strategy:
+--   - notebook_id: Snapshot of which notebook at review time. No FK.
+--   - note_id: Snapshot for context. Nullable, SET NULL on note delete.
+--   - element_id: Snapshot of which element was reviewed.
+--   - card_id: Reference to card. Nullable, SET NULL on card delete.
+--
+-- When cards/notes are deleted, reviews are preserved with NULL references.
+-- This retains training data for the optimizer while allowing cleanup.
+--
+-- TODO: Consider adding an index for orphaned reviews if cleanup queries needed:
+--   CREATE INDEX ix_reviews_orphaned ON app.reviews(user_id, reviewed_at)
+--       WHERE card_id IS NULL;
 
 CREATE TABLE app.reviews (
     user_id            UUID NOT NULL,
     id                 UUID NOT NULL DEFAULT uuidv7(),
-    card_id            UUID NOT NULL,
-    -- Denormalized snapshot: records which notebook the card belonged to at review
-    -- time. No FK intentionally -- reviews are immutable history and must survive
-    -- notebook deletes or card moves.
+    -- Nullable: preserved when card is deleted for optimizer training data
+    card_id            UUID,
+    -- Denormalized snapshots: record context at review time.
+    -- These survive deletes and enable stats/optimizer even for orphaned reviews.
     notebook_id        UUID NOT NULL,
+    note_id            UUID,
+    element_id         TEXT,
+    -- Review data
     reviewed_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     rating             app.rating NOT NULL,
     review_duration_ms INTEGER,
+    -- State before review (for optimizer training)
     state_before       app.card_state NOT NULL,
     stability_before   REAL,
     difficulty_before  REAL,
     elapsed_days       REAL NOT NULL,
     scheduled_days     REAL NOT NULL,
+    -- State after review
     state_after        app.card_state NOT NULL,
     stability_after    REAL NOT NULL,
     difficulty_after   REAL NOT NULL,
@@ -143,14 +181,22 @@ CREATE TABLE app.reviews (
 
     PRIMARY KEY (user_id, id),
 
+    -- SET NULL preserves review history when card is deleted
     FOREIGN KEY (user_id, card_id)
-        REFERENCES app.cards(user_id, id) ON DELETE CASCADE
+        REFERENCES app.cards(user_id, id) ON DELETE SET NULL,
+    -- SET NULL preserves review history when note is deleted
+    FOREIGN KEY (user_id, note_id)
+        REFERENCES app.notes(user_id, id) ON DELETE SET NULL
 );
 
-CREATE INDEX ix_reviews_card ON app.reviews(user_id, card_id, reviewed_at DESC);
+-- For fetching review history of a specific card
+CREATE INDEX ix_reviews_card ON app.reviews(user_id, card_id, reviewed_at DESC)
+    WHERE card_id IS NOT NULL;
 
+-- For notebook-level analytics and time-based queries
 CREATE INDEX ix_reviews_notebook_time ON app.reviews(user_id, notebook_id, reviewed_at DESC);
 
+-- For FSRS optimizer: needs state_before and rating for graduated cards
 CREATE INDEX ix_reviews_optimizer ON app.reviews(user_id, notebook_id, state_before, rating)
     WHERE scheduled_days >= 1;
 
@@ -175,5 +221,3 @@ DROP TABLE IF EXISTS app.notes;
 
 DROP TYPE IF EXISTS app.rating;
 DROP TYPE IF EXISTS app.card_state;
-
-ALTER TABLE app.notebooks DROP CONSTRAINT IF EXISTS notebooks_total_cards_non_negative;
