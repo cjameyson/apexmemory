@@ -27,4 +27,4 @@ RETURNING *;
 
 -- name: DeleteNote :execrows
 DELETE FROM app.notes
-WHERE user_id = @user_id AND id = @id;
+WHERE user_id = @user_id AND id = @id AND notebook_id = @notebook_id;

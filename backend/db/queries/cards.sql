@@ -19,6 +19,7 @@ LIMIT @row_limit OFFSET @row_offset;
 -- name: CountCardsByNotebook :one
 SELECT count(*) FROM app.cards
 WHERE user_id = @user_id AND notebook_id = @notebook_id
+  AND (sqlc.narg('state')::app.card_state IS NULL OR state = sqlc.narg('state'))
   AND suspended_at IS NULL AND buried_until IS NULL;
 
 -- name: GetCard :one

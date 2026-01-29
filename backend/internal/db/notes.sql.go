@@ -68,16 +68,17 @@ func (q *Queries) CreateNote(ctx context.Context, arg CreateNoteParams) (Note, e
 
 const deleteNote = `-- name: DeleteNote :execrows
 DELETE FROM app.notes
-WHERE user_id = $1 AND id = $2
+WHERE user_id = $1 AND id = $2 AND notebook_id = $3
 `
 
 type DeleteNoteParams struct {
-	UserID uuid.UUID `json:"user_id"`
-	ID     uuid.UUID `json:"id"`
+	UserID     uuid.UUID `json:"user_id"`
+	ID         uuid.UUID `json:"id"`
+	NotebookID uuid.UUID `json:"notebook_id"`
 }
 
 func (q *Queries) DeleteNote(ctx context.Context, arg DeleteNoteParams) (int64, error) {
-	result, err := q.db.Exec(ctx, deleteNote, arg.UserID, arg.ID)
+	result, err := q.db.Exec(ctx, deleteNote, arg.UserID, arg.ID, arg.NotebookID)
 	if err != nil {
 		return 0, err
 	}

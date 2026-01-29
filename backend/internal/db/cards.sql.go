@@ -14,16 +14,18 @@ import (
 const countCardsByNotebook = `-- name: CountCardsByNotebook :one
 SELECT count(*) FROM app.cards
 WHERE user_id = $1 AND notebook_id = $2
+  AND ($3::app.card_state IS NULL OR state = $3)
   AND suspended_at IS NULL AND buried_until IS NULL
 `
 
 type CountCardsByNotebookParams struct {
-	UserID     uuid.UUID `json:"user_id"`
-	NotebookID uuid.UUID `json:"notebook_id"`
+	UserID     uuid.UUID        `json:"user_id"`
+	NotebookID uuid.UUID        `json:"notebook_id"`
+	State      NullAppCardState `json:"state"`
 }
 
 func (q *Queries) CountCardsByNotebook(ctx context.Context, arg CountCardsByNotebookParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countCardsByNotebook, arg.UserID, arg.NotebookID)
+	row := q.db.QueryRow(ctx, countCardsByNotebook, arg.UserID, arg.NotebookID, arg.State)
 	var count int64
 	err := row.Scan(&count)
 	return count, err

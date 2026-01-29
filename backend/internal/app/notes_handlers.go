@@ -241,12 +241,17 @@ func (app *Application) DeleteNoteHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	notebookID, ok := app.PathUUID(w, r, "notebook_id")
+	if !ok {
+		return
+	}
+
 	noteID, ok := app.PathUUID(w, r, "id")
 	if !ok {
 		return
 	}
 
-	err := app.DeleteNote(r.Context(), user.ID, noteID)
+	err := app.DeleteNote(r.Context(), user.ID, notebookID, noteID)
 	if err != nil {
 		if errors.Is(err, errNoteNotFound) {
 			app.RespondError(w, r, http.StatusNotFound, "Note not found")
