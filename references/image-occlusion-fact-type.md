@@ -1,18 +1,18 @@
 # Image Occlusion Field Schema
 
-This document defines the JSON schema for `image_occlusion` type notes.
+This document defines the JSON schema for `image_occlusion` type facts.
 
 ## Overview
 
-Image occlusion notes allow users to create flashcards from a single image by defining mask regions. During review, all masks are shown and the user must identify the content under the target mask.
+Image occlusion facts allow users to create flashcards from a single image by defining mask regions. During review, all masks are shown and the user must identify the content under the target mask.
 
 **MVP Scope:**
-- Single image per note
+- Single image per fact
 - Rectangle shapes only
 - No region grouping
 - One review mode: hide-all-reveal-one
 
-## Note Content Structure
+## Fact Content Structure
 
 ```json
 {
@@ -189,7 +189,7 @@ Generated cards:
   [{ element_id: "m_k7Xp2mQ9" }, { element_id: "m_nR4wL8vK" }]
 ```
 
-The `element_id` is stable — editing the note to add/remove other regions does not affect existing cards or their review history.
+The `element_id` is stable — editing the fact to add/remove other regions does not affect existing cards or their review history.
 
 ## Review Behavior
 
@@ -223,7 +223,7 @@ The alternative mode ("hide one, reveal all") is useful for different scenarios 
 |------|------------|
 | Regions count | 1 ≤ count ≤ 128 |
 | Region ID format | `^m_[a-zA-Z0-9_-]{6,24}$` |
-| Region ID uniqueness | All IDs must be unique within note |
+| Region ID uniqueness | All IDs must be unique within fact |
 | Shape type | Must be `"rect"` (MVP) |
 | Shape coordinates | Non-negative integers |
 | Shape dimensions | Positive integers (width > 0, height > 0) |
@@ -237,7 +237,7 @@ The 128 limit balances flexibility with sanity:
 - Most use cases need 2-20 regions
 - Complex diagrams (anatomy, circuits) rarely exceed 50
 - 128 accommodates edge cases without enabling abuse
-- Consistent with our max-cards-per-note constraint
+- Consistent with our max-cards-per-fact constraint
 - Well under database and JSON size concerns
 
 ## Examples
@@ -360,7 +360,7 @@ Useful for learning programming languages, keyboard shortcuts, or UI elements.
 
 ### Minimal Example — Single Region
 
-The simplest valid image occlusion note.
+The simplest valid image occlusion fact.
 
 ```json
 {
@@ -413,7 +413,7 @@ function createRegion(shape) {
 3. Client uploads to storage, receives URL
 4. Client initializes field with `image: { url, width, height, original_name }`
 5. User draws regions using editor
-6. On save, note content is validated and sent to API
+6. On save, fact content is validated and sent to API
 
 ### Rendering Considerations
 
