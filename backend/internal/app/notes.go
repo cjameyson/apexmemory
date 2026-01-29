@@ -473,10 +473,11 @@ func (app *Application) UpdateNote(ctx context.Context, userID, notebookID, note
 }
 
 // DeleteNote deletes a note (cascades to cards).
-func (app *Application) DeleteNote(ctx context.Context, userID, noteID uuid.UUID) error {
+func (app *Application) DeleteNote(ctx context.Context, userID, notebookID, noteID uuid.UUID) error {
 	rows, err := app.Queries.DeleteNote(ctx, db.DeleteNoteParams{
-		UserID: userID,
-		ID:     noteID,
+		UserID:     userID,
+		ID:         noteID,
+		NotebookID: notebookID,
 	})
 	if err != nil {
 		return err
