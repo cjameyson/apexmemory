@@ -32,12 +32,12 @@ func (app *Application) Routes() http.Handler {
 	mux.Handle("PATCH /v1/notebooks/{id}", protected.ThenFunc(app.UpdateNotebookHandler))
 	mux.Handle("DELETE /v1/notebooks/{id}", protected.ThenFunc(app.DeleteNotebookHandler))
 
-	// Notes
-	mux.Handle("POST /v1/notebooks/{notebook_id}/notes", protected.ThenFunc(app.CreateNoteHandler))
-	mux.Handle("GET /v1/notebooks/{notebook_id}/notes", protected.ThenFunc(app.ListNotesHandler))
-	mux.Handle("GET /v1/notebooks/{notebook_id}/notes/{id}", protected.ThenFunc(app.GetNoteHandler))
-	mux.Handle("PATCH /v1/notebooks/{notebook_id}/notes/{id}", protected.ThenFunc(app.UpdateNoteHandler))
-	mux.Handle("DELETE /v1/notebooks/{notebook_id}/notes/{id}", protected.ThenFunc(app.DeleteNoteHandler))
+	// Facts
+	mux.Handle("POST /v1/notebooks/{notebook_id}/facts", protected.ThenFunc(app.CreateFactHandler))
+	mux.Handle("GET /v1/notebooks/{notebook_id}/facts", protected.ThenFunc(app.ListFactsHandler))
+	mux.Handle("GET /v1/notebooks/{notebook_id}/facts/{id}", protected.ThenFunc(app.GetFactHandler))
+	mux.Handle("PATCH /v1/notebooks/{notebook_id}/facts/{id}", protected.ThenFunc(app.UpdateFactHandler))
+	mux.Handle("DELETE /v1/notebooks/{notebook_id}/facts/{id}", protected.ThenFunc(app.DeleteFactHandler))
 
 	// Cards
 	mux.Handle("GET /v1/notebooks/{notebook_id}/cards", protected.ThenFunc(app.ListCardsHandler))

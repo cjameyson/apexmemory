@@ -89,8 +89,8 @@ CREATE TABLE app.cards (
     user_id uuid NOT NULL,
     id uuid DEFAULT uuidv7() NOT NULL,
     notebook_id uuid NOT NULL,
-    note_id uuid NOT NULL,
-    ordinal smallint DEFAULT 0 NOT NULL,
+    fact_id uuid NOT NULL,
+    element_id text DEFAULT ''::text NOT NULL,
     state app.card_state DEFAULT 'new'::app.card_state NOT NULL,
     stability real,
     difficulty real,
@@ -106,8 +106,27 @@ CREATE TABLE app.cards (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT cards_valid_difficulty CHECK (((difficulty IS NULL) OR ((difficulty >= (1.0)::double precision) AND (difficulty <= (10.0)::double precision)))),
+    CONSTRAINT cards_valid_element_id CHECK (((element_id = ''::text) OR (element_id ~ '^c[1-9][0-9]{0,2}$'::text) OR (element_id ~ '^m_[a-zA-Z0-9_-]{6,24}$'::text))),
     CONSTRAINT cards_valid_stability CHECK (((stability IS NULL) OR (stability >= (0)::double precision))),
     CONSTRAINT cards_valid_step_state CHECK ((((state = ANY (ARRAY['learning'::app.card_state, 'relearning'::app.card_state])) AND (step IS NOT NULL) AND (step >= 0)) OR ((state = ANY (ARRAY['new'::app.card_state, 'review'::app.card_state])) AND (step IS NULL))))
+);
+
+
+--
+-- Name: facts; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.facts (
+    user_id uuid NOT NULL,
+    id uuid DEFAULT uuidv7() NOT NULL,
+    notebook_id uuid NOT NULL,
+    fact_type text DEFAULT 'basic'::text NOT NULL,
+    content jsonb NOT NULL,
+    source_id uuid,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT facts_valid_content CHECK (((jsonb_typeof((content -> 'version'::text)) = 'number'::text) AND (jsonb_typeof((content -> 'fields'::text)) = 'array'::text))),
+    CONSTRAINT facts_valid_type CHECK ((fact_type = ANY (ARRAY['basic'::text, 'cloze'::text, 'image_occlusion'::text])))
 );
 
 
@@ -159,8 +178,10 @@ CREATE TABLE app.notes (
 CREATE TABLE app.reviews (
     user_id uuid NOT NULL,
     id uuid DEFAULT uuidv7() NOT NULL,
-    card_id uuid NOT NULL,
+    card_id uuid,
     notebook_id uuid NOT NULL,
+    fact_id uuid,
+    element_id text,
     reviewed_at timestamp with time zone DEFAULT now() NOT NULL,
     rating app.rating NOT NULL,
     review_duration_ms integer,
@@ -254,11 +275,19 @@ ALTER TABLE ONLY app.cards
 
 
 --
--- Name: cards cards_user_id_note_id_ordinal_key; Type: CONSTRAINT; Schema: app; Owner: -
+-- Name: cards cards_user_id_fact_id_element_id_key; Type: CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.cards
-    ADD CONSTRAINT cards_user_id_note_id_ordinal_key UNIQUE (user_id, note_id, ordinal);
+    ADD CONSTRAINT cards_user_id_fact_id_element_id_key UNIQUE (user_id, fact_id, element_id);
+
+
+--
+-- Name: facts facts_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.facts
+    ADD CONSTRAINT facts_pkey PRIMARY KEY (user_id, id);
 
 
 --
@@ -340,10 +369,10 @@ CREATE INDEX ix_cards_due ON app.cards USING btree (user_id, notebook_id, due) W
 
 
 --
--- Name: ix_cards_note; Type: INDEX; Schema: app; Owner: -
+-- Name: ix_cards_fact; Type: INDEX; Schema: app; Owner: -
 --
 
-CREATE INDEX ix_cards_note ON app.cards USING btree (user_id, note_id);
+CREATE INDEX ix_cards_fact ON app.cards USING btree (user_id, fact_id);
 
 
 --
@@ -351,6 +380,13 @@ CREATE INDEX ix_cards_note ON app.cards USING btree (user_id, note_id);
 --
 
 CREATE INDEX ix_cards_state ON app.cards USING btree (user_id, notebook_id, state);
+
+
+--
+-- Name: ix_facts_notebook; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_facts_notebook ON app.facts USING btree (user_id, notebook_id, created_at DESC);
 
 
 --
@@ -371,7 +407,7 @@ CREATE INDEX ix_notes_notebook ON app.notes USING btree (user_id, notebook_id, c
 -- Name: ix_reviews_card; Type: INDEX; Schema: app; Owner: -
 --
 
-CREATE INDEX ix_reviews_card ON app.reviews USING btree (user_id, card_id, reviewed_at DESC);
+CREATE INDEX ix_reviews_card ON app.reviews USING btree (user_id, card_id, reviewed_at DESC) WHERE (card_id IS NOT NULL);
 
 
 --
@@ -424,17 +460,10 @@ CREATE TRIGGER trg_cards_sync_notebook_count AFTER INSERT OR DELETE OR UPDATE OF
 
 
 --
--- Name: notebooks trg_notebooks_set_updated_at; Type: TRIGGER; Schema: app; Owner: -
+-- Name: facts trg_facts_set_updated_at; Type: TRIGGER; Schema: app; Owner: -
 --
 
-CREATE TRIGGER trg_notebooks_set_updated_at BEFORE UPDATE ON app.notebooks FOR EACH ROW EXECUTE FUNCTION app_code.tg_set_updated_at();
-
-
---
--- Name: notes trg_notes_set_updated_at; Type: TRIGGER; Schema: app; Owner: -
---
-
-CREATE TRIGGER trg_notes_set_updated_at BEFORE UPDATE ON app.notes FOR EACH ROW EXECUTE FUNCTION app_code.tg_set_updated_at();
+CREATE TRIGGER trg_facts_set_updated_at BEFORE UPDATE ON app.facts FOR EACH ROW EXECUTE FUNCTION app_code.tg_set_updated_at();
 
 
 --
@@ -446,11 +475,11 @@ ALTER TABLE ONLY app.auth_identities
 
 
 --
--- Name: cards cards_user_id_note_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+-- Name: cards cards_user_id_fact_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
 --
 
 ALTER TABLE ONLY app.cards
-    ADD CONSTRAINT cards_user_id_note_id_fkey FOREIGN KEY (user_id, note_id) REFERENCES app.notes(user_id, id) ON DELETE CASCADE;
+    ADD CONSTRAINT cards_user_id_fact_id_fkey FOREIGN KEY (user_id, fact_id) REFERENCES app.facts(user_id, id) ON DELETE CASCADE;
 
 
 --
@@ -459,6 +488,14 @@ ALTER TABLE ONLY app.cards
 
 ALTER TABLE ONLY app.cards
     ADD CONSTRAINT cards_user_id_notebook_id_fkey FOREIGN KEY (user_id, notebook_id) REFERENCES app.notebooks(user_id, id) ON DELETE CASCADE;
+
+
+--
+-- Name: facts facts_user_id_notebook_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.facts
+    ADD CONSTRAINT facts_user_id_notebook_id_fkey FOREIGN KEY (user_id, notebook_id) REFERENCES app.notebooks(user_id, id) ON DELETE CASCADE;
 
 
 --
@@ -482,7 +519,15 @@ ALTER TABLE ONLY app.notes
 --
 
 ALTER TABLE ONLY app.reviews
-    ADD CONSTRAINT reviews_user_id_card_id_fkey FOREIGN KEY (user_id, card_id) REFERENCES app.cards(user_id, id) ON DELETE CASCADE;
+    ADD CONSTRAINT reviews_user_id_card_id_fkey FOREIGN KEY (user_id, card_id) REFERENCES app.cards(user_id, id) ON DELETE SET NULL;
+
+
+--
+-- Name: reviews reviews_user_id_fact_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.reviews
+    ADD CONSTRAINT reviews_user_id_fact_id_fkey FOREIGN KEY (user_id, fact_id) REFERENCES app.facts(user_id, id) ON DELETE SET NULL;
 
 
 --

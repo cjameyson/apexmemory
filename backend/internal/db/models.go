@@ -145,12 +145,23 @@ func (ns NullAppRating) Value() (driver.Value, error) {
 	return string(ns.AppRating), nil
 }
 
+type AppFact struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	ID         uuid.UUID   `json:"id"`
+	NotebookID uuid.UUID   `json:"notebook_id"`
+	FactType   string      `json:"fact_type"`
+	Content    []byte      `json:"content"`
+	SourceID   pgtype.UUID `json:"source_id"`
+	CreatedAt  time.Time   `json:"created_at"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+}
+
 type AppReview struct {
 	UserID           uuid.UUID     `json:"user_id"`
 	ID               uuid.UUID     `json:"id"`
 	CardID           pgtype.UUID   `json:"card_id"`
 	NotebookID       uuid.UUID     `json:"notebook_id"`
-	NoteID           pgtype.UUID   `json:"note_id"`
+	FactID           pgtype.UUID   `json:"fact_id"`
 	ElementID        pgtype.Text   `json:"element_id"`
 	ReviewedAt       time.Time     `json:"reviewed_at"`
 	Rating           AppRating     `json:"rating"`
@@ -184,7 +195,7 @@ type Card struct {
 	UserID        uuid.UUID          `json:"user_id"`
 	ID            uuid.UUID          `json:"id"`
 	NotebookID    uuid.UUID          `json:"notebook_id"`
-	NoteID        uuid.UUID          `json:"note_id"`
+	FactID        uuid.UUID          `json:"fact_id"`
 	ElementID     string             `json:"element_id"`
 	State         AppCardState       `json:"state"`
 	Stability     pgtype.Float4      `json:"stability"`
@@ -200,17 +211,6 @@ type Card struct {
 	BuriedUntil   pgtype.Date        `json:"buried_until"`
 	CreatedAt     time.Time          `json:"created_at"`
 	UpdatedAt     time.Time          `json:"updated_at"`
-}
-
-type Note struct {
-	UserID     uuid.UUID   `json:"user_id"`
-	ID         uuid.UUID   `json:"id"`
-	NotebookID uuid.UUID   `json:"notebook_id"`
-	NoteType   string      `json:"note_type"`
-	Content    []byte      `json:"content"`
-	SourceID   pgtype.UUID `json:"source_id"`
-	CreatedAt  time.Time   `json:"created_at"`
-	UpdatedAt  time.Time   `json:"updated_at"`
 }
 
 type Notebook struct {

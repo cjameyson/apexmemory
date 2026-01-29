@@ -16,21 +16,21 @@ import (
 )
 
 var (
-	errNoteNotFound     = errors.New("note not found")
-	errNoteTypeImmutable = errors.New("note type cannot be changed")
+	errFactNotFound     = errors.New("fact not found")
+	errFactTypeImmutable = errors.New("fact type cannot be changed")
 )
 
-const maxElementsPerNote = 128
+const maxElementsPerFact = 128
 
 var clozePattern = regexp.MustCompile(`\{\{c(\d+)::`)
 var clozeIDPattern = regexp.MustCompile(`^c[1-9][0-9]{0,2}$`)
 var imageOcclusionIDPattern = regexp.MustCompile(`^m_[a-zA-Z0-9_-]{6,24}$`)
 
-// NoteResponse is the API response for a note.
-type NoteResponse struct {
+// FactResponse is the API response for a fact.
+type FactResponse struct {
 	ID         uuid.UUID        `json:"id"`
 	NotebookID uuid.UUID       `json:"notebook_id"`
-	NoteType   string           `json:"note_type"`
+	FactType   string           `json:"fact_type"`
 	Content    json.RawMessage  `json:"content"`
 	SourceID   *uuid.UUID       `json:"source_id"`
 	CardCount  int64            `json:"card_count"`
@@ -38,16 +38,16 @@ type NoteResponse struct {
 	UpdatedAt  time.Time        `json:"updated_at"`
 }
 
-// NoteDetailResponse includes the note and its cards.
-type NoteDetailResponse struct {
-	NoteResponse
+// FactDetailResponse includes the fact and its cards.
+type FactDetailResponse struct {
+	FactResponse
 	Cards []CardResponse `json:"cards"`
 }
 
 // CardResponse is the API response for a card.
 type CardResponse struct {
 	ID            uuid.UUID  `json:"id"`
-	NoteID        uuid.UUID  `json:"note_id"`
+	FactID        uuid.UUID  `json:"fact_id"`
 	NotebookID    uuid.UUID  `json:"notebook_id"`
 	ElementID     string     `json:"element_id"`
 	State         string     `json:"state"`
@@ -62,11 +62,11 @@ type CardResponse struct {
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
-func toNoteResponse(n db.GetNoteRow) NoteResponse {
-	resp := NoteResponse{
+func toFactResponse(n db.GetFactRow) FactResponse {
+	resp := FactResponse{
 		ID:         n.ID,
 		NotebookID: n.NotebookID,
-		NoteType:   n.NoteType,
+		FactType:   n.FactType,
 		Content:    json.RawMessage(n.Content),
 		CardCount:  n.CardCount,
 		CreatedAt:  n.CreatedAt,
@@ -79,11 +79,11 @@ func toNoteResponse(n db.GetNoteRow) NoteResponse {
 	return resp
 }
 
-func toNoteListResponse(n db.ListNotesByNotebookRow) NoteResponse {
-	resp := NoteResponse{
+func toFactListResponse(n db.ListFactsByNotebookRow) FactResponse {
+	resp := FactResponse{
 		ID:         n.ID,
 		NotebookID: n.NotebookID,
-		NoteType:   n.NoteType,
+		FactType:   n.FactType,
 		Content:    json.RawMessage(n.Content),
 		CardCount:  n.CardCount,
 		CreatedAt:  n.CreatedAt,
@@ -99,7 +99,7 @@ func toNoteListResponse(n db.ListNotesByNotebookRow) NoteResponse {
 func toCardResponse(c db.Card) CardResponse {
 	resp := CardResponse{
 		ID:         c.ID,
-		NoteID:     c.NoteID,
+		FactID:     c.FactID,
 		NotebookID: c.NotebookID,
 		ElementID:  c.ElementID,
 		State:      string(c.State),
@@ -127,8 +127,8 @@ func toCardResponse(c db.Card) CardResponse {
 	return resp
 }
 
-// validateNoteContent validates the JSON structure and returns extracted element IDs.
-func validateNoteContent(noteType string, content json.RawMessage) ([]string, error) {
+// validateFactContent validates the JSON structure and returns extracted element IDs.
+func validateFactContent(factType string, content json.RawMessage) ([]string, error) {
 	// Parse top-level structure
 	var parsed struct {
 		Version float64         `json:"version"`
@@ -144,28 +144,28 @@ func validateNoteContent(noteType string, content json.RawMessage) ([]string, er
 		return nil, errors.New("content must have fields")
 	}
 
-	elementIDs, err := extractElementIDs(noteType, content)
+	elementIDs, err := extractElementIDs(factType, content)
 	if err != nil {
 		return nil, err
 	}
 
 	if len(elementIDs) == 0 {
-		return nil, errors.New("note must generate at least one card")
+		return nil, errors.New("fact must generate at least one card")
 	}
-	if len(elementIDs) > maxElementsPerNote {
-		return nil, fmt.Errorf("note exceeds maximum of %d cards", maxElementsPerNote)
+	if len(elementIDs) > maxElementsPerFact {
+		return nil, fmt.Errorf("fact exceeds maximum of %d cards", maxElementsPerFact)
 	}
 
-	if err := validateElementIDs(noteType, elementIDs); err != nil {
+	if err := validateElementIDs(factType, elementIDs); err != nil {
 		return nil, err
 	}
 
 	return elementIDs, nil
 }
 
-// extractElementIDs extracts element IDs from content based on note type.
-func extractElementIDs(noteType string, content json.RawMessage) ([]string, error) {
-	switch noteType {
+// extractElementIDs extracts element IDs from content based on fact type.
+func extractElementIDs(factType string, content json.RawMessage) ([]string, error) {
+	switch factType {
 	case "basic":
 		return []string{""}, nil
 	case "cloze":
@@ -173,7 +173,7 @@ func extractElementIDs(noteType string, content json.RawMessage) ([]string, erro
 	case "image_occlusion":
 		return extractImageOcclusionElementIDs(content)
 	default:
-		return nil, fmt.Errorf("unsupported note type: %s", noteType)
+		return nil, fmt.Errorf("unsupported fact type: %s", factType)
 	}
 }
 
@@ -201,7 +201,7 @@ func extractClozeElementIDs(content json.RawMessage) ([]string, error) {
 	}
 
 	if len(seen) == 0 {
-		return nil, errors.New("cloze note must contain at least one {{cN::...}} deletion")
+		return nil, errors.New("cloze fact must contain at least one {{cN::...}} deletion")
 	}
 
 	ids := make([]string, 0, len(seen))
@@ -244,17 +244,17 @@ func extractImageOcclusionElementIDs(content json.RawMessage) ([]string, error) 
 	}
 
 	if len(ids) == 0 {
-		return nil, errors.New("image occlusion note must contain at least one region")
+		return nil, errors.New("image occlusion fact must contain at least one region")
 	}
 	return ids, nil
 }
 
-func validateElementIDs(noteType string, ids []string) error {
+func validateElementIDs(factType string, ids []string) error {
 	for _, id := range ids {
-		switch noteType {
+		switch factType {
 		case "basic":
 			if id != "" {
-				return fmt.Errorf("basic note element_id must be empty, got %q", id)
+				return fmt.Errorf("basic fact element_id must be empty, got %q", id)
 			}
 		case "cloze":
 			if !clozeIDPattern.MatchString(id) {
@@ -269,22 +269,22 @@ func validateElementIDs(noteType string, ids []string) error {
 	return nil
 }
 
-// CreateNote creates a note and its derived cards in a transaction.
-func (app *Application) CreateNote(ctx context.Context, userID, notebookID uuid.UUID, noteType string, content json.RawMessage) (db.GetNoteRow, []db.Card, error) {
-	elementIDs, err := validateNoteContent(noteType, content)
+// CreateFact creates a fact and its derived cards in a transaction.
+func (app *Application) CreateFact(ctx context.Context, userID, notebookID uuid.UUID, factType string, content json.RawMessage) (db.GetFactRow, []db.Card, error) {
+	elementIDs, err := validateFactContent(factType, content)
 	if err != nil {
-		return db.GetNoteRow{}, nil, err
+		return db.GetFactRow{}, nil, err
 	}
 
-	var note db.Note
+	var fact db.AppFact
 	var cards []db.Card
 
 	err = WithTx(ctx, app.DB, func(q *db.Queries) error {
 		var txErr error
-		note, txErr = q.CreateNote(ctx, db.CreateNoteParams{
+		fact, txErr = q.CreateFact(ctx, db.CreateFactParams{
 			UserID:     userID,
 			NotebookID: notebookID,
-			NoteType:   noteType,
+			FactType:   factType,
 			Content:    content,
 		})
 		if txErr != nil {
@@ -296,7 +296,7 @@ func (app *Application) CreateNote(ctx context.Context, userID, notebookID uuid.
 			card, txErr := q.CreateCard(ctx, db.CreateCardParams{
 				UserID:     userID,
 				NotebookID: notebookID,
-				NoteID:     note.ID,
+				FactID:     fact.ID,
 				ElementID:  elemID,
 			})
 			if txErr != nil {
@@ -307,43 +307,43 @@ func (app *Application) CreateNote(ctx context.Context, userID, notebookID uuid.
 		return nil
 	})
 	if err != nil {
-		return db.GetNoteRow{}, nil, err
+		return db.GetFactRow{}, nil, err
 	}
 
-	// Return as GetNoteRow with card count
-	row := db.GetNoteRow{
-		UserID:     note.UserID,
-		ID:         note.ID,
-		NotebookID: note.NotebookID,
-		NoteType:   note.NoteType,
-		Content:    note.Content,
-		SourceID:   note.SourceID,
-		CreatedAt:  note.CreatedAt,
-		UpdatedAt:  note.UpdatedAt,
+	// Return as GetFactRow with card count
+	row := db.GetFactRow{
+		UserID:     fact.UserID,
+		ID:         fact.ID,
+		NotebookID: fact.NotebookID,
+		FactType:   fact.FactType,
+		Content:    fact.Content,
+		SourceID:   fact.SourceID,
+		CreatedAt:  fact.CreatedAt,
+		UpdatedAt:  fact.UpdatedAt,
 		CardCount:  int64(len(cards)),
 	}
 	return row, cards, nil
 }
 
-// GetNote retrieves a single note with card count.
-func (app *Application) GetNote(ctx context.Context, userID, notebookID, noteID uuid.UUID) (db.GetNoteRow, error) {
-	note, err := app.Queries.GetNote(ctx, db.GetNoteParams{
+// GetFact retrieves a single fact with card count.
+func (app *Application) GetFact(ctx context.Context, userID, notebookID, factID uuid.UUID) (db.GetFactRow, error) {
+	fact, err := app.Queries.GetFact(ctx, db.GetFactParams{
 		UserID:     userID,
-		ID:         noteID,
+		ID:         factID,
 		NotebookID: notebookID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return db.GetNoteRow{}, errNoteNotFound
+			return db.GetFactRow{}, errFactNotFound
 		}
-		return db.GetNoteRow{}, err
+		return db.GetFactRow{}, err
 	}
-	return note, nil
+	return fact, nil
 }
 
-// ListNotes retrieves paginated notes for a notebook.
-func (app *Application) ListNotes(ctx context.Context, userID, notebookID uuid.UUID, limit, offset int32) ([]db.ListNotesByNotebookRow, int64, error) {
-	notes, err := app.Queries.ListNotesByNotebook(ctx, db.ListNotesByNotebookParams{
+// ListFacts retrieves paginated facts for a notebook.
+func (app *Application) ListFacts(ctx context.Context, userID, notebookID uuid.UUID, limit, offset int32) ([]db.ListFactsByNotebookRow, int64, error) {
+	facts, err := app.Queries.ListFactsByNotebook(ctx, db.ListFactsByNotebookParams{
 		UserID:     userID,
 		NotebookID: notebookID,
 		RowLimit:   limit,
@@ -353,7 +353,7 @@ func (app *Application) ListNotes(ctx context.Context, userID, notebookID uuid.U
 		return nil, 0, err
 	}
 
-	total, err := app.Queries.CountNotesByNotebook(ctx, db.CountNotesByNotebookParams{
+	total, err := app.Queries.CountFactsByNotebook(ctx, db.CountFactsByNotebookParams{
 		UserID:     userID,
 		NotebookID: notebookID,
 	})
@@ -361,56 +361,56 @@ func (app *Application) ListNotes(ctx context.Context, userID, notebookID uuid.U
 		return nil, 0, err
 	}
 
-	return notes, total, nil
+	return facts, total, nil
 }
 
-// UpdateNoteResult contains the outcome of a note update.
-type UpdateNoteResult struct {
-	Note      db.Note
+// UpdateFactResult contains the outcome of a fact update.
+type UpdateFactResult struct {
+	Fact      db.AppFact
 	Created   int
 	Deleted   int
 	Unchanged int
 }
 
-// UpdateNote updates note content and diffs cards atomically.
-func (app *Application) UpdateNote(ctx context.Context, userID, notebookID, noteID uuid.UUID, content json.RawMessage) (UpdateNoteResult, error) {
-	// Fetch existing note to verify ownership and get type
-	existingNote, err := app.Queries.GetNote(ctx, db.GetNoteParams{
+// UpdateFact updates fact content and diffs cards atomically.
+func (app *Application) UpdateFact(ctx context.Context, userID, notebookID, factID uuid.UUID, content json.RawMessage) (UpdateFactResult, error) {
+	// Fetch existing fact to verify ownership and get type
+	existingFact, err := app.Queries.GetFact(ctx, db.GetFactParams{
 		UserID:     userID,
-		ID:         noteID,
+		ID:         factID,
 		NotebookID: notebookID,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return UpdateNoteResult{}, errNoteNotFound
+			return UpdateFactResult{}, errFactNotFound
 		}
-		return UpdateNoteResult{}, err
+		return UpdateFactResult{}, err
 	}
 
-	expectedIDs, err := validateNoteContent(existingNote.NoteType, content)
+	expectedIDs, err := validateFactContent(existingFact.FactType, content)
 	if err != nil {
-		return UpdateNoteResult{}, err
+		return UpdateFactResult{}, err
 	}
 
-	var result UpdateNoteResult
+	var result UpdateFactResult
 
 	err = WithTx(ctx, app.DB, func(q *db.Queries) error {
-		// Update the note content
-		note, txErr := q.UpdateNoteContent(ctx, db.UpdateNoteContentParams{
+		// Update the fact content
+		fact, txErr := q.UpdateFactContent(ctx, db.UpdateFactContentParams{
 			Content:    content,
 			UserID:     userID,
-			ID:         noteID,
+			ID:         factID,
 			NotebookID: notebookID,
 		})
 		if txErr != nil {
 			return txErr
 		}
-		result.Note = note
+		result.Fact = fact
 
 		// Fetch existing cards to diff
-		existingCards, txErr := q.ListCardsByNote(ctx, db.ListCardsByNoteParams{
+		existingCards, txErr := q.ListCardsByFact(ctx, db.ListCardsByFactParams{
 			UserID: userID,
-			NoteID: noteID,
+			FactID: factID,
 		})
 		if txErr != nil {
 			return txErr
@@ -442,9 +442,9 @@ func (app *Application) UpdateNote(ctx context.Context, userID, notebookID, note
 
 		// Delete removed cards
 		if len(toDelete) > 0 {
-			if txErr := q.DeleteCardsByNoteAndElements(ctx, db.DeleteCardsByNoteAndElementsParams{
+			if txErr := q.DeleteCardsByFactAndElements(ctx, db.DeleteCardsByFactAndElementsParams{
 				UserID:     userID,
-				NoteID:     noteID,
+				FactID:     factID,
 				ElementIds: toDelete,
 			}); txErr != nil {
 				return txErr
@@ -456,7 +456,7 @@ func (app *Application) UpdateNote(ctx context.Context, userID, notebookID, note
 			if _, txErr := q.CreateCard(ctx, db.CreateCardParams{
 				UserID:     userID,
 				NotebookID: notebookID,
-				NoteID:     noteID,
+				FactID:     factID,
 				ElementID:  elemID,
 			}); txErr != nil {
 				return txErr
@@ -472,18 +472,18 @@ func (app *Application) UpdateNote(ctx context.Context, userID, notebookID, note
 	return result, err
 }
 
-// DeleteNote deletes a note (cascades to cards).
-func (app *Application) DeleteNote(ctx context.Context, userID, notebookID, noteID uuid.UUID) error {
-	rows, err := app.Queries.DeleteNote(ctx, db.DeleteNoteParams{
+// DeleteFact deletes a fact (cascades to cards).
+func (app *Application) DeleteFact(ctx context.Context, userID, notebookID, factID uuid.UUID) error {
+	rows, err := app.Queries.DeleteFact(ctx, db.DeleteFactParams{
 		UserID:     userID,
-		ID:         noteID,
+		ID:         factID,
 		NotebookID: notebookID,
 	})
 	if err != nil {
 		return err
 	}
 	if rows == 0 {
-		return errNoteNotFound
+		return errFactNotFound
 	}
 	return nil
 }

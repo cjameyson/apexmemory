@@ -34,8 +34,8 @@ func parsePagination(r *http.Request) (limit, offset int32) {
 	return
 }
 
-// CreateNoteHandler handles POST /v1/notebooks/{notebook_id}/notes
-func (app *Application) CreateNoteHandler(w http.ResponseWriter, r *http.Request) {
+// CreateFactHandler handles POST /v1/notebooks/{notebook_id}/facts
+func (app *Application) CreateFactHandler(w http.ResponseWriter, r *http.Request) {
 	user := app.GetUser(r.Context())
 	if user.IsAnonymous() {
 		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
@@ -58,7 +58,7 @@ func (app *Application) CreateNoteHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	var input struct {
-		NoteType string          `json:"note_type"`
+		FactType string          `json:"fact_type"`
 		Content  json.RawMessage `json:"content"`
 	}
 
@@ -67,8 +67,8 @@ func (app *Application) CreateNoteHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if input.NoteType == "" {
-		input.NoteType = "basic"
+	if input.FactType == "" {
+		input.FactType = "basic"
 	}
 
 	if input.Content == nil {
@@ -76,19 +76,19 @@ func (app *Application) CreateNoteHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	note, cards, err := app.CreateNote(r.Context(), user.ID, notebookID, input.NoteType, input.Content)
+	fact, cards, err := app.CreateFact(r.Context(), user.ID, notebookID, input.FactType, input.Content)
 	if err != nil {
 		// Validation errors from content parsing
 		if isValidationError(err) {
 			app.RespondError(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
-		app.RespondServerError(w, r, ErrDBTransaction("create note", err))
+		app.RespondServerError(w, r, ErrDBTransaction("create fact", err))
 		return
 	}
 
-	resp := NoteDetailResponse{
-		NoteResponse: toNoteResponse(note),
+	resp := FactDetailResponse{
+		FactResponse: toFactResponse(fact),
 	}
 	resp.Cards = make([]CardResponse, len(cards))
 	for i, c := range cards {
@@ -98,8 +98,8 @@ func (app *Application) CreateNoteHandler(w http.ResponseWriter, r *http.Request
 	app.RespondJSON(w, r, http.StatusCreated, resp)
 }
 
-// ListNotesHandler handles GET /v1/notebooks/{notebook_id}/notes
-func (app *Application) ListNotesHandler(w http.ResponseWriter, r *http.Request) {
+// ListFactsHandler handles GET /v1/notebooks/{notebook_id}/facts
+func (app *Application) ListFactsHandler(w http.ResponseWriter, r *http.Request) {
 	user := app.GetUser(r.Context())
 	if user.IsAnonymous() {
 		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
@@ -113,15 +113,15 @@ func (app *Application) ListNotesHandler(w http.ResponseWriter, r *http.Request)
 
 	limit, offset := parsePagination(r)
 
-	notes, total, err := app.ListNotes(r.Context(), user.ID, notebookID, limit, offset)
+	facts, total, err := app.ListFacts(r.Context(), user.ID, notebookID, limit, offset)
 	if err != nil {
-		app.RespondServerError(w, r, ErrDBQuery("list notes", err))
+		app.RespondServerError(w, r, ErrDBQuery("list facts", err))
 		return
 	}
 
-	data := make([]NoteResponse, len(notes))
-	for i, n := range notes {
-		data[i] = toNoteListResponse(n)
+	data := make([]FactResponse, len(facts))
+	for i, n := range facts {
+		data[i] = toFactListResponse(n)
 	}
 
 	app.RespondJSON(w, r, http.StatusOK, map[string]any{
@@ -130,8 +130,8 @@ func (app *Application) ListNotesHandler(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-// GetNoteHandler handles GET /v1/notebooks/{notebook_id}/notes/{id}
-func (app *Application) GetNoteHandler(w http.ResponseWriter, r *http.Request) {
+// GetFactHandler handles GET /v1/notebooks/{notebook_id}/facts/{id}
+func (app *Application) GetFactHandler(w http.ResponseWriter, r *http.Request) {
 	user := app.GetUser(r.Context())
 	if user.IsAnonymous() {
 		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
@@ -143,33 +143,33 @@ func (app *Application) GetNoteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	noteID, ok := app.PathUUID(w, r, "id")
+	factID, ok := app.PathUUID(w, r, "id")
 	if !ok {
 		return
 	}
 
-	note, err := app.GetNote(r.Context(), user.ID, notebookID, noteID)
+	fact, err := app.GetFact(r.Context(), user.ID, notebookID, factID)
 	if err != nil {
-		if errors.Is(err, errNoteNotFound) {
-			app.RespondError(w, r, http.StatusNotFound, "Note not found")
+		if errors.Is(err, errFactNotFound) {
+			app.RespondError(w, r, http.StatusNotFound, "Fact not found")
 			return
 		}
-		app.RespondServerError(w, r, ErrDBQuery("get note", err))
+		app.RespondServerError(w, r, ErrDBQuery("get fact", err))
 		return
 	}
 
-	// Fetch cards for this note
-	cards, err := app.Queries.ListCardsByNote(r.Context(), db.ListCardsByNoteParams{
+	// Fetch cards for this fact
+	cards, err := app.Queries.ListCardsByFact(r.Context(), db.ListCardsByFactParams{
 		UserID: user.ID,
-		NoteID: noteID,
+		FactID: factID,
 	})
 	if err != nil {
-		app.RespondServerError(w, r, ErrDBQuery("list cards for note", err))
+		app.RespondServerError(w, r, ErrDBQuery("list cards for fact", err))
 		return
 	}
 
-	resp := NoteDetailResponse{
-		NoteResponse: toNoteResponse(note),
+	resp := FactDetailResponse{
+		FactResponse: toFactResponse(fact),
 	}
 	resp.Cards = make([]CardResponse, len(cards))
 	for i, c := range cards {
@@ -179,8 +179,8 @@ func (app *Application) GetNoteHandler(w http.ResponseWriter, r *http.Request) {
 	app.RespondJSON(w, r, http.StatusOK, resp)
 }
 
-// UpdateNoteHandler handles PATCH /v1/notebooks/{notebook_id}/notes/{id}
-func (app *Application) UpdateNoteHandler(w http.ResponseWriter, r *http.Request) {
+// UpdateFactHandler handles PATCH /v1/notebooks/{notebook_id}/facts/{id}
+func (app *Application) UpdateFactHandler(w http.ResponseWriter, r *http.Request) {
 	user := app.GetUser(r.Context())
 	if user.IsAnonymous() {
 		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
@@ -192,7 +192,7 @@ func (app *Application) UpdateNoteHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	noteID, ok := app.PathUUID(w, r, "id")
+	factID, ok := app.PathUUID(w, r, "id")
 	if !ok {
 		return
 	}
@@ -211,30 +211,30 @@ func (app *Application) UpdateNoteHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	result, err := app.UpdateNote(r.Context(), user.ID, notebookID, noteID, input.Content)
+	result, err := app.UpdateFact(r.Context(), user.ID, notebookID, factID, input.Content)
 	if err != nil {
-		if errors.Is(err, errNoteNotFound) {
-			app.RespondError(w, r, http.StatusNotFound, "Note not found")
+		if errors.Is(err, errFactNotFound) {
+			app.RespondError(w, r, http.StatusNotFound, "Fact not found")
 			return
 		}
 		if isValidationError(err) {
 			app.RespondError(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
-		app.RespondServerError(w, r, ErrDBTransaction("update note", err))
+		app.RespondServerError(w, r, ErrDBTransaction("update fact", err))
 		return
 	}
 
 	app.RespondJSON(w, r, http.StatusOK, map[string]any{
-		"note_id":   result.Note.ID,
+		"fact_id":   result.Fact.ID,
 		"created":   result.Created,
 		"deleted":   result.Deleted,
 		"unchanged": result.Unchanged,
 	})
 }
 
-// DeleteNoteHandler handles DELETE /v1/notebooks/{notebook_id}/notes/{id}
-func (app *Application) DeleteNoteHandler(w http.ResponseWriter, r *http.Request) {
+// DeleteFactHandler handles DELETE /v1/notebooks/{notebook_id}/facts/{id}
+func (app *Application) DeleteFactHandler(w http.ResponseWriter, r *http.Request) {
 	user := app.GetUser(r.Context())
 	if user.IsAnonymous() {
 		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
@@ -246,18 +246,18 @@ func (app *Application) DeleteNoteHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	noteID, ok := app.PathUUID(w, r, "id")
+	factID, ok := app.PathUUID(w, r, "id")
 	if !ok {
 		return
 	}
 
-	err := app.DeleteNote(r.Context(), user.ID, notebookID, noteID)
+	err := app.DeleteFact(r.Context(), user.ID, notebookID, factID)
 	if err != nil {
-		if errors.Is(err, errNoteNotFound) {
-			app.RespondError(w, r, http.StatusNotFound, "Note not found")
+		if errors.Is(err, errFactNotFound) {
+			app.RespondError(w, r, http.StatusNotFound, "Fact not found")
 			return
 		}
-		app.RespondServerError(w, r, ErrDBQuery("delete note", err))
+		app.RespondServerError(w, r, ErrDBQuery("delete fact", err))
 		return
 	}
 
@@ -267,20 +267,20 @@ func (app *Application) DeleteNoteHandler(w http.ResponseWriter, r *http.Request
 // isValidationError checks if an error is a content validation error (not a DB error).
 func isValidationError(err error) bool {
 	msg := err.Error()
-	// These prefixes cover all validation errors from validateNoteContent and extractElementIDs
+	// These prefixes cover all validation errors from validateFactContent and extractElementIDs
 	for _, prefix := range []string{
 		"invalid content JSON",
 		"content must have",
-		"note must generate",
-		"note exceeds maximum",
-		"unsupported note type",
-		"cloze note must contain",
-		"image occlusion note must contain",
+		"fact must generate",
+		"fact exceeds maximum",
+		"unsupported fact type",
+		"cloze fact must contain",
+		"image occlusion fact must contain",
 		"image occlusion region missing",
 		"duplicate region id",
 		"invalid cloze element_id",
 		"invalid image occlusion element_id",
-		"basic note element_id",
+		"basic fact element_id",
 		"failed to parse",
 	} {
 		if len(msg) >= len(prefix) && msg[:len(prefix)] == prefix {

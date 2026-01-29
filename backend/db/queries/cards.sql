@@ -1,11 +1,11 @@
 -- name: CreateCard :one
-INSERT INTO app.cards (user_id, notebook_id, note_id, element_id)
-VALUES (@user_id, @notebook_id, @note_id, @element_id)
+INSERT INTO app.cards (user_id, notebook_id, fact_id, element_id)
+VALUES (@user_id, @notebook_id, @fact_id, @element_id)
 RETURNING *;
 
--- name: ListCardsByNote :many
+-- name: ListCardsByFact :many
 SELECT * FROM app.cards
-WHERE user_id = @user_id AND note_id = @note_id
+WHERE user_id = @user_id AND fact_id = @fact_id
 ORDER BY element_id ASC;
 
 -- name: ListCardsByNotebook :many
@@ -26,6 +26,6 @@ WHERE user_id = @user_id AND notebook_id = @notebook_id
 SELECT * FROM app.cards
 WHERE user_id = @user_id AND id = @id AND notebook_id = @notebook_id;
 
--- name: DeleteCardsByNoteAndElements :exec
+-- name: DeleteCardsByFactAndElements :exec
 DELETE FROM app.cards
-WHERE user_id = @user_id AND note_id = @note_id AND element_id = ANY(@element_ids::text[]);
+WHERE user_id = @user_id AND fact_id = @fact_id AND element_id = ANY(@element_ids::text[]);

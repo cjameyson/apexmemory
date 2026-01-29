@@ -133,7 +133,7 @@
 				<Button variant="ghost" size="icon" class="size-8" title="Sources">
 					<FileStackIcon class="size-4" />
 				</Button>
-				<Button variant="ghost" size="icon" class="size-8" title="Cards">
+				<Button variant="ghost" size="icon" class="size-8" title="Flashcards">
 					<LayersIcon class="size-4" />
 				</Button>
 			</div>
@@ -169,7 +169,7 @@
 			</SidebarSection>
 
 			<!-- Cards section -->
-			<SidebarSection title="Cards" count={cards.length} bind:isOpen={cardsOpen}>
+			<SidebarSection title="Flashcards" count={cards.length} bind:isOpen={cardsOpen}>
 				<div class="px-2 py-1">
 					<a
 						href="/notebooks/{notebook.id}/cards"

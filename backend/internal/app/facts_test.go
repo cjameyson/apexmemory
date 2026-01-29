@@ -1,3 +1,5 @@
+//go:build integration
+
 package app
 
 import (
@@ -9,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// createTestNotebook creates a notebook for use in note tests.
+// createTestNotebook creates a notebook for use in fact tests.
 func createTestNotebook(t *testing.T, app *Application, userID uuid.UUID) uuid.UUID {
 	t.Helper()
 	nb, err := app.CreateNotebook(t.Context(), userID, CreateNotebookParams{
@@ -21,7 +23,7 @@ func createTestNotebook(t *testing.T, app *Application, userID uuid.UUID) uuid.U
 	return nb.ID
 }
 
-// basicContent returns valid basic note content.
+// basicContent returns valid basic fact content.
 func basicContent() json.RawMessage {
 	return json.RawMessage(`{
 		"version": 1,
@@ -29,7 +31,7 @@ func basicContent() json.RawMessage {
 	}`)
 }
 
-// clozeContent returns valid cloze note content.
+// clozeContent returns valid cloze fact content.
 func clozeContent(text string) json.RawMessage {
 	return json.RawMessage(`{
 		"version": 1,
@@ -57,7 +59,7 @@ func imageOcclusionContent(regionIDs ...string) json.RawMessage {
 	}`)
 }
 
-func TestCreateNoteHandler(t *testing.T) {
+func TestCreateFactHandler(t *testing.T) {
 	app := testApp(t)
 	user := createTestUser(t, app)
 	notebookID := createTestNotebook(t, app, user.ID)
@@ -69,9 +71,9 @@ func TestCreateNoteHandler(t *testing.T) {
 		wantCards  int
 	}{
 		{
-			name: "basic note",
+			name: "basic fact",
 			body: map[string]any{
-				"note_type": "basic",
+				"fact_type": "basic",
 				"content": map[string]any{
 					"version": 1,
 					"fields":  []any{map[string]any{"name": "front", "type": "plain_text", "value": "Q"}},
@@ -81,9 +83,9 @@ func TestCreateNoteHandler(t *testing.T) {
 			wantCards:  1,
 		},
 		{
-			name: "cloze note with 2 deletions",
+			name: "cloze fact with 2 deletions",
 			body: map[string]any{
-				"note_type": "cloze",
+				"fact_type": "cloze",
 				"content": map[string]any{
 					"version": 1,
 					"fields":  []any{map[string]any{"name": "text", "type": "cloze_text", "cloze_text": "The {{c1::mitochondria}} is the {{c2::powerhouse}}"}},
@@ -95,7 +97,7 @@ func TestCreateNoteHandler(t *testing.T) {
 		{
 			name: "image occlusion with 3 regions",
 			body: map[string]any{
-				"note_type": "image_occlusion",
+				"fact_type": "image_occlusion",
 				"content": map[string]any{
 					"version": 1,
 					"fields": []any{map[string]any{
@@ -116,7 +118,7 @@ func TestCreateNoteHandler(t *testing.T) {
 			wantCards:  3,
 		},
 		{
-			name: "default note type is basic",
+			name: "default fact type is basic",
 			body: map[string]any{
 				"content": map[string]any{
 					"version": 1,
@@ -129,14 +131,14 @@ func TestCreateNoteHandler(t *testing.T) {
 		{
 			name: "fail missing content",
 			body: map[string]any{
-				"note_type": "basic",
+				"fact_type": "basic",
 			},
 			wantStatus: http.StatusBadRequest,
 		},
 		{
 			name: "fail invalid content no version",
 			body: map[string]any{
-				"note_type": "basic",
+				"fact_type": "basic",
 				"content": map[string]any{
 					"fields": []any{},
 				},
@@ -146,7 +148,7 @@ func TestCreateNoteHandler(t *testing.T) {
 		{
 			name: "fail cloze with no deletions",
 			body: map[string]any{
-				"note_type": "cloze",
+				"fact_type": "cloze",
 				"content": map[string]any{
 					"version": 1,
 					"fields":  []any{map[string]any{"name": "text", "type": "cloze_text", "cloze_text": "no cloze here"}},
@@ -157,7 +159,7 @@ func TestCreateNoteHandler(t *testing.T) {
 		{
 			name: "fail image occlusion with no regions",
 			body: map[string]any{
-				"note_type": "image_occlusion",
+				"fact_type": "image_occlusion",
 				"content": map[string]any{
 					"version": 1,
 					"fields": []any{map[string]any{
@@ -172,7 +174,7 @@ func TestCreateNoteHandler(t *testing.T) {
 		{
 			name: "fail image occlusion duplicate region ID",
 			body: map[string]any{
-				"note_type": "image_occlusion",
+				"fact_type": "image_occlusion",
 				"content": map[string]any{
 					"version": 1,
 					"fields": []any{map[string]any{
@@ -194,12 +196,12 @@ func TestCreateNoteHandler(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := jsonRequest(t, "POST", "/v1/notebooks/"+notebookID.String()+"/notes", tt.body)
+			req := jsonRequest(t, "POST", "/v1/notebooks/"+notebookID.String()+"/facts", tt.body)
 			req.SetPathValue("notebook_id", notebookID.String())
 			req = app.WithUser(req, user)
 			rr := httptest.NewRecorder()
 
-			app.CreateNoteHandler(rr, req)
+			app.CreateFactHandler(rr, req)
 
 			if rr.Code != tt.wantStatus {
 				t.Errorf("expected status %d, got %d. Body: %s", tt.wantStatus, rr.Code, rr.Body.String())
@@ -220,44 +222,44 @@ func TestCreateNoteHandler(t *testing.T) {
 	}
 }
 
-func TestCreateNoteHandler_NotebookNotFound(t *testing.T) {
+func TestCreateFactHandler_NotebookNotFound(t *testing.T) {
 	app := testApp(t)
 	user := createTestUser(t, app)
 	fakeID := uuid.New()
 
-	req := jsonRequest(t, "POST", "/v1/notebooks/"+fakeID.String()+"/notes", map[string]any{
+	req := jsonRequest(t, "POST", "/v1/notebooks/"+fakeID.String()+"/facts", map[string]any{
 		"content": map[string]any{"version": 1, "fields": []any{}},
 	})
 	req.SetPathValue("notebook_id", fakeID.String())
 	req = app.WithUser(req, user)
 	rr := httptest.NewRecorder()
 
-	app.CreateNoteHandler(rr, req)
+	app.CreateFactHandler(rr, req)
 
 	if rr.Code != http.StatusNotFound {
 		t.Errorf("expected 404, got %d. Body: %s", rr.Code, rr.Body.String())
 	}
 }
 
-func TestGetNoteHandler(t *testing.T) {
+func TestGetFactHandler(t *testing.T) {
 	app := testApp(t)
 	user := createTestUser(t, app)
 	notebookID := createTestNotebook(t, app, user.ID)
 
-	note, cards, err := app.CreateNote(t.Context(), user.ID, notebookID, "cloze",
+	fact, cards, err := app.CreateFact(t.Context(), user.ID, notebookID, "cloze",
 		clozeContent("The {{c1::mitochondria}} is the {{c2::powerhouse}}"))
 	if err != nil {
-		t.Fatalf("failed to create note: %v", err)
+		t.Fatalf("failed to create fact: %v", err)
 	}
 
 	t.Run("success with cards", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/v1/notebooks/"+notebookID.String()+"/notes/"+note.ID.String(), nil)
+		req := httptest.NewRequest("GET", "/v1/notebooks/"+notebookID.String()+"/facts/"+fact.ID.String(), nil)
 		req.SetPathValue("notebook_id", notebookID.String())
-		req.SetPathValue("id", note.ID.String())
+		req.SetPathValue("id", fact.ID.String())
 		req = app.WithUser(req, user)
 		rr := httptest.NewRecorder()
 
-		app.GetNoteHandler(rr, req)
+		app.GetFactHandler(rr, req)
 
 		if rr.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
@@ -277,13 +279,13 @@ func TestGetNoteHandler(t *testing.T) {
 
 	t.Run("404 non-existent", func(t *testing.T) {
 		fakeID := uuid.New()
-		req := httptest.NewRequest("GET", "/v1/notebooks/"+notebookID.String()+"/notes/"+fakeID.String(), nil)
+		req := httptest.NewRequest("GET", "/v1/notebooks/"+notebookID.String()+"/facts/"+fakeID.String(), nil)
 		req.SetPathValue("notebook_id", notebookID.String())
 		req.SetPathValue("id", fakeID.String())
 		req = app.WithUser(req, user)
 		rr := httptest.NewRecorder()
 
-		app.GetNoteHandler(rr, req)
+		app.GetFactHandler(rr, req)
 
 		if rr.Code != http.StatusNotFound {
 			t.Errorf("expected 404, got %d", rr.Code)
@@ -291,25 +293,25 @@ func TestGetNoteHandler(t *testing.T) {
 	})
 }
 
-func TestListNotesHandler(t *testing.T) {
+func TestListFactsHandler(t *testing.T) {
 	app := testApp(t)
 	user := createTestUser(t, app)
 	notebookID := createTestNotebook(t, app, user.ID)
 
-	// Create 3 notes
+	// Create 3 facts
 	for i := 0; i < 3; i++ {
-		_, _, err := app.CreateNote(t.Context(), user.ID, notebookID, "basic", basicContent())
+		_, _, err := app.CreateFact(t.Context(), user.ID, notebookID, "basic", basicContent())
 		if err != nil {
-			t.Fatalf("failed to create note %d: %v", i, err)
+			t.Fatalf("failed to create fact %d: %v", i, err)
 		}
 	}
 
-	req := httptest.NewRequest("GET", "/v1/notebooks/"+notebookID.String()+"/notes", nil)
+	req := httptest.NewRequest("GET", "/v1/notebooks/"+notebookID.String()+"/facts", nil)
 	req.SetPathValue("notebook_id", notebookID.String())
 	req = app.WithUser(req, user)
 	rr := httptest.NewRecorder()
 
-	app.ListNotesHandler(rr, req)
+	app.ListFactsHandler(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
@@ -323,37 +325,37 @@ func TestListNotesHandler(t *testing.T) {
 		t.Fatalf("expected data array")
 	}
 	if len(data) != 3 {
-		t.Errorf("expected 3 notes, got %d", len(data))
+		t.Errorf("expected 3 facts, got %d", len(data))
 	}
 	if resp["total"] != float64(3) {
 		t.Errorf("expected total 3, got %v", resp["total"])
 	}
 }
 
-func TestUpdateNoteHandler_ClozeDiff(t *testing.T) {
+func TestUpdateFactHandler_ClozeDiff(t *testing.T) {
 	app := testApp(t)
 	user := createTestUser(t, app)
 	notebookID := createTestNotebook(t, app, user.ID)
 
-	// Create cloze note with c1 and c2
-	note, _, err := app.CreateNote(t.Context(), user.ID, notebookID, "cloze",
+	// Create cloze fact with c1 and c2
+	fact, _, err := app.CreateFact(t.Context(), user.ID, notebookID, "cloze",
 		clozeContent("{{c1::a}} and {{c2::b}}"))
 	if err != nil {
-		t.Fatalf("failed to create note: %v", err)
+		t.Fatalf("failed to create fact: %v", err)
 	}
 
 	t.Run("add c3, remove c2", func(t *testing.T) {
 		newContent := clozeContent("{{c1::a}} and {{c3::c}}")
 
-		req := jsonRequest(t, "PATCH", "/v1/notebooks/"+notebookID.String()+"/notes/"+note.ID.String(), map[string]any{
+		req := jsonRequest(t, "PATCH", "/v1/notebooks/"+notebookID.String()+"/facts/"+fact.ID.String(), map[string]any{
 			"content": json.RawMessage(newContent),
 		})
 		req.SetPathValue("notebook_id", notebookID.String())
-		req.SetPathValue("id", note.ID.String())
+		req.SetPathValue("id", fact.ID.String())
 		req = app.WithUser(req, user)
 		rr := httptest.NewRecorder()
 
-		app.UpdateNoteHandler(rr, req)
+		app.UpdateFactHandler(rr, req)
 
 		if rr.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
@@ -377,15 +379,15 @@ func TestUpdateNoteHandler_ClozeDiff(t *testing.T) {
 		// Same cloze numbers, different text
 		newContent := clozeContent("{{c1::alpha}} and {{c3::gamma}}")
 
-		req := jsonRequest(t, "PATCH", "/v1/notebooks/"+notebookID.String()+"/notes/"+note.ID.String(), map[string]any{
+		req := jsonRequest(t, "PATCH", "/v1/notebooks/"+notebookID.String()+"/facts/"+fact.ID.String(), map[string]any{
 			"content": json.RawMessage(newContent),
 		})
 		req.SetPathValue("notebook_id", notebookID.String())
-		req.SetPathValue("id", note.ID.String())
+		req.SetPathValue("id", fact.ID.String())
 		req = app.WithUser(req, user)
 		rr := httptest.NewRecorder()
 
-		app.UpdateNoteHandler(rr, req)
+		app.UpdateFactHandler(rr, req)
 
 		if rr.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
@@ -406,31 +408,31 @@ func TestUpdateNoteHandler_ClozeDiff(t *testing.T) {
 	})
 }
 
-func TestUpdateNoteHandler_ImageOcclusionDiff(t *testing.T) {
+func TestUpdateFactHandler_ImageOcclusionDiff(t *testing.T) {
 	app := testApp(t)
 	user := createTestUser(t, app)
 	notebookID := createTestNotebook(t, app, user.ID)
 
-	// Create image occlusion note with 2 regions
-	note, _, err := app.CreateNote(t.Context(), user.ID, notebookID, "image_occlusion",
+	// Create image occlusion fact with 2 regions
+	fact, _, err := app.CreateFact(t.Context(), user.ID, notebookID, "image_occlusion",
 		imageOcclusionContent("m_region_aaa", "m_region_bbb"))
 	if err != nil {
-		t.Fatalf("failed to create note: %v", err)
+		t.Fatalf("failed to create fact: %v", err)
 	}
 
 	t.Run("add region, remove region", func(t *testing.T) {
 		// Keep m_region_aaa, remove m_region_bbb, add m_region_ccc
 		newContent := imageOcclusionContent("m_region_aaa", "m_region_ccc")
 
-		req := jsonRequest(t, "PATCH", "/v1/notebooks/"+notebookID.String()+"/notes/"+note.ID.String(), map[string]any{
+		req := jsonRequest(t, "PATCH", "/v1/notebooks/"+notebookID.String()+"/facts/"+fact.ID.String(), map[string]any{
 			"content": json.RawMessage(newContent),
 		})
 		req.SetPathValue("notebook_id", notebookID.String())
-		req.SetPathValue("id", note.ID.String())
+		req.SetPathValue("id", fact.ID.String())
 		req = app.WithUser(req, user)
 		rr := httptest.NewRecorder()
 
-		app.UpdateNoteHandler(rr, req)
+		app.UpdateFactHandler(rr, req)
 
 		if rr.Code != http.StatusOK {
 			t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
@@ -451,24 +453,24 @@ func TestUpdateNoteHandler_ImageOcclusionDiff(t *testing.T) {
 	})
 }
 
-func TestDeleteNoteHandler(t *testing.T) {
+func TestDeleteFactHandler(t *testing.T) {
 	app := testApp(t)
 	user := createTestUser(t, app)
 	notebookID := createTestNotebook(t, app, user.ID)
 
-	note, _, err := app.CreateNote(t.Context(), user.ID, notebookID, "basic", basicContent())
+	fact, _, err := app.CreateFact(t.Context(), user.ID, notebookID, "basic", basicContent())
 	if err != nil {
-		t.Fatalf("failed to create note: %v", err)
+		t.Fatalf("failed to create fact: %v", err)
 	}
 
 	t.Run("success", func(t *testing.T) {
-		req := httptest.NewRequest("DELETE", "/v1/notebooks/"+notebookID.String()+"/notes/"+note.ID.String(), nil)
+		req := httptest.NewRequest("DELETE", "/v1/notebooks/"+notebookID.String()+"/facts/"+fact.ID.String(), nil)
 		req.SetPathValue("notebook_id", notebookID.String())
-		req.SetPathValue("id", note.ID.String())
+		req.SetPathValue("id", fact.ID.String())
 		req = app.WithUser(req, user)
 		rr := httptest.NewRecorder()
 
-		app.DeleteNoteHandler(rr, req)
+		app.DeleteFactHandler(rr, req)
 
 		if rr.Code != http.StatusNoContent {
 			t.Errorf("expected 204, got %d. Body: %s", rr.Code, rr.Body.String())
@@ -476,13 +478,13 @@ func TestDeleteNoteHandler(t *testing.T) {
 	})
 
 	t.Run("404 after delete", func(t *testing.T) {
-		req := httptest.NewRequest("DELETE", "/v1/notebooks/"+notebookID.String()+"/notes/"+note.ID.String(), nil)
+		req := httptest.NewRequest("DELETE", "/v1/notebooks/"+notebookID.String()+"/facts/"+fact.ID.String(), nil)
 		req.SetPathValue("notebook_id", notebookID.String())
-		req.SetPathValue("id", note.ID.String())
+		req.SetPathValue("id", fact.ID.String())
 		req = app.WithUser(req, user)
 		rr := httptest.NewRecorder()
 
-		app.DeleteNoteHandler(rr, req)
+		app.DeleteFactHandler(rr, req)
 
 		if rr.Code != http.StatusNotFound {
 			t.Errorf("expected 404, got %d", rr.Code)
@@ -495,15 +497,15 @@ func TestListCardsHandler(t *testing.T) {
 	user := createTestUser(t, app)
 	notebookID := createTestNotebook(t, app, user.ID)
 
-	// Create a cloze note (2 cards) + basic note (1 card)
-	_, _, err := app.CreateNote(t.Context(), user.ID, notebookID, "cloze",
+	// Create a cloze fact (2 cards) + basic fact (1 card)
+	_, _, err := app.CreateFact(t.Context(), user.ID, notebookID, "cloze",
 		clozeContent("{{c1::a}} and {{c2::b}}"))
 	if err != nil {
-		t.Fatalf("failed to create cloze note: %v", err)
+		t.Fatalf("failed to create cloze fact: %v", err)
 	}
-	_, _, err = app.CreateNote(t.Context(), user.ID, notebookID, "basic", basicContent())
+	_, _, err = app.CreateFact(t.Context(), user.ID, notebookID, "basic", basicContent())
 	if err != nil {
-		t.Fatalf("failed to create basic note: %v", err)
+		t.Fatalf("failed to create basic fact: %v", err)
 	}
 
 	req := httptest.NewRequest("GET", "/v1/notebooks/"+notebookID.String()+"/cards", nil)
@@ -534,9 +536,9 @@ func TestListCardsHandler_StateFilter(t *testing.T) {
 	user := createTestUser(t, app)
 	notebookID := createTestNotebook(t, app, user.ID)
 
-	_, _, err := app.CreateNote(t.Context(), user.ID, notebookID, "basic", basicContent())
+	_, _, err := app.CreateFact(t.Context(), user.ID, notebookID, "basic", basicContent())
 	if err != nil {
-		t.Fatalf("failed to create note: %v", err)
+		t.Fatalf("failed to create fact: %v", err)
 	}
 
 	// All cards are 'new' initially
@@ -578,9 +580,9 @@ func TestGetCardHandler(t *testing.T) {
 	user := createTestUser(t, app)
 	notebookID := createTestNotebook(t, app, user.ID)
 
-	_, cards, err := app.CreateNote(t.Context(), user.ID, notebookID, "basic", basicContent())
+	_, cards, err := app.CreateFact(t.Context(), user.ID, notebookID, "basic", basicContent())
 	if err != nil {
-		t.Fatalf("failed to create note: %v", err)
+		t.Fatalf("failed to create fact: %v", err)
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -623,55 +625,55 @@ func TestGetCardHandler(t *testing.T) {
 func TestContentValidation(t *testing.T) {
 	tests := []struct {
 		name     string
-		noteType string
+		factType string
 		content  json.RawMessage
 		wantErr  bool
 	}{
 		{
 			name:     "basic valid",
-			noteType: "basic",
+			factType: "basic",
 			content:  basicContent(),
 			wantErr:  false,
 		},
 		{
 			name:     "cloze valid",
-			noteType: "cloze",
+			factType: "cloze",
 			content:  clozeContent("{{c1::hello}} {{c2::world}}"),
 			wantErr:  false,
 		},
 		{
 			name:     "cloze gaps allowed",
-			noteType: "cloze",
+			factType: "cloze",
 			content:  clozeContent("{{c1::a}} {{c3::b}}"),
 			wantErr:  false,
 		},
 		{
 			name:     "cloze duplicates collapsed",
-			noteType: "cloze",
+			factType: "cloze",
 			content:  clozeContent("{{c1::a}} {{c1::b}}"),
 			wantErr:  false,
 		},
 		{
 			name:     "cloze c0 invalid",
-			noteType: "cloze",
+			factType: "cloze",
 			content:  clozeContent("{{c0::nope}}"),
 			wantErr:  true,
 		},
 		{
 			name:     "image occlusion valid",
-			noteType: "image_occlusion",
+			factType: "image_occlusion",
 			content:  imageOcclusionContent("m_abcdef12"),
 			wantErr:  false,
 		},
 		{
 			name:     "unsupported type",
-			noteType: "unknown",
+			factType: "unknown",
 			content:  basicContent(),
 			wantErr:  true,
 		},
 		{
 			name:     "missing version",
-			noteType: "basic",
+			factType: "basic",
 			content:  json.RawMessage(`{"fields": []}`),
 			wantErr:  true,
 		},
@@ -679,7 +681,7 @@ func TestContentValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateNoteContent(tt.noteType, tt.content)
+			_, err := validateFactContent(tt.factType, tt.content)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)
 			}

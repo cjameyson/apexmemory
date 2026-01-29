@@ -32,15 +32,15 @@ func (q *Queries) CountCardsByNotebook(ctx context.Context, arg CountCardsByNote
 }
 
 const createCard = `-- name: CreateCard :one
-INSERT INTO app.cards (user_id, notebook_id, note_id, element_id)
+INSERT INTO app.cards (user_id, notebook_id, fact_id, element_id)
 VALUES ($1, $2, $3, $4)
-RETURNING user_id, id, notebook_id, note_id, element_id, state, stability, difficulty, step, due, last_review, elapsed_days, scheduled_days, reps, lapses, suspended_at, buried_until, created_at, updated_at
+RETURNING user_id, id, notebook_id, fact_id, element_id, state, stability, difficulty, step, due, last_review, elapsed_days, scheduled_days, reps, lapses, suspended_at, buried_until, created_at, updated_at
 `
 
 type CreateCardParams struct {
 	UserID     uuid.UUID `json:"user_id"`
 	NotebookID uuid.UUID `json:"notebook_id"`
-	NoteID     uuid.UUID `json:"note_id"`
+	FactID     uuid.UUID `json:"fact_id"`
 	ElementID  string    `json:"element_id"`
 }
 
@@ -48,7 +48,7 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (Card, e
 	row := q.db.QueryRow(ctx, createCard,
 		arg.UserID,
 		arg.NotebookID,
-		arg.NoteID,
+		arg.FactID,
 		arg.ElementID,
 	)
 	var i Card
@@ -56,7 +56,7 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (Card, e
 		&i.UserID,
 		&i.ID,
 		&i.NotebookID,
-		&i.NoteID,
+		&i.FactID,
 		&i.ElementID,
 		&i.State,
 		&i.Stability,
@@ -76,24 +76,24 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (Card, e
 	return i, err
 }
 
-const deleteCardsByNoteAndElements = `-- name: DeleteCardsByNoteAndElements :exec
+const deleteCardsByFactAndElements = `-- name: DeleteCardsByFactAndElements :exec
 DELETE FROM app.cards
-WHERE user_id = $1 AND note_id = $2 AND element_id = ANY($3::text[])
+WHERE user_id = $1 AND fact_id = $2 AND element_id = ANY($3::text[])
 `
 
-type DeleteCardsByNoteAndElementsParams struct {
+type DeleteCardsByFactAndElementsParams struct {
 	UserID     uuid.UUID `json:"user_id"`
-	NoteID     uuid.UUID `json:"note_id"`
+	FactID     uuid.UUID `json:"fact_id"`
 	ElementIds []string  `json:"element_ids"`
 }
 
-func (q *Queries) DeleteCardsByNoteAndElements(ctx context.Context, arg DeleteCardsByNoteAndElementsParams) error {
-	_, err := q.db.Exec(ctx, deleteCardsByNoteAndElements, arg.UserID, arg.NoteID, arg.ElementIds)
+func (q *Queries) DeleteCardsByFactAndElements(ctx context.Context, arg DeleteCardsByFactAndElementsParams) error {
+	_, err := q.db.Exec(ctx, deleteCardsByFactAndElements, arg.UserID, arg.FactID, arg.ElementIds)
 	return err
 }
 
 const getCard = `-- name: GetCard :one
-SELECT user_id, id, notebook_id, note_id, element_id, state, stability, difficulty, step, due, last_review, elapsed_days, scheduled_days, reps, lapses, suspended_at, buried_until, created_at, updated_at FROM app.cards
+SELECT user_id, id, notebook_id, fact_id, element_id, state, stability, difficulty, step, due, last_review, elapsed_days, scheduled_days, reps, lapses, suspended_at, buried_until, created_at, updated_at FROM app.cards
 WHERE user_id = $1 AND id = $2 AND notebook_id = $3
 `
 
@@ -110,7 +110,7 @@ func (q *Queries) GetCard(ctx context.Context, arg GetCardParams) (Card, error) 
 		&i.UserID,
 		&i.ID,
 		&i.NotebookID,
-		&i.NoteID,
+		&i.FactID,
 		&i.ElementID,
 		&i.State,
 		&i.Stability,
@@ -130,19 +130,19 @@ func (q *Queries) GetCard(ctx context.Context, arg GetCardParams) (Card, error) 
 	return i, err
 }
 
-const listCardsByNote = `-- name: ListCardsByNote :many
-SELECT user_id, id, notebook_id, note_id, element_id, state, stability, difficulty, step, due, last_review, elapsed_days, scheduled_days, reps, lapses, suspended_at, buried_until, created_at, updated_at FROM app.cards
-WHERE user_id = $1 AND note_id = $2
+const listCardsByFact = `-- name: ListCardsByFact :many
+SELECT user_id, id, notebook_id, fact_id, element_id, state, stability, difficulty, step, due, last_review, elapsed_days, scheduled_days, reps, lapses, suspended_at, buried_until, created_at, updated_at FROM app.cards
+WHERE user_id = $1 AND fact_id = $2
 ORDER BY element_id ASC
 `
 
-type ListCardsByNoteParams struct {
+type ListCardsByFactParams struct {
 	UserID uuid.UUID `json:"user_id"`
-	NoteID uuid.UUID `json:"note_id"`
+	FactID uuid.UUID `json:"fact_id"`
 }
 
-func (q *Queries) ListCardsByNote(ctx context.Context, arg ListCardsByNoteParams) ([]Card, error) {
-	rows, err := q.db.Query(ctx, listCardsByNote, arg.UserID, arg.NoteID)
+func (q *Queries) ListCardsByFact(ctx context.Context, arg ListCardsByFactParams) ([]Card, error) {
+	rows, err := q.db.Query(ctx, listCardsByFact, arg.UserID, arg.FactID)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +154,7 @@ func (q *Queries) ListCardsByNote(ctx context.Context, arg ListCardsByNoteParams
 			&i.UserID,
 			&i.ID,
 			&i.NotebookID,
-			&i.NoteID,
+			&i.FactID,
 			&i.ElementID,
 			&i.State,
 			&i.Stability,
@@ -182,7 +182,7 @@ func (q *Queries) ListCardsByNote(ctx context.Context, arg ListCardsByNoteParams
 }
 
 const listCardsByNotebook = `-- name: ListCardsByNotebook :many
-SELECT user_id, id, notebook_id, note_id, element_id, state, stability, difficulty, step, due, last_review, elapsed_days, scheduled_days, reps, lapses, suspended_at, buried_until, created_at, updated_at FROM app.cards
+SELECT user_id, id, notebook_id, fact_id, element_id, state, stability, difficulty, step, due, last_review, elapsed_days, scheduled_days, reps, lapses, suspended_at, buried_until, created_at, updated_at FROM app.cards
 WHERE user_id = $1 AND notebook_id = $2
   AND ($3::app.card_state IS NULL OR state = $3)
   AND suspended_at IS NULL AND buried_until IS NULL
@@ -217,7 +217,7 @@ func (q *Queries) ListCardsByNotebook(ctx context.Context, arg ListCardsByNotebo
 			&i.UserID,
 			&i.ID,
 			&i.NotebookID,
-			&i.NoteID,
+			&i.FactID,
 			&i.ElementID,
 			&i.State,
 			&i.Stability,

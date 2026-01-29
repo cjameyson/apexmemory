@@ -1,5 +1,5 @@
 -- =============================================================================
--- NOTES, CARDS, REVIEWS - FSRS v6 Core Schema
+-- FACTS, CARDS, REVIEWS - FSRS v6 Core Schema
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -41,22 +41,22 @@ BEGIN
 END$$;
 
 -- -----------------------------------------------------------------------------
--- NOTES
+-- FACTS
 -- -----------------------------------------------------------------------------
--- One note can generate one or more cards:
---   - basic:           1 note → 1 card (element_id = '')
---   - cloze:           1 note → N cards (element_id = 'c1', 'c2', ...)
---   - image_occlusion: 1 note → N cards (element_id = 'm_<nanoid>' per mask region)
+-- One fact can generate one or more cards:
+--   - basic:           1 fact → 1 card (element_id = '')
+--   - cloze:           1 fact → N cards (element_id = 'c1', 'c2', ...)
+--   - image_occlusion: 1 fact → N cards (element_id = 'm_<nanoid>' per mask region)
 --
--- Note type changes are NOT allowed after creation.
--- Maximum 128 cards per note (enforced in application layer).
+-- Fact type changes are NOT allowed after creation.
+-- Maximum 128 cards per fact (enforced in application layer).
 
-CREATE TABLE app.notes (
+CREATE TABLE app.facts (
     user_id       UUID NOT NULL,
     id            UUID NOT NULL DEFAULT uuidv7(),
     notebook_id   UUID NOT NULL,
-    -- TEXT+CHECK rather than ENUM: note_type may evolve; enums are hard to alter in PG.
-    note_type     TEXT NOT NULL DEFAULT 'basic',
+    -- TEXT+CHECK rather than ENUM: fact_type may evolve; enums are hard to alter in PG.
+    fact_type     TEXT NOT NULL DEFAULT 'basic',
     content       JSONB NOT NULL,
     source_id     UUID, -- TODO: FK to sources table once it exists
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -67,41 +67,41 @@ CREATE TABLE app.notes (
     FOREIGN KEY (user_id, notebook_id)
         REFERENCES app.notebooks(user_id, id) ON DELETE CASCADE,
 
-    CONSTRAINT notes_valid_type CHECK (
-        note_type IN ('basic', 'cloze', 'image_occlusion')
+    CONSTRAINT facts_valid_type CHECK (
+        fact_type IN ('basic', 'cloze', 'image_occlusion')
     ),
-    CONSTRAINT notes_valid_content CHECK (
+    CONSTRAINT facts_valid_content CHECK (
         jsonb_typeof(content->'version') = 'number' AND
         jsonb_typeof(content->'fields') = 'array'
     )
 );
 
-CREATE INDEX ix_notes_notebook ON app.notes(user_id, notebook_id, created_at DESC);
+CREATE INDEX ix_facts_notebook ON app.facts(user_id, notebook_id, created_at DESC);
 
-CREATE TRIGGER trg_notes_set_updated_at
-    BEFORE UPDATE ON app.notes
+CREATE TRIGGER trg_facts_set_updated_at
+    BEFORE UPDATE ON app.facts
     FOR EACH ROW EXECUTE FUNCTION app_code.tg_set_updated_at();
 
 -- -----------------------------------------------------------------------------
 -- CARDS
 -- -----------------------------------------------------------------------------
--- element_id identifies which part of the note this card tests:
---   - basic:           '' (empty string, single card per note)
+-- element_id identifies which part of the fact this card tests:
+--   - basic:           '' (empty string, single card per fact)
 --   - cloze:           'c1', 'c2', etc. (matches c1::... in content)
 --   - image_occlusion: 'm_<nanoid>' (matches region id in content)
 --
 -- element_id is stable: deleting one element doesn't affect others' IDs.
--- This preserves review history for unchanged cards when notes are edited.
+-- This preserves review history for unchanged cards when facts are edited.
 
 CREATE TABLE app.cards (
     user_id           UUID NOT NULL,
     id                UUID NOT NULL DEFAULT uuidv7(),
-    -- Denormalized from note; avoids join on the hot "fetch due cards" query.
-    -- Notes are not expected to move between notebooks.
+    -- Denormalized from fact; avoids join on the hot "fetch due cards" query.
+    -- Facts are not expected to move between notebooks.
     notebook_id       UUID NOT NULL,
-    note_id           UUID NOT NULL,
-    -- Identifies which element of the note this card represents.
-    -- Empty string for basic notes, 'c1'/'c2'/etc for cloze, 'm_xxx' for image masks.
+    fact_id           UUID NOT NULL,
+    -- Identifies which element of the fact this card represents.
+    -- Empty string for basic facts, 'c1'/'c2'/etc for cloze, 'm_xxx' for image masks.
     element_id        TEXT NOT NULL DEFAULT '',
     state             app.card_state NOT NULL DEFAULT 'new',
     stability         REAL,
@@ -122,10 +122,10 @@ CREATE TABLE app.cards (
 
     FOREIGN KEY (user_id, notebook_id)
         REFERENCES app.notebooks(user_id, id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id, note_id)
-        REFERENCES app.notes(user_id, id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id, fact_id)
+        REFERENCES app.facts(user_id, id) ON DELETE CASCADE,
 
-    UNIQUE (user_id, note_id, element_id),
+    UNIQUE (user_id, fact_id, element_id),
 
     CONSTRAINT cards_valid_difficulty CHECK (
         difficulty IS NULL OR (difficulty >= 1.0 AND difficulty <= 10.0)
@@ -151,7 +151,7 @@ CREATE INDEX ix_cards_due ON app.cards(user_id, notebook_id, due)
 
 CREATE INDEX ix_cards_state ON app.cards(user_id, notebook_id, state);
 
-CREATE INDEX ix_cards_note ON app.cards(user_id, note_id);
+CREATE INDEX ix_cards_fact ON app.cards(user_id, fact_id);
 
 CREATE TRIGGER trg_cards_set_updated_at
     BEFORE UPDATE ON app.cards
@@ -171,11 +171,11 @@ CREATE TRIGGER trg_cards_sync_notebook_count
 --
 -- Denormalization strategy:
 --   - notebook_id: Snapshot of which notebook at review time. No FK.
---   - note_id: Snapshot for context. Nullable, SET NULL on note delete.
+--   - fact_id: Snapshot for context. Nullable, SET NULL on fact delete.
 --   - element_id: Snapshot of which element was reviewed.
 --   - card_id: Reference to card. Nullable, SET NULL on card delete.
 --
--- When cards/notes are deleted, reviews are preserved with NULL references.
+-- When cards/facts are deleted, reviews are preserved with NULL references.
 -- This retains training data for the optimizer while allowing cleanup.
 --
 -- TODO: Consider adding an index for orphaned reviews if cleanup queries needed:
@@ -190,7 +190,7 @@ CREATE TABLE app.reviews (
     -- Denormalized snapshots: record context at review time.
     -- These survive deletes and enable stats/optimizer even for orphaned reviews.
     notebook_id        UUID NOT NULL,
-    note_id            UUID,
+    fact_id            UUID,
     element_id         TEXT,
     -- Review data
     reviewed_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -215,9 +215,9 @@ CREATE TABLE app.reviews (
     -- SET NULL preserves review history when card is deleted
     FOREIGN KEY (user_id, card_id)
         REFERENCES app.cards(user_id, id) ON DELETE SET NULL,
-    -- SET NULL preserves review history when note is deleted
-    FOREIGN KEY (user_id, note_id)
-        REFERENCES app.notes(user_id, id) ON DELETE SET NULL
+    -- SET NULL preserves review history when fact is deleted
+    FOREIGN KEY (user_id, fact_id)
+        REFERENCES app.facts(user_id, id) ON DELETE SET NULL
 );
 
 -- For fetching review history of a specific card
@@ -235,20 +235,20 @@ CREATE INDEX ix_reviews_optimizer ON app.reviews(user_id, notebook_id, state_bef
 
 DROP TRIGGER IF EXISTS trg_cards_sync_notebook_count ON app.cards;
 DROP TRIGGER IF EXISTS trg_cards_set_updated_at ON app.cards;
-DROP TRIGGER IF EXISTS trg_notes_set_updated_at ON app.notes;
+DROP TRIGGER IF EXISTS trg_facts_set_updated_at ON app.facts;
 
 DROP INDEX IF EXISTS app.ix_reviews_optimizer;
 DROP INDEX IF EXISTS app.ix_reviews_notebook_time;
 DROP INDEX IF EXISTS app.ix_reviews_card;
 DROP TABLE IF EXISTS app.reviews;
 
-DROP INDEX IF EXISTS app.ix_cards_note;
+DROP INDEX IF EXISTS app.ix_cards_fact;
 DROP INDEX IF EXISTS app.ix_cards_state;
 DROP INDEX IF EXISTS app.ix_cards_due;
 DROP TABLE IF EXISTS app.cards;
 
-DROP INDEX IF EXISTS app.ix_notes_notebook;
-DROP TABLE IF EXISTS app.notes;
+DROP INDEX IF EXISTS app.ix_facts_notebook;
+DROP TABLE IF EXISTS app.facts;
 
 DROP TYPE IF EXISTS app.rating;
 DROP TYPE IF EXISTS app.card_state;
