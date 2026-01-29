@@ -31,6 +31,7 @@ The core value proposition is a flashcard SRS system with AI-enhanced workflows.
 - **Auth:** Session-based. `app.user_sessions` table. Token passed via `Authorization: Bearer`.
 - **TERN:** Uses magic comment `---- create above / drop below ----` where up SQL is above the comment and down SQL is below.
 - **PATCH APIs:** Use `OptionalString`/`OptionalUUID` types in `helpers.go` to distinguish missing vs explicit null in JSON requests.
+- **DELETE APIs:** Use `:execrows` in sqlc and check `rowsAffected == 0` for 404 detection. Prefer this atomic single-query pattern over separate existence checks unless special handling (e.g., idempotent archive) is needed.
 
 Refer to `references/monolith_clean_guide.md` for overview of backend structure.
 

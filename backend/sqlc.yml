@@ -20,6 +20,8 @@ sql:
           app_auth_identity: AuthIdentity
           app_user_session: UserSession
           app_notebook: Notebook
+          app_note: Note
+          app_card: Card
         overrides:
           - db_type: "uuid"
             go_type: "github.com/google/uuid.UUID"
