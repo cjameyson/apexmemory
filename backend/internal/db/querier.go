@@ -13,18 +13,26 @@ import (
 
 type Querier interface {
 	ArchiveNotebook(ctx context.Context, arg ArchiveNotebookParams) (int64, error)
+	CountCardsByNotebook(ctx context.Context, arg CountCardsByNotebookParams) (int64, error)
+	CountNotesByNotebook(ctx context.Context, arg CountNotesByNotebookParams) (int64, error)
 	CreateAuthIdentity(ctx context.Context, arg CreateAuthIdentityParams) (AuthIdentity, error)
+	CreateCard(ctx context.Context, arg CreateCardParams) (Card, error)
+	CreateNote(ctx context.Context, arg CreateNoteParams) (Note, error)
 	// Note: fsrs_settings is always provided from Go code (source of truth for defaults)
 	CreateNotebook(ctx context.Context, arg CreateNotebookParams) (Notebook, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (UserSession, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// Creates a user and their password auth identity in a single transaction-friendly call
 	CreateUserWithPassword(ctx context.Context, arg CreateUserWithPasswordParams) (CreateUserWithPasswordRow, error)
+	DeleteCardsByNoteAndElements(ctx context.Context, arg DeleteCardsByNoteAndElementsParams) error
 	DeleteExpiredSessions(ctx context.Context) error
+	DeleteNote(ctx context.Context, arg DeleteNoteParams) (int64, error)
 	DeleteSession(ctx context.Context, tokenHash []byte) error
 	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
 	GetAuthIdentityByEmail(ctx context.Context, email pgtype.Text) (GetAuthIdentityByEmailRow, error)
 	GetAuthIdentityByProviderID(ctx context.Context, arg GetAuthIdentityByProviderIDParams) (GetAuthIdentityByProviderIDRow, error)
+	GetCard(ctx context.Context, arg GetCardParams) (Card, error)
+	GetNote(ctx context.Context, arg GetNoteParams) (GetNoteRow, error)
 	GetNotebook(ctx context.Context, arg GetNotebookParams) (Notebook, error)
 	GetSessionByToken(ctx context.Context, tokenHash []byte) (GetSessionByTokenRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
@@ -35,9 +43,13 @@ type Querier interface {
 	// Returns whether a notebook exists and its archived status.
 	// Used for idempotent archive operations.
 	IsNotebookArchived(ctx context.Context, arg IsNotebookArchivedParams) (IsNotebookArchivedRow, error)
+	ListCardsByNote(ctx context.Context, arg ListCardsByNoteParams) ([]Card, error)
+	ListCardsByNotebook(ctx context.Context, arg ListCardsByNotebookParams) ([]Card, error)
 	ListNotebooks(ctx context.Context, userID uuid.UUID) ([]Notebook, error)
+	ListNotesByNotebook(ctx context.Context, arg ListNotesByNotebookParams) ([]ListNotesByNotebookRow, error)
 	SoftDeleteUser(ctx context.Context, id uuid.UUID) error
 	UnarchiveNotebook(ctx context.Context, arg UnarchiveNotebookParams) error
+	UpdateNoteContent(ctx context.Context, arg UpdateNoteContentParams) (Note, error)
 	UpdateNotebook(ctx context.Context, arg UpdateNotebookParams) (Notebook, error)
 	UpdateSessionLastUsed(ctx context.Context, tokenHash []byte) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)

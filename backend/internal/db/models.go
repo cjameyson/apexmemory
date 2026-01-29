@@ -57,6 +57,117 @@ func (ns NullAppAuthProvider) Value() (driver.Value, error) {
 	return string(ns.AppAuthProvider), nil
 }
 
+type AppCardState string
+
+const (
+	AppCardStateNew        AppCardState = "new"
+	AppCardStateLearning   AppCardState = "learning"
+	AppCardStateReview     AppCardState = "review"
+	AppCardStateRelearning AppCardState = "relearning"
+)
+
+func (e *AppCardState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AppCardState(s)
+	case string:
+		*e = AppCardState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AppCardState: %T", src)
+	}
+	return nil
+}
+
+type NullAppCardState struct {
+	AppCardState AppCardState `json:"app_card_state"`
+	Valid        bool         `json:"valid"` // Valid is true if AppCardState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAppCardState) Scan(value interface{}) error {
+	if value == nil {
+		ns.AppCardState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AppCardState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAppCardState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AppCardState), nil
+}
+
+type AppRating string
+
+const (
+	AppRatingAgain AppRating = "again"
+	AppRatingHard  AppRating = "hard"
+	AppRatingGood  AppRating = "good"
+	AppRatingEasy  AppRating = "easy"
+)
+
+func (e *AppRating) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = AppRating(s)
+	case string:
+		*e = AppRating(s)
+	default:
+		return fmt.Errorf("unsupported scan type for AppRating: %T", src)
+	}
+	return nil
+}
+
+type NullAppRating struct {
+	AppRating AppRating `json:"app_rating"`
+	Valid     bool      `json:"valid"` // Valid is true if AppRating is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullAppRating) Scan(value interface{}) error {
+	if value == nil {
+		ns.AppRating, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.AppRating.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullAppRating) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.AppRating), nil
+}
+
+type AppReview struct {
+	UserID           uuid.UUID     `json:"user_id"`
+	ID               uuid.UUID     `json:"id"`
+	CardID           pgtype.UUID   `json:"card_id"`
+	NotebookID       uuid.UUID     `json:"notebook_id"`
+	NoteID           pgtype.UUID   `json:"note_id"`
+	ElementID        pgtype.Text   `json:"element_id"`
+	ReviewedAt       time.Time     `json:"reviewed_at"`
+	Rating           AppRating     `json:"rating"`
+	ReviewDurationMs pgtype.Int4   `json:"review_duration_ms"`
+	StateBefore      AppCardState  `json:"state_before"`
+	StabilityBefore  pgtype.Float4 `json:"stability_before"`
+	DifficultyBefore pgtype.Float4 `json:"difficulty_before"`
+	ElapsedDays      float32       `json:"elapsed_days"`
+	ScheduledDays    float32       `json:"scheduled_days"`
+	StateAfter       AppCardState  `json:"state_after"`
+	StabilityAfter   float32       `json:"stability_after"`
+	DifficultyAfter  float32       `json:"difficulty_after"`
+	IntervalDays     float32       `json:"interval_days"`
+	Retrievability   pgtype.Float4 `json:"retrievability"`
+	CreatedAt        time.Time     `json:"created_at"`
+}
+
 type AuthIdentity struct {
 	ID              uuid.UUID          `json:"id"`
 	UserID          uuid.UUID          `json:"user_id"`
@@ -69,6 +180,39 @@ type AuthIdentity struct {
 	UpdatedAt       time.Time          `json:"updated_at"`
 }
 
+type Card struct {
+	UserID        uuid.UUID          `json:"user_id"`
+	ID            uuid.UUID          `json:"id"`
+	NotebookID    uuid.UUID          `json:"notebook_id"`
+	NoteID        uuid.UUID          `json:"note_id"`
+	ElementID     string             `json:"element_id"`
+	State         AppCardState       `json:"state"`
+	Stability     pgtype.Float4      `json:"stability"`
+	Difficulty    pgtype.Float4      `json:"difficulty"`
+	Step          pgtype.Int2        `json:"step"`
+	Due           pgtype.Timestamptz `json:"due"`
+	LastReview    pgtype.Timestamptz `json:"last_review"`
+	ElapsedDays   float32            `json:"elapsed_days"`
+	ScheduledDays float32            `json:"scheduled_days"`
+	Reps          int32              `json:"reps"`
+	Lapses        int32              `json:"lapses"`
+	SuspendedAt   pgtype.Timestamptz `json:"suspended_at"`
+	BuriedUntil   pgtype.Date        `json:"buried_until"`
+	CreatedAt     time.Time          `json:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at"`
+}
+
+type Note struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	ID         uuid.UUID   `json:"id"`
+	NotebookID uuid.UUID   `json:"notebook_id"`
+	NoteType   string      `json:"note_type"`
+	Content    []byte      `json:"content"`
+	SourceID   pgtype.UUID `json:"source_id"`
+	CreatedAt  time.Time   `json:"created_at"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+}
+
 type Notebook struct {
 	UserID       uuid.UUID          `json:"user_id"`
 	ID           uuid.UUID          `json:"id"`
@@ -76,8 +220,9 @@ type Notebook struct {
 	Description  pgtype.Text        `json:"description"`
 	Emoji        pgtype.Text        `json:"emoji"`
 	Color        pgtype.Text        `json:"color"`
-	FsrsSettings []byte             `json:"fsrs_settings"`
 	Position     int32              `json:"position"`
+	TotalCards   int32              `json:"total_cards"`
+	FsrsSettings []byte             `json:"fsrs_settings"`
 	ArchivedAt   pgtype.Timestamptz `json:"archived_at"`
 	CreatedAt    time.Time          `json:"created_at"`
 	UpdatedAt    time.Time          `json:"updated_at"`
