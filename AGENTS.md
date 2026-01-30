@@ -17,7 +17,7 @@ Apex Memory is centered around the notebook concept. A notebooks is typically cr
 The core value proposition is a flashcard SRS system with AI-enhanced workflows.
 - **Algorithm:** FSRS v6 (Free Spaced Repetition Scheduler)
 - **Ratings:** Again (1), Hard (2), Good (3), Easy (4)
-- **Note Types:** `basic`, `cloze`, `image_occlusion`
+- **Fact Types:** `basic`, `cloze`, `image_occlusion`
 - **Field Types:** `plain_text`, `rich_text`, `cloze_text`, `image_occlusion`
 
 
@@ -33,12 +33,25 @@ The core value proposition is a flashcard SRS system with AI-enhanced workflows.
 - **PATCH APIs:** Use `OptionalString`/`OptionalUUID` types in `helpers.go` to distinguish missing vs explicit null in JSON requests.
 - **DELETE APIs:** Use `:execrows` in sqlc and check `rowsAffected == 0` for 404 detection. Prefer this atomic single-query pattern over separate existence checks unless special handling (e.g., idempotent archive) is needed.
 
-Refer to `references/monolith_clean_guide.md` for overview of backend structure.
+Refer to `references/guide-backend.md` for an overview of backend structure.
+
+### Core Entities
+**MVP**
+- Sources: source material the user is studying (pdfs, slides, audio, links, etc)
+- Notebooks: container for sources, flashcards, notes, etc.
+- Facts: (like a Note+NoteType in Anki) a set of fields with values that generates cards
+- Cards: (like a Card in Anki) a reviewable item derived from a Fact
+- Reviews: a review of a card by a user
+- Assets: files uploaded by the user for use in facts/cards (images, audio, etc)
+
+**Post MVP**
+- Source chunks: chunks of source files, split into smaller pieces with embeddings to enable better search and chat grounding
+- Chat sessions, messages: user chats within a notebook
 
 ### Database
-- Avoid JSONB except for flexible config columns (e.g., `render_spec`, `fsrs_params`).
+- Use JSONB wisely
 - All multi-tenant tables use composite PKs `(user_id, id)` for efficient partitioning.
-- Database code (functions, triggers, etc) live in `app_code` schema and must be installed with `make tern.install.code`.
+- Database code (functions, views, stored procedures, etc) live in `app_code` schema
 - **Planned:** `reviews` table partitioning
 
 ### Frontend (SvelteKit + Tailwind)
@@ -46,12 +59,50 @@ Refer to `references/monolith_clean_guide.md` for overview of backend structure.
 - **Styling:** TailwindCSS 4+ (Light/Dark mode support).
 - **Rich Text (planned):** TipTap. Math: KaTeX + MathLive.
 - **Routing:** File-based. `hooks.server.ts` validates sessions via `/v1/auth/me`.
-- **LayerChart:** for charting (https://next.layerchart.com/).  Ensure svelte 5 version is used.
-- **API Strategy:** Go API hidden from browser. All requests flow through SvelteKit server.
-  - **Reads:** `+page.server.ts` load functions with `apiRequest()`.
-  - **Mutations (default):** Form actions with `use:enhance`. No client JS needed.
-  - **Mutations (edge cases):** `/api/[...path]` proxy routes for modals, drag-drop, real-time.
-  - **Client helper (planned):** `api()` in `$lib/api/client.ts` for proxy route calls.
+- **LayerChart:** for charting (https://next.layerchart.com/). Ensure Svelte 5 version is used.
+- **Shadcn Svelte:** for UI components (https://shadcn-svelte.com/docs).
+- **Forms:** sveltekit-superforms + Zod for validation.
+
+#### API Strategy
+Go API hidden from browser. All requests flow through SvelteKit server.
+- **Reads:** `+page.server.ts` load functions with `apiRequest()`.
+- **Mutations (default):** Form actions with `use:enhance`. No client JS needed.
+- **Mutations (edge cases):** `/api/[...path]` proxy routes for modals, drag-drop, real-time.
+- **Client helper (planned):** `api()` in `$lib/api/client.ts` for proxy route calls.
+
+#### Component Patterns
+- Use Svelte 5 runes (`$state`, `$derived`, `$effect`) not legacy `let` reactivity.
+- Props via `let { prop = default }: Props = $props()`.
+- Prefer `$derived` over `$effect` for computed values.
+- Colocate component-specific types in the same file or `types.ts` sibling.
+
+#### Styling Guidelines
+- Use Tailwind utilities; avoid custom CSS unless necessary.
+- Use consistent naming conventions, colors, spacing, and structure
+- Flexbox for 1D layouts, Grid for 2D layouts.
+- Use shadcn components before building custom ones.
+- Dark mode: use `dark:` variants, colors from shadcn theme.
+
+#### File Structure
+```
+src/
+├── lib/
+│   ├── components/    # Shared components
+│   ├── api/           # API helpers
+│   └── stores/        # Global state (if needed)
+├── routes/
+│   └── (app)/         # Authenticated routes
+│       └── notebooks/
+│           └── [id]/
+│               ├── +page.svelte
+│               ├── +page.server.ts
+│               └── +layout.server.ts
+```
+
+#### Anti-patterns to Avoid
+- Don't use `onMount` for data fetching; use `+page.server.ts` load functions.
+- Don't expose Go API URLs to browser; always proxy through SvelteKit.
+- Don't mix Svelte 4 (`$:`) and Svelte 5 (`$derived`) reactive syntax.
 
 
 ## Project Structure
@@ -125,12 +176,46 @@ Refer to the Makefile for most dev commands
 
 
 ### Logging
-Our logging strategy is optimized for fast human debugging **and** for AI agents to automatically diagnose, root-cause, and propose fixes. Logs should be structured, consistent, and rich in context, so an agent can reliably correlate events across services, reconstruct intent, and pinpoint failures without needing to “guess” from freeform text.
 
-* **Use structured logging** with stable field names (avoid ad-hoc keys). Prefer machine-parseable values over prose.
-* **Make every error actionable**: log `error_code`, exception type, message, and a concise `remediation_hint` when known; include `retryable` and `severity` to drive automated handling.
-* **Log the “why” and “what”**: record intent + inputs at boundaries (API handlers, queue consumers) and key decision points (routing, validation, fallbacks), but avoid dumping entire payloads—log summaries + hashes.
-* **Be safe and complete**: never log secrets/PII; mask sensitive values. Include environment/runtime context (`service`, `version`, `env`, `region`) so agents can match issues to deployments quickly.
+Optimized for human debugging **and** AI agents to diagnose and root-cause issues automatically.
+
+#### Principles
+- **Structured, not prose:** Stable field names; machine-parseable values.
+- **Actionable errors:** Include `error_code`, message, and `remediation_hint`.
+- **Log the "why":** Record intent + inputs at boundaries, not just outcomes.
+- **Safe by default:** Never log secrets/PII; mask sensitive values.
+
+#### Standard Pattern (Go)
+```go
+// Context fields (set in middleware)
+slog.With("service", "api", "version", version.Commit, "env", cfg.Env, "request_id", reqID)
+
+// Errors: always include error_code, retryable, remediation_hint
+slog.Error("failed to create notebook",
+    "error", err,
+    "error_code", "NOTEBOOK_CREATE_FAILED",
+    "user_id", userID,
+    "retryable", false,
+    "remediation_hint", "Check database connectivity",
+)
+
+// Operations: include IDs and duration
+slog.Info("notebook created", "user_id", userID, "notebook_id", id, "duration_ms", elapsed)
+```
+
+#### Log Levels
+| Level | Use for |
+|-------|---------|
+| `Debug` | Dev diagnostics (SQL, cache hits) |
+| `Info` | Business events ("notebook created") |
+| `Warn` | Recoverable issues (retries, slow queries) |
+| `Error` | Failures requiring attention |
+
+#### Correlation
+- Generate `request_id` (UUIDv7) in middleware; propagate via context; include in all logs and error responses.
+
+#### Never Log
+Passwords, tokens, full request bodies, unmasked PII.
 
 ## Agent Behavior & Persona
 
@@ -141,6 +226,5 @@ Our logging strategy is optimized for fast human debugging **and** for AI agents
 
 1.  **NO SYCOPHANCY:** Do not use phrases like "Great idea," "You're right," or "Excellent point."
 2.  **CRITICAL ANALYSIS:** If an approach has trade-offs, state them immediately.
-3.  **CODE FIRST:** Focus on implementation details and architectural implications.
-4.  **RESPONSE FORMAT:** Start directly with the answer/code. No pleasantries.
-5.  **NO EMOJIS:** Do not add emojis to code, logs, or commands.
+3.  **CODE FIRST:** Focus on correctness, performance, simplicity, and maintainability. Consider wider architectural implications.
+4.  **NO EMOJIS:** Do not add emojis to code, logs, or commands.
