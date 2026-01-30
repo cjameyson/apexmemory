@@ -1,7 +1,7 @@
 // Mock sources and cards for development
 // Returns sample data for any notebook ID until APIs exist
 
-import type { Source, Card } from '$lib/types';
+import type { Source, MockCard as Card } from '$lib/types';
 
 /**
  * Returns mock sources for any notebook ID.

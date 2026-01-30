@@ -66,6 +66,65 @@ export interface UpdateNotebookRequest {
 	color?: string | null;
 }
 
+// ============================================================================
+// Fact API Types
+// ============================================================================
+
+export interface ApiFact {
+	id: string;
+	notebook_id: string;
+	fact_type: 'basic' | 'cloze' | 'image_occlusion';
+	content: Record<string, unknown>;
+	source_id: string | null;
+	card_count: number;
+	tags?: string[];
+	due_count?: number;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface ApiFactDetail extends ApiFact {
+	cards: ApiCard[];
+}
+
+export interface ApiCard {
+	id: string;
+	fact_id: string;
+	notebook_id: string;
+	element_id: string;
+	state: 'new' | 'learning' | 'review' | 'relearning';
+	stability: number | null;
+	difficulty: number | null;
+	due: string | null;
+	reps: number;
+	lapses: number;
+	suspended_at: string | null;
+	buried_until: string | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface CreateFactRequest {
+	fact_type?: 'basic' | 'cloze' | 'image_occlusion';
+	content: { version: number; fields: unknown[] };
+}
+
+export interface UpdateFactRequest {
+	content: { version: number; fields: unknown[] };
+}
+
+export interface UpdateFactResponse {
+	fact_id: string;
+	created: number;
+	deleted: number;
+	unchanged: number;
+}
+
+export interface PaginatedResponse<T> {
+	data: T[];
+	total: number;
+}
+
 // Discriminated union for API results
 export type ApiResult<T> =
 	| { ok: true; data: T }

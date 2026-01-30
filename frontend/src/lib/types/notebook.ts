@@ -29,6 +29,18 @@ export interface Notebook {
 	retention: number; // Mock until stats endpoint (uses fsrsSettings.desiredRetention as fallback)
 }
 
+/** @deprecated Use Card from '$lib/types/fact' for real API data. This is for mock UI only. */
+export interface MockCard {
+	id: string;
+	notebookId: string;
+	sourceId: string;
+	front: string;
+	back: string;
+	due: boolean;
+	interval: string;
+	tags: string[];
+}
+
 export type SourceType = 'pdf' | 'youtube' | 'url' | 'audio' | 'notes';
 
 export interface Source {
@@ -43,13 +55,3 @@ export interface Source {
 	addedAt: string;
 }
 
-export interface Card {
-	id: string;
-	notebookId: string;
-	sourceId: string;
-	front: string;
-	back: string;
-	due: boolean;
-	interval: string;
-	tags: string[];
-}

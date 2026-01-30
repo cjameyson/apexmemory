@@ -1,6 +1,6 @@
 // Mock card data for development
 
-import type { Card } from '$lib/types';
+import type { MockCard as Card } from '$lib/types';
 
 const cardsMap: Record<string, Card[]> = {
 	'nb-biology-101': [
