@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"apexmemory.ai/internal/db"
@@ -215,7 +216,9 @@ func extractClozeElementIDs(content json.RawMessage) ([]string, error) {
 func extractImageOcclusionElementIDs(content json.RawMessage) ([]string, error) {
 	var parsed struct {
 		Fields []struct {
+			Name    string `json:"name"`
 			Type    string `json:"type"`
+			Value   string `json:"value"`
 			Regions []struct {
 				ID string `json:"id"`
 			} `json:"regions"`
@@ -223,6 +226,21 @@ func extractImageOcclusionElementIDs(content json.RawMessage) ([]string, error) 
 	}
 	if err := json.Unmarshal(content, &parsed); err != nil {
 		return nil, fmt.Errorf("failed to parse image occlusion fields: %w", err)
+	}
+
+	// Validate required title field
+	hasTitle := false
+	for _, field := range parsed.Fields {
+		if field.Name == "title" && field.Type == "plain_text" {
+			if strings.TrimSpace(field.Value) == "" {
+				return nil, errors.New("image occlusion title must not be empty")
+			}
+			hasTitle = true
+			break
+		}
+	}
+	if !hasTitle {
+		return nil, errors.New("image occlusion fact must have a title field")
 	}
 
 	seen := make(map[string]bool)

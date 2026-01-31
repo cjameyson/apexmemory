@@ -12,12 +12,14 @@ Image occlusion facts allow users to create flashcards from a single image by de
 - No region grouping
 - One review mode: hide-all-reveal-one
 
-## Fact Content Structure
-
-```json
 {
   "version": 1,
   "fields": [
+    {
+      "name": "title",
+      "type": "plain_text",
+      "value": "Animal Cell Diagram"
+    },
     {
       "name": "image",
       "type": "image_occlusion",

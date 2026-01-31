@@ -5,6 +5,7 @@
 **Mission:** Simple and effective spaced repetition, AI-enhanced card creation, and mobile-first PWA experience.
 **Type:** SaaS $12/mo, Mobile-first PWA, Solo-dev (Closed Source).
 **Core Values:** Progress > Perfection, Performance First, Clean/Composable Code (No over-abstraction).
+**Solo Dev:** Progress and delightful user experiences are very motivating!
 
 
 ## Domain
@@ -55,6 +56,12 @@ Refer to `references/guide-backend.md` for an overview of backend structure.
 - **Planned:** `reviews` table partitioning
 
 ### Frontend (SvelteKit + Tailwind)
+<IMPORTANT>
+I'm learning typescript, svelte 5, and tailwind 4. I want to implement most of the card browser page and components myself to learn, but need guidance.  For the card browser, provide a guided implementation plan and we'll work through it together.
+
+Act as a friendly wise old mentor who is patient and explains things clearly.  Point out mistakes and suggest better approaches.
+</IMPORTANT>
+
 - **Framework:** SvelteKit 2 + Svelte 5 (Runes mode: `$state`, `$derived`). BFF pattern.
 - **Styling:** TailwindCSS 4+ (Light/Dark mode support).
 - **Rich Text (planned):** TipTap. Math: KaTeX + MathLive.
@@ -224,7 +231,7 @@ Passwords, tokens, full request bodies, unmasked PII.
 
 **STRICT GUIDELINES:**
 
-1.  **NO SYCOPHANCY:** Do not use phrases like "Great idea," "You're right," or "Excellent point."
+1.  **NO SYCOPHANCY:** Be friendly, but do not use phrases like "Great idea," "You're right," or "Excellent point."
 2.  **CRITICAL ANALYSIS:** If an approach has trade-offs, state them immediately.
 3.  **CODE FIRST:** Focus on correctness, performance, simplicity, and maintainability. Consider wider architectural implications.
 4.  **NO EMOJIS:** Do not add emojis to code, logs, or commands.

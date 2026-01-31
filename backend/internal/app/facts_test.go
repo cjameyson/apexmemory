@@ -50,12 +50,15 @@ func imageOcclusionContent(regionIDs ...string) json.RawMessage {
 	}
 	return json.RawMessage(`{
 		"version": 1,
-		"fields": [{
-			"name": "image",
-			"type": "image_occlusion",
-			"image": {"url": "https://example.com/img.png", "width": 800, "height": 600},
-			"regions": [` + regions + `]
-		}]
+		"fields": [
+			{"name": "title", "type": "plain_text", "value": "Test Image"},
+			{
+				"name": "image",
+				"type": "image_occlusion",
+				"image": {"url": "https://example.com/img.png", "width": 800, "height": 600},
+				"regions": [` + regions + `]
+			}
+		]
 	}`)
 }
 
@@ -100,18 +103,21 @@ func TestCreateFactHandler(t *testing.T) {
 				"fact_type": "image_occlusion",
 				"content": map[string]any{
 					"version": 1,
-					"fields": []any{map[string]any{
-						"name": "image",
-						"type": "image_occlusion",
-						"image": map[string]any{
-							"url": "https://example.com/img.png", "width": 800, "height": 600,
+					"fields": []any{
+						map[string]any{"name": "title", "type": "plain_text", "value": "Test Diagram"},
+						map[string]any{
+							"name": "image",
+							"type": "image_occlusion",
+							"image": map[string]any{
+								"url": "https://example.com/img.png", "width": 800, "height": 600,
+							},
+							"regions": []any{
+								map[string]any{"id": "m_abcdef12", "shape": map[string]any{"type": "rect", "x": 0, "y": 0, "width": 100, "height": 100}},
+								map[string]any{"id": "m_ghijkl34", "shape": map[string]any{"type": "rect", "x": 100, "y": 0, "width": 100, "height": 100}},
+								map[string]any{"id": "m_mnopqr56", "shape": map[string]any{"type": "rect", "x": 200, "y": 0, "width": 100, "height": 100}},
+							},
 						},
-						"regions": []any{
-							map[string]any{"id": "m_abcdef12", "shape": map[string]any{"type": "rect", "x": 0, "y": 0, "width": 100, "height": 100}},
-							map[string]any{"id": "m_ghijkl34", "shape": map[string]any{"type": "rect", "x": 100, "y": 0, "width": 100, "height": 100}},
-							map[string]any{"id": "m_mnopqr56", "shape": map[string]any{"type": "rect", "x": 200, "y": 0, "width": 100, "height": 100}},
-						},
-					}},
+					},
 				},
 			},
 			wantStatus: http.StatusCreated,
@@ -162,11 +168,14 @@ func TestCreateFactHandler(t *testing.T) {
 				"fact_type": "image_occlusion",
 				"content": map[string]any{
 					"version": 1,
-					"fields": []any{map[string]any{
-						"name":    "image",
-						"type":    "image_occlusion",
-						"regions": []any{},
-					}},
+					"fields": []any{
+						map[string]any{"name": "title", "type": "plain_text", "value": "Empty"},
+						map[string]any{
+							"name":    "image",
+							"type":    "image_occlusion",
+							"regions": []any{},
+						},
+					},
 				},
 			},
 			wantStatus: http.StatusBadRequest,
@@ -177,17 +186,20 @@ func TestCreateFactHandler(t *testing.T) {
 				"fact_type": "image_occlusion",
 				"content": map[string]any{
 					"version": 1,
-					"fields": []any{map[string]any{
-						"name": "image",
-						"type": "image_occlusion",
-						"image": map[string]any{
-							"url": "https://example.com/img.png", "width": 800, "height": 600,
+					"fields": []any{
+						map[string]any{"name": "title", "type": "plain_text", "value": "Dupes"},
+						map[string]any{
+							"name": "image",
+							"type": "image_occlusion",
+							"image": map[string]any{
+								"url": "https://example.com/img.png", "width": 800, "height": 600,
+							},
+							"regions": []any{
+								map[string]any{"id": "m_abcdef12", "shape": map[string]any{"type": "rect", "x": 0, "y": 0, "width": 100, "height": 100}},
+								map[string]any{"id": "m_abcdef12", "shape": map[string]any{"type": "rect", "x": 100, "y": 0, "width": 100, "height": 100}},
+							},
 						},
-						"regions": []any{
-							map[string]any{"id": "m_abcdef12", "shape": map[string]any{"type": "rect", "x": 0, "y": 0, "width": 100, "height": 100}},
-							map[string]any{"id": "m_abcdef12", "shape": map[string]any{"type": "rect", "x": 100, "y": 0, "width": 100, "height": 100}},
-						},
-					}},
+					},
 				},
 			},
 			wantStatus: http.StatusBadRequest,
