@@ -37,22 +37,22 @@
 <div
 	id="source-detail"
 	class={cn(
-		'flex flex-1 flex-col overflow-hidden rounded-none border-none border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
+		'flex flex-1 flex-col overflow-hidden rounded-none border-none border-border bg-card',
 		className
 	)}
 >
 	<!-- Header -->
-	<div class="flex h-12 items-center gap-3 border-b border-slate-200 px-4 dark:border-slate-800">
+	<div class="flex h-12 items-center gap-3 border-b border-border px-4">
 		<!-- Source info -->
 		<div class="flex min-w-0 flex-1 items-center gap-2">
 			<div class="min-w-0">
-				<h2 class="truncate font-semibold text-slate-900 dark:text-white">
+				<h2 class="truncate font-semibold text-foreground">
 					{source.name}
 				</h2>
-				<div class="text-xs text-slate-500 dark:text-slate-400">
+				<div class="text-xs text-muted-foreground">
 					{sourceCardsCount} cards
 					{#if dueCount > 0}
-						<span class="text-sky-600 dark:text-sky-400">({dueCount} due)</span>
+						<span class="text-primary">({dueCount} due)</span>
 					{/if}
 				</div>
 			</div>

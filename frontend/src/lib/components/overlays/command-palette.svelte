@@ -180,17 +180,17 @@
 	></button>
 
 	<!-- Modal -->
-	<div class="relative bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+	<div class="relative bg-card rounded-xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
 		<!-- Search input -->
-		<div class="flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-			<SearchIcon class="size-5 text-slate-400" />
+		<div class="flex items-center gap-3 px-4 py-3 border-b border-border">
+			<SearchIcon class="size-5 text-muted-foreground" />
 			<input
 				bind:this={inputRef}
 				bind:value={searchQuery}
 				onkeydown={handleKeydown}
 				type="text"
 				placeholder={currentNotebook ? `Search in ${currentNotebook.name}...` : 'Search everywhere...'}
-				class="flex-1 bg-transparent border-0 outline-none text-slate-900 dark:text-white placeholder:text-slate-400 text-sm"
+				class="flex-1 bg-transparent border-0 outline-none text-foreground placeholder:text-muted-foreground text-sm"
 			/>
 
 			<!-- Scope toggle -->
@@ -201,8 +201,8 @@
 					class={cn(
 						'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-colors',
 						scope === 'notebook'
-							? 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300'
-							: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+							? 'bg-primary/10 text-primary'
+							: 'bg-muted text-muted-foreground'
 					)}
 				>
 					{#if scope === 'notebook'}
@@ -221,7 +221,7 @@
 			{#if !searchQuery.trim()}
 				<!-- Quick actions -->
 				<div class="p-2">
-					<div class="px-2 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400">
+					<div class="px-2 py-1.5 text-xs font-medium text-muted-foreground">
 						Quick actions
 					</div>
 					{#each quickActions as action, i (action.id)}
@@ -231,13 +231,13 @@
 							class={cn(
 								'w-full flex items-center gap-3 px-2 py-2 rounded-lg text-left transition-colors',
 								i === selectedIndex
-									? 'bg-sky-100 dark:bg-sky-900/30 text-sky-900 dark:text-sky-100'
-									: 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+									? 'bg-primary/10 text-primary'
+									: 'hover:bg-accent text-foreground'
 							)}
 						>
-							<action.icon class="size-4 text-slate-500" />
+							<action.icon class="size-4 text-muted-foreground" />
 							<span class="flex-1 text-sm">{action.label}</span>
-							<kbd class="text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+							<kbd class="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
 								{action.shortcut}
 							</kbd>
 						</button>
@@ -253,45 +253,45 @@
 							class={cn(
 								'w-full flex items-center gap-3 px-2 py-2 rounded-lg text-left transition-colors',
 								i === selectedIndex
-									? 'bg-sky-100 dark:bg-sky-900/30 text-sky-900 dark:text-sky-100'
-									: 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+									? 'bg-primary/10 text-primary'
+									: 'hover:bg-accent text-foreground'
 							)}
 						>
 							{#if result.type === 'notebook'}
 								{@const nb = result.item as Notebook}
 								<span class="text-lg">{nb.emoji}</span>
 								<span class="flex-1 text-sm truncate">{nb.name}</span>
-								<span class="text-xs text-slate-400">Notebook</span>
+								<span class="text-xs text-muted-foreground">Notebook</span>
 							{:else if result.type === 'source'}
 								{@const src = result.item as Source}
-								<FileTextIcon class="size-4 text-slate-500" />
+								<FileTextIcon class="size-4 text-muted-foreground" />
 								<span class="flex-1 text-sm truncate">{src.name}</span>
-								<span class="text-xs text-slate-400">Source</span>
+								<span class="text-xs text-muted-foreground">Source</span>
 							{:else if result.type === 'card'}
 								{@const card = result.item as Card}
-								<LayersIcon class="size-4 text-slate-500" />
+								<LayersIcon class="size-4 text-muted-foreground" />
 								<span class="flex-1 text-sm truncate">{card.front}</span>
-								<span class="text-xs text-slate-400">Card</span>
+								<span class="text-xs text-muted-foreground">Card</span>
 							{/if}
 						</button>
 					{/each}
 				</div>
 			{:else}
 				<!-- No results -->
-				<div class="p-8 text-center text-slate-500 dark:text-slate-400">
+				<div class="p-8 text-center text-muted-foreground">
 					No results found for "{searchQuery}"
 				</div>
 			{/if}
 		</div>
 
 		<!-- Footer -->
-		<div class="flex items-center justify-between px-4 py-2 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+		<div class="flex items-center justify-between px-4 py-2 border-t border-border text-xs text-muted-foreground">
 			<div class="flex items-center gap-3">
-				<span><kbd class="px-1 bg-slate-100 dark:bg-slate-800 rounded">↑↓</kbd> Navigate</span>
-				<span><kbd class="px-1 bg-slate-100 dark:bg-slate-800 rounded">↵</kbd> Select</span>
-				<span><kbd class="px-1 bg-slate-100 dark:bg-slate-800 rounded">esc</kbd> Close</span>
+				<span><kbd class="px-1 bg-muted rounded">↑↓</kbd> Navigate</span>
+				<span><kbd class="px-1 bg-muted rounded">↵</kbd> Select</span>
+				<span><kbd class="px-1 bg-muted rounded">esc</kbd> Close</span>
 			</div>
-			<span><kbd class="px-1 bg-slate-100 dark:bg-slate-800 rounded">⌘K</kbd></span>
+			<span><kbd class="px-1 bg-muted rounded">⌘K</kbd></span>
 		</div>
 	</div>
 </div>

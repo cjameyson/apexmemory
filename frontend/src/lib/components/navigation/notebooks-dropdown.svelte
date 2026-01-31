@@ -54,11 +54,11 @@
 				{...props}
 				variant="ghost"
 				size="sm"
-				class={cn('gap-2', isInNotebook && 'bg-slate-100 dark:bg-slate-800')}
+				class={cn('gap-2', isInNotebook && 'bg-muted')}
 			>
 				<BookOpenIcon class="size-4" />
 				<span class="hidden sm:inline">Notebooks</span>
-				<ChevronDownIcon class="size-4 text-slate-400" />
+				<ChevronDownIcon class="size-4 text-muted-foreground" />
 			</Button>
 		{/snippet}
 	</DropdownMenu.Trigger>
@@ -70,7 +70,7 @@
 			<div class="px-2 py-1.5">
 				<div class="relative">
 					<SearchIcon
-						class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-slate-400"
+						class="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
 					/>
 					<Input
 						type="text"
@@ -98,7 +98,7 @@
 					<span class="text-lg">{notebook.emoji}</span>
 					<div class="min-w-0 flex-1">
 						<div class="truncate font-medium">{notebook.name}</div>
-						<div class="text-xs text-slate-500 dark:text-slate-400">
+						<div class="text-xs text-muted-foreground dark:text-muted-foreground">
 							{notebook.totalCards} cards{#if notebook.retention > 0}&nbsp;- {Math.round(
 									notebook.retention * 100
 								)}%{/if}
@@ -116,11 +116,11 @@
 
 			{#if sortedNotebooks.length === 0}
 				<div class="px-4 py-6 text-center">
-					<BookOpenIcon class="mx-auto mb-2 size-8 text-slate-300 dark:text-slate-600" />
+					<BookOpenIcon class="mx-auto mb-2 size-8 text-muted-foreground" />
 					{#if searchQuery}
-						<p class="text-sm text-slate-500">No notebooks match "{searchQuery}"</p>
+						<p class="text-sm text-muted-foreground">No notebooks match "{searchQuery}"</p>
 					{:else}
-						<p class="mb-2 text-sm text-slate-500">No notebooks yet</p>
+						<p class="mb-2 text-sm text-muted-foreground">No notebooks yet</p>
 						<Button size="sm" variant="outline" onclick={handleCreateClick}>
 							Create your first notebook
 						</Button>

@@ -88,7 +88,7 @@
 
 <aside
 	class={cn(
-		'relative flex flex-col border-r border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
+		'relative flex flex-col border-r border-border bg-card',
 		!isResizing && 'transition-all duration-200',
 		isCollapsed && 'w-12',
 		className
@@ -96,14 +96,14 @@
 	style={!isCollapsed ? `width: ${sidebarWidth}px` : undefined}
 >
 	<!-- Sidebar header -->
-	<div class="flex h-12 items-center gap-2 border-b border-slate-200 px-2 dark:border-slate-800">
+	<div class="flex h-12 items-center gap-2 border-b border-border px-2">
 		{#if !isCollapsed}
 			<a
 				href="/notebooks/{notebook.id}"
-				class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
+				class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 transition-colors hover:bg-accent"
 			>
 				<span class="text-xl">{notebook.emoji}</span>
-				<span class="truncate font-semibold text-slate-900 dark:text-white">
+				<span class="truncate font-semibold text-foreground">
 					{notebook.name}
 				</span>
 			</a>
@@ -145,7 +145,7 @@
 				title="Sources"
 				count={sources.length}
 				bind:isOpen={sourcesOpen}
-				class="border-b border-slate-200 pb-2 dark:border-slate-800"
+				class="border-b border-border pb-2"
 			>
 				{#snippet actions()}
 					<Button variant="ghost" size="icon" class="size-6" title="Add source">
@@ -163,7 +163,7 @@
 					{/each}
 
 					{#if sources.length === 0}
-						<div class="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">No sources yet</div>
+						<div class="px-3 py-2 text-sm text-muted-foreground">No sources yet</div>
 					{/if}
 				</div>
 			</SidebarSection>
@@ -173,7 +173,7 @@
 				<div class="px-2 py-1">
 					<a
 						href="/notebooks/{notebook.id}/cards"
-						class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+						class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent"
 					>
 						<SearchIcon class="size-4" />
 						<span>Browse</span>
@@ -187,8 +187,8 @@
 	{#if !isCollapsed}
 		<div
 			class={cn(
-				'absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-sky-500/50',
-				isResizing && 'bg-sky-500/50'
+				'absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors hover:bg-primary/50',
+				isResizing && 'bg-primary/50'
 			)}
 			onmousedown={handleResizeStart}
 			role="separator"

@@ -11,13 +11,13 @@
 	let { totalDue, reviewedToday, currentStreak, averageRetention }: Props = $props();
 </script>
 
-<div class="bg-gradient-to-br from-sky-500 to-cyan-600 rounded-2xl p-6 text-white">
+<div class="bg-gradient-to-br from-primary to-primary/80 rounded-2xl p-6 text-primary-foreground">
 	<div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
 		<!-- Due count -->
 		<div>
-			<div class="text-sm font-medium text-white/80 mb-1">Cards due today</div>
+			<div class="text-sm font-medium text-primary-foreground/80 mb-1">Cards due today</div>
 			<div class="text-4xl font-bold">{totalDue}</div>
-			<div class="text-sm text-white/70 mt-1">
+			<div class="text-sm text-primary-foreground/70 mt-1">
 				{reviewedToday} reviewed so far
 			</div>
 		</div>
@@ -26,7 +26,7 @@
 		<div class="text-center">
 			<div class="text-4xl mb-1">🔥</div>
 			<div class="text-2xl font-bold">{currentStreak}</div>
-			<div class="text-sm text-white/70">day streak</div>
+			<div class="text-sm text-primary-foreground/70">day streak</div>
 		</div>
 
 		<!-- Retention ring -->
@@ -43,7 +43,7 @@
 					<span class="text-lg font-bold">{averageRetention}%</span>
 				</div>
 			</div>
-			<div class="text-sm text-white/70 mt-2">retention</div>
+			<div class="text-sm text-primary-foreground/70 mt-2">retention</div>
 		</div>
 	</div>
 </div>

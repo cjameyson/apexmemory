@@ -63,7 +63,7 @@
 			</div>
 			<div class="flex-1">
 				<div class="font-medium">Review All</div>
-				<div class="text-xs text-slate-500 dark:text-slate-400">
+				<div class="text-xs text-muted-foreground">
 					{totalDue} cards due
 				</div>
 			</div>
@@ -93,7 +93,7 @@
 		{/if}
 
 		{#if totalDue === 0}
-			<div class="px-3 py-4 text-center text-sm text-slate-500 dark:text-slate-400">
+			<div class="px-3 py-4 text-center text-sm text-muted-foreground">
 				No cards due for review
 			</div>
 		{/if}

@@ -16,10 +16,10 @@
 	<div class="max-w-6xl mx-auto p-6 lg:p-8">
 		<!-- Welcome header -->
 		<div class="mb-8">
-			<h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+			<h1 class="text-3xl font-bold text-foreground mb-2">
 				Welcome back
 			</h1>
-			<p class="text-slate-500 dark:text-slate-400">
+			<p class="text-muted-foreground">
 				You have {totalDue} cards due for review today.
 			</p>
 		</div>
@@ -68,7 +68,7 @@
 
 		<!-- Notebooks grid -->
 		<div>
-			<h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Your Notebooks</h2>
+			<h2 class="text-lg font-semibold text-foreground mb-4">Your Notebooks</h2>
 			<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
 				{#each notebooks as notebook (notebook.id)}
 					<NotebookCard {notebook} />

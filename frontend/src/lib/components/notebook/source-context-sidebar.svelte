@@ -79,7 +79,7 @@
 
 <aside
 	class={cn(
-		'relative flex flex-col border-l border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900',
+		'relative flex flex-col border-l border-border bg-card',
 		!isResizing && 'transition-all duration-200',
 		isCollapsed && 'w-10',
 		className
@@ -90,8 +90,8 @@
 	{#if !isCollapsed}
 		<div
 			class={cn(
-				'absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors hover:bg-sky-500/50',
-				isResizing && 'bg-sky-500/50'
+				'absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors hover:bg-primary/50',
+				isResizing && 'bg-primary/50'
 			)}
 			onmousedown={handleResizeStart}
 			role="separator"
@@ -118,7 +118,7 @@
 		<!-- Expanded state -->
 		<!-- Header with collapse button -->
 		<div
-			class="flex h-12 items-center justify-between border-b border-slate-200 px-3 dark:border-slate-700"
+			class="flex h-12 items-center justify-between border-b border-border px-3"
 		>
 			<SourceSidebarTabs {activeTab} onTabChange={handleTabChange} />
 			<Button
@@ -145,12 +145,12 @@
 								<CardItem
 									{card}
 									onclick={() => onCardClick?.(card)}
-									class={cn(highlightedCardIds.includes(card.id) && 'ring-2 ring-sky-500')}
+									class={cn(highlightedCardIds.includes(card.id) && 'ring-2 ring-ring')}
 								/>
 							{/each}
 						</div>
 					{:else}
-						<div class="py-12 text-center text-slate-500 dark:text-slate-400">
+						<div class="py-12 text-center text-muted-foreground">
 							No cards generated from this source yet.
 						</div>
 					{/if}
@@ -158,12 +158,12 @@
 			{:else if activeTab === 'summary'}
 				<!-- Summary tab -->
 				<div class="p-4">
-					<div class="rounded-lg bg-slate-50 p-4 dark:bg-slate-800">
-						<h3 class="mb-3 font-semibold text-slate-900 dark:text-white">AI Summary</h3>
-						<p class="text-sm text-slate-600 dark:text-slate-400">
+					<div class="rounded-lg bg-muted p-4">
+						<h3 class="mb-3 font-semibold text-foreground">AI Summary</h3>
+						<p class="text-sm text-muted-foreground">
 							{source.excerpt}
 						</p>
-						<p class="mt-4 text-sm text-slate-400 dark:text-slate-500">
+						<p class="mt-4 text-sm text-muted-foreground">
 							[AI-generated summary would appear here]
 						</p>
 					</div>
@@ -172,15 +172,15 @@
 				<!-- Chat tab -->
 				<div class="flex h-full flex-col">
 					<div class="flex-1 p-4">
-						<div class="py-12 text-center text-slate-500 dark:text-slate-400">
+						<div class="py-12 text-center text-muted-foreground">
 							Ask questions about this source...
 						</div>
 					</div>
-					<div class="border-t border-slate-200 p-3 dark:border-slate-700">
+					<div class="border-t border-border p-3">
 						<input
 							type="text"
 							placeholder="Ask a question..."
-							class="w-full rounded-lg border-0 bg-slate-100 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-sky-500 dark:bg-slate-800 dark:text-white"
+							class="w-full rounded-lg border-0 bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
 						/>
 					</div>
 				</div>

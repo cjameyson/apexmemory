@@ -89,6 +89,7 @@ Go API hidden from browser. All requests flow through SvelteKit server.
 - Flexbox for 1D layouts, Grid for 2D layouts.
 - Use shadcn components before building custom ones.
 - Dark mode: use `dark:` variants, colors from shadcn theme.
+- **Design tokens over hardcoded colors:** Always use semantic color tokens (`bg-card`, `text-foreground`, `border-border`, `bg-primary`, `text-muted-foreground`, etc.) defined in `app.css`. Only use raw Tailwind color families (`slate-*`, `sky-*`, `red-*`, etc.) in components when absolutely necessary, as they bypass theming and break dark mode. The only exceptions are shadcn upstream components and intentionally forced-color surfaces (e.g., focus-mode overlay).
 
 #### File Structure
 ```

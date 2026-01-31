@@ -20,11 +20,11 @@
 
 <div
 	class={cn(
-		'bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800',
+		'bg-card rounded-2xl p-5 border border-border',
 		className
 	)}
 >
-	<h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4">Weekly Activity</h2>
+	<h2 class="text-lg font-semibold text-foreground mb-4">Weekly Activity</h2>
 	<div class="flex items-end gap-2 h-24">
 		{#each data as count, i}
 			<div class="flex-1 flex flex-col items-center gap-1">
@@ -33,10 +33,10 @@
 						class={cn(
 							'w-full rounded-t-md transition-all duration-300',
 							i === todayIndex
-								? 'bg-sky-500'
+								? 'bg-primary'
 								: count > 0
-									? 'bg-sky-300 dark:bg-sky-700'
-									: 'bg-slate-200 dark:bg-slate-700'
+									? 'bg-primary/50'
+									: 'bg-border'
 						)}
 						style="height: {Math.max((count / maxValue) * 100, 4)}%"
 					></div>
@@ -45,8 +45,8 @@
 					class={cn(
 						'text-xs',
 						i === todayIndex
-							? 'text-sky-600 dark:text-sky-400 font-medium'
-							: 'text-slate-500 dark:text-slate-400'
+							? 'text-primary font-medium'
+							: 'text-muted-foreground'
 					)}
 				>
 					{labels[i]}

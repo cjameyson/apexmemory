@@ -35,22 +35,22 @@
 		<button
 			type="button"
 			onclick={toggle}
-			class="flex items-center gap-2 flex-1 min-w-0 text-left hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md px-2 py-1 transition-colors"
+			class="flex items-center gap-2 flex-1 min-w-0 text-left hover:bg-accent rounded-md px-2 py-1 transition-colors"
 		>
 			<ChevronRightIcon
 				class={cn(
-					'size-4 text-slate-400 transition-transform duration-200',
+					'size-4 text-muted-foreground transition-transform duration-200',
 					isOpen && 'rotate-90'
 				)}
 			/>
 			{#if Icon}
-				<Icon class="size-4 text-slate-500 dark:text-slate-400" />
+				<Icon class="size-4 text-muted-foreground" />
 			{/if}
-			<span class="text-base font-semibold text-slate-700 dark:text-slate-300 truncate">
+			<span class="text-base font-semibold text-foreground truncate">
 				{title}
 			</span>
 			{#if count !== undefined}
-				<span class="text-xs text-slate-400 dark:text-slate-500 ml-auto">
+				<span class="text-xs text-muted-foreground ml-auto">
 					{count}
 				</span>
 			{/if}

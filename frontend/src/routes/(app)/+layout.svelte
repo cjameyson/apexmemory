@@ -154,7 +154,7 @@
 	}
 </script>
 
-<div class="flex h-screen flex-col bg-white dark:bg-slate-950">
+<div class="flex h-screen flex-col bg-background">
 	<TopNavBar
 		user={data.user}
 		{notebooks}

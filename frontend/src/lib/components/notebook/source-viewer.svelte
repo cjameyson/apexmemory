@@ -20,23 +20,23 @@
 	<!-- Source content -->
 	<div class="flex-1 overflow-auto p-6">
 		{#if source.type === 'pdf'}
-			<div class="rounded-lg bg-slate-100 p-8 text-center dark:bg-slate-800">
-				<div class="mb-2 text-slate-500 dark:text-slate-400">PDF Preview</div>
-				<div class="text-sm text-slate-400 dark:text-slate-500">
+			<div class="rounded-lg bg-muted p-8 text-center">
+				<div class="mb-2 text-muted-foreground">PDF Preview</div>
+				<div class="text-sm text-muted-foreground">
 					{source.pages} pages
 				</div>
 			</div>
 		{:else if source.type === 'youtube'}
-			<div class="flex aspect-video items-center justify-center rounded-lg bg-slate-900">
-				<div class="text-white/50">YouTube Player Placeholder</div>
+			<div class="flex aspect-video items-center justify-center rounded-lg bg-foreground">
+				<div class="text-background/50">YouTube Player Placeholder</div>
 			</div>
 		{:else if source.type === 'audio'}
-			<div class="rounded-lg bg-slate-100 p-8 dark:bg-slate-800">
-				<div class="mb-4 text-center text-slate-500 dark:text-slate-400">Audio Player</div>
-				<div class="h-2 rounded-full bg-slate-200 dark:bg-slate-700">
-					<div class="h-full w-0 rounded-full bg-sky-500"></div>
+			<div class="rounded-lg bg-muted p-8">
+				<div class="mb-4 text-center text-muted-foreground">Audio Player</div>
+				<div class="h-2 rounded-full bg-border">
+					<div class="h-full w-0 rounded-full bg-primary"></div>
 				</div>
-				<div class="mt-2 flex justify-between text-xs text-slate-400">
+				<div class="mt-2 flex justify-between text-xs text-muted-foreground">
 					<span>0:00</span>
 					<span>{source.duration}</span>
 				</div>
@@ -44,7 +44,7 @@
 		{:else if source.type === 'url'}
 			<div class="prose max-w-none dark:prose-invert">
 				<p>{source.excerpt}</p>
-				<p class="text-sm text-slate-400 dark:text-slate-500">
+				<p class="text-sm text-muted-foreground">
 					[Web content preview would appear here]
 				</p>
 			</div>

@@ -53,7 +53,7 @@
 </script>
 
 <header
-	class="shrink-0 border-b border-slate-200 bg-white px-2 py-2 dark:border-slate-800 dark:bg-slate-900"
+	class="shrink-0 border-b border-border bg-card px-2 py-2"
 >
 	<div class="flex items-center justify-between">
 		<!-- Left group -->
@@ -61,7 +61,7 @@
 			<!-- Logo -->
 			<a
 				href="/home"
-				class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-slate-900 transition-colors hover:bg-slate-100 dark:text-white dark:hover:bg-slate-800"
+				class="flex items-center gap-2 rounded-lg px-2 py-1.5 text-foreground transition-colors hover:bg-accent"
 			>
 				<BrainIcon class="text-primary size-6" />
 			</a>
@@ -95,7 +95,7 @@
 					<DropdownMenu.Label class="font-normal">
 						<div class="flex flex-col space-y-1">
 							<p class="text-sm font-medium">{user.username || 'User'}</p>
-							<p class="truncate text-xs text-slate-500">{user.email}</p>
+							<p class="truncate text-xs text-muted-foreground">{user.email}</p>
 						</div>
 					</DropdownMenu.Label>
 					<DropdownMenu.Separator />
@@ -105,7 +105,7 @@
 					</DropdownMenu.Item>
 					<DropdownMenu.Separator />
 					<DropdownMenu.Item
-						class="cursor-pointer gap-2 text-red-600 dark:text-red-400"
+						class="cursor-pointer gap-2 text-destructive"
 						onclick={handleLogout}
 					>
 						<LogOutIcon class="size-4" />

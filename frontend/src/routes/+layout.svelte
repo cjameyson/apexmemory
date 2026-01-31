@@ -22,8 +22,8 @@
 
 <!-- Navigation loading indicator -->
 {#if $navigating}
-	<div class="fixed top-0 left-0 right-0 h-[3px] z-[9999] bg-slate-200 dark:bg-slate-800 overflow-hidden" role="progressbar" aria-label="Loading page">
-		<div class="h-full bg-sky-500 animate-progress"></div>
+	<div class="fixed top-0 left-0 right-0 h-[3px] z-[9999] bg-muted overflow-hidden" role="progressbar" aria-label="Loading page">
+		<div class="h-full bg-primary animate-progress"></div>
 	</div>
 {/if}
 

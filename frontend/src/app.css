@@ -66,6 +66,10 @@
   --error-foreground: oklch(0.985 0 0);
   --info: oklch(0.65 0.16 250);
   --info-foreground: oklch(0.985 0 0);
+
+  /* Fact Type Colors */
+  --cloze: oklch(0.65 0.18 300);
+  --cloze-foreground: oklch(0.985 0 0);
 }
 
 .dark {
@@ -121,6 +125,10 @@
   --error-foreground: oklch(0.985 0 0);
   --info: oklch(0.60 0.14 250);
   --info-foreground: oklch(0.985 0 0);
+
+  /* Fact Type Colors - Dark Mode */
+  --cloze: oklch(0.70 0.16 300);
+  --cloze-foreground: oklch(0.985 0 0);
 }
 
 /* =============================================================================
@@ -190,6 +198,10 @@
   --color-error-foreground: var(--error-foreground);
   --color-info: var(--info);
   --color-info-foreground: var(--info-foreground);
+
+  /* Fact Type Colors */
+  --color-cloze: var(--cloze);
+  --color-cloze-foreground: var(--cloze-foreground);
 
   /* Fonts */
   --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";

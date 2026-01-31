@@ -50,59 +50,59 @@
 	<!-- Stats Grid -->
 	<div class="grid grid-cols-2 gap-4 md:grid-cols-4">
 		<div
-			class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+			class="rounded-lg border border-border bg-card p-4"
 		>
-			<div class="mb-1 flex items-center gap-2 text-slate-500 dark:text-slate-400">
+			<div class="mb-1 flex items-center gap-2 text-muted-foreground">
 				<LayersIcon class="size-4" />
 				<span class="text-sm">Total Cards</span>
 			</div>
-			<p class="text-2xl font-bold text-slate-900 dark:text-white">{cards.length}</p>
+			<p class="text-2xl font-bold text-foreground">{cards.length}</p>
 		</div>
 
 		<div
-			class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+			class="rounded-lg border border-border bg-card p-4"
 		>
-			<div class="mb-1 flex items-center gap-2 text-sky-500">
+			<div class="mb-1 flex items-center gap-2 text-primary">
 				<CalendarIcon class="size-4" />
 				<span class="text-sm">Due Today</span>
 			</div>
-			<p class="text-2xl font-bold text-sky-600 dark:text-sky-400">{dueCount}</p>
+			<p class="text-2xl font-bold text-primary">{dueCount}</p>
 		</div>
 
 		<div
-			class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+			class="rounded-lg border border-border bg-card p-4"
 		>
-			<div class="mb-1 flex items-center gap-2 text-emerald-500">
+			<div class="mb-1 flex items-center gap-2 text-success">
 				<TrendingUpIcon class="size-4" />
 				<span class="text-sm">Retention</span>
 			</div>
-			<p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{notebook.retention}%</p>
+			<p class="text-2xl font-bold text-success">{notebook.retention}%</p>
 		</div>
 
 		<div
-			class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+			class="rounded-lg border border-border bg-card p-4"
 		>
-			<div class="mb-1 flex items-center gap-2 text-amber-500">
+			<div class="mb-1 flex items-center gap-2 text-warning">
 				<FileStackIcon class="size-4" />
 				<span class="text-sm">Sources</span>
 			</div>
-			<p class="text-2xl font-bold text-slate-900 dark:text-white">{sources.length}</p>
+			<p class="text-2xl font-bold text-foreground">{sources.length}</p>
 		</div>
 	</div>
 
 	<!-- Activity (mock) -->
 	<div
-		class="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800"
+		class="rounded-lg border border-border bg-card p-4"
 	>
-		<h3 class="mb-4 font-semibold text-slate-900 dark:text-white">This Week</h3>
+		<h3 class="mb-4 font-semibold text-foreground">This Week</h3>
 		<div class="flex h-24 items-end gap-2">
 			{#each reviewsThisWeek as count, i}
 				<div class="flex flex-1 flex-col items-center gap-1">
 					<div
-						class="w-full rounded-t bg-sky-500"
+						class="w-full rounded-t bg-primary"
 						style="height: {(count / Math.max(...reviewsThisWeek)) * 100}%"
 					></div>
-					<span class="text-xs text-slate-400">
+					<span class="text-xs text-muted-foreground">
 						{['M', 'T', 'W', 'T', 'F', 'S', 'S'][i]}
 					</span>
 				</div>

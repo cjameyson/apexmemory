@@ -32,7 +32,7 @@
 
 <div
 	class={cn(
-		'flex items-center justify-between gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2 dark:border-slate-700 dark:bg-slate-800',
+		'flex items-center justify-between gap-2 border-b border-border bg-muted px-4 py-2',
 		className
 	)}
 >
@@ -45,15 +45,15 @@
 			<Button variant="ghost" size="icon" class="size-8" title="Zoom in">
 				<ZoomInIcon class="size-4" />
 			</Button>
-			<div class="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
+			<div class="mx-1 h-4 w-px bg-border"></div>
 			<Button variant="ghost" size="icon" class="size-8" title="Previous page">
 				<ChevronLeftIcon class="size-4" />
 			</Button>
-			<span class="px-2 text-sm text-slate-500 dark:text-slate-400">1 / 87</span>
+			<span class="px-2 text-sm text-muted-foreground">1 / 87</span>
 			<Button variant="ghost" size="icon" class="size-8" title="Next page">
 				<ChevronRightIcon class="size-4" />
 			</Button>
-			<div class="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
+			<div class="mx-1 h-4 w-px bg-border"></div>
 			<Button variant="ghost" size="icon" class="size-8" title="Search">
 				<SearchIcon class="size-4" />
 			</Button>
@@ -67,11 +67,11 @@
 			<Button variant="ghost" size="icon" class="size-8" title="Play">
 				<PlayIcon class="size-4" />
 			</Button>
-			<span class="px-2 text-sm text-slate-500 dark:text-slate-400">0:00 / 14:32</span>
+			<span class="px-2 text-sm text-muted-foreground">0:00 / 14:32</span>
 			<Button variant="ghost" size="icon" class="size-8" title="Volume">
 				<Volume2Icon class="size-4" />
 			</Button>
-			<div class="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
+			<div class="mx-1 h-4 w-px bg-border"></div>
 			<Button variant="ghost" size="sm" class="h-7 text-xs">1x</Button>
 			<Button variant="ghost" size="icon" class="size-8" title="Bookmark">
 				<BookmarkIcon class="size-4" />
@@ -80,11 +80,11 @@
 			<Button variant="ghost" size="icon" class="size-8" title="Play">
 				<PlayIcon class="size-4" />
 			</Button>
-			<span class="px-2 text-sm text-slate-500 dark:text-slate-400">0:00 / 28:15</span>
+			<span class="px-2 text-sm text-muted-foreground">0:00 / 28:15</span>
 			<Button variant="ghost" size="icon" class="size-8" title="Volume">
 				<Volume2Icon class="size-4" />
 			</Button>
-			<div class="mx-1 h-4 w-px bg-slate-300 dark:bg-slate-600"></div>
+			<div class="mx-1 h-4 w-px bg-border"></div>
 			<Button variant="ghost" size="sm" class="h-7 text-xs">1x</Button>
 		{:else if type === 'url'}
 			<Button variant="ghost" size="icon" class="size-8" title="Open original">
@@ -110,7 +110,7 @@
 	<Button
 		variant="default"
 		size="sm"
-		class="hidden gap-1.5 bg-sky-500 hover:bg-sky-600"
+		class="hidden gap-1.5"
 		onclick={onGenerateCards}
 	>
 		<SparklesIcon class="size-4" />

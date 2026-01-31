@@ -21,4 +21,4 @@
 	let Icon = $derived(iconMap[type] || FileTextIcon);
 </script>
 
-<Icon class={cn('size-4 text-slate-500 dark:text-slate-400', className)} />
+<Icon class={cn('size-4 text-muted-foreground', className)} />

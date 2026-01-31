@@ -48,27 +48,27 @@
 	}
 </script>
 
-<div class={cn('flex-1 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6', className)}>
+<div class={cn('flex-1 bg-card rounded-2xl border border-border p-6', className)}>
 	<!-- Header -->
 	<div class="flex items-center justify-between mb-6">
 		<div>
-			<h2 class="text-lg font-semibold text-slate-900 dark:text-white">Cards</h2>
-			<p class="text-sm text-slate-500 dark:text-slate-400">
+			<h2 class="text-lg font-semibold text-foreground">Cards</h2>
+			<p class="text-sm text-muted-foreground">
 				{filteredCards.length} {viewMode === 'all' ? 'total' : viewMode}
 			</p>
 		</div>
 
 		<div class="flex items-center gap-2">
 			<!-- View mode toggle -->
-			<div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+			<div class="flex items-center bg-muted rounded-lg p-1">
 				<button
 					type="button"
 					onclick={() => setViewMode('all')}
 					class={cn(
 						'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
 						viewMode === 'all'
-							? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-							: 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+							? 'bg-background text-foreground shadow-sm'
+							: 'text-muted-foreground hover:text-foreground'
 					)}
 				>
 					All
@@ -79,8 +79,8 @@
 					class={cn(
 						'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
 						viewMode === 'due'
-							? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-							: 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+							? 'bg-background text-foreground shadow-sm'
+							: 'text-muted-foreground hover:text-foreground'
 					)}
 				>
 					Due ({dueCount})
@@ -91,8 +91,8 @@
 					class={cn(
 						'px-3 py-1.5 text-sm font-medium rounded-md transition-colors',
 						viewMode === 'mastered'
-							? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
-							: 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+							? 'bg-background text-foreground shadow-sm'
+							: 'text-muted-foreground hover:text-foreground'
 					)}
 				>
 					Mastered
@@ -120,7 +120,7 @@
 		</div>
 	{:else}
 		<div class="flex flex-col items-center justify-center py-12 text-center">
-			<div class="text-slate-400 dark:text-slate-500 mb-2">
+			<div class="text-muted-foreground mb-2">
 				{#if viewMode === 'due'}
 					No cards due for review
 				{:else if viewMode === 'mastered'}

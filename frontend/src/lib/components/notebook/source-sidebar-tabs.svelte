@@ -24,7 +24,7 @@
 
 <div
 	class={cn(
-		'flex items-center gap-1 border-none border-slate-200 px-2 py-1.5 dark:border-slate-700',
+		'flex items-center gap-1 border-none border-border px-2 py-1.5',
 		className
 	)}
 >
@@ -35,8 +35,8 @@
 			class={cn(
 				'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
 				activeTab === tab.id
-					? 'bg-sky-100 text-sky-900 dark:bg-sky-900/30 dark:text-sky-100'
-					: 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
+					? 'bg-primary/10 text-primary'
+					: 'text-muted-foreground hover:text-foreground'
 			)}
 		>
 			{tab.label}

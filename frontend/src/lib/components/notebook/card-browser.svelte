@@ -71,20 +71,20 @@
 	<!-- Search and filters -->
 	<div class="flex items-center gap-3">
 		<div class="relative flex-1 max-w-md">
-			<SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+			<SearchIcon class="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
 			<input
 				type="text"
 				placeholder="Search cards..."
 				value={localSearchQuery}
 				oninput={handleSearchInput}
-				class="w-full pl-9 pr-4 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+				class="w-full pl-9 pr-4 py-2 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
 			/>
 		</div>
 
 		<select
 			value={selectedSourceId ?? ''}
 			onchange={handleSourceChange}
-			class="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+			class="px-3 py-2 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-ring"
 		>
 			<option value="">All sources</option>
 			{#each sources as source (source.id)}
@@ -94,40 +94,40 @@
 	</div>
 
 	<!-- Results count -->
-	<p class="text-sm text-slate-500 dark:text-slate-400">
+	<p class="text-sm text-muted-foreground">
 		{filteredCards.length} of {cards.length} cards
 	</p>
 
 	<!-- Cards table -->
-	<div class="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+	<div class="border border-border rounded-lg overflow-hidden">
 		<table class="w-full text-sm">
-			<thead class="bg-slate-50 dark:bg-slate-800/50">
-				<tr class="border-b border-slate-200 dark:border-slate-700">
-					<th class="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Front</th>
-					<th class="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Back</th>
-					<th class="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Source</th>
-					<th class="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Status</th>
-					<th class="text-left px-4 py-3 font-medium text-slate-600 dark:text-slate-400">Interval</th>
+			<thead class="bg-muted">
+				<tr class="border-b border-border">
+					<th class="text-left px-4 py-3 font-medium text-muted-foreground">Front</th>
+					<th class="text-left px-4 py-3 font-medium text-muted-foreground">Back</th>
+					<th class="text-left px-4 py-3 font-medium text-muted-foreground">Source</th>
+					<th class="text-left px-4 py-3 font-medium text-muted-foreground">Status</th>
+					<th class="text-left px-4 py-3 font-medium text-muted-foreground">Interval</th>
 				</tr>
 			</thead>
-			<tbody class="divide-y divide-slate-200 dark:divide-slate-700">
+			<tbody class="divide-y divide-border">
 				{#each filteredCards as card (card.id)}
-					<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer">
-						<td class="px-4 py-3 text-slate-900 dark:text-white max-w-xs truncate">{card.front}</td>
-						<td class="px-4 py-3 text-slate-500 dark:text-slate-400 max-w-xs truncate">{card.back}</td>
-						<td class="px-4 py-3 text-slate-500 dark:text-slate-400">{getSourceName(card.sourceId)}</td>
+					<tr class="hover:bg-accent cursor-pointer">
+						<td class="px-4 py-3 text-foreground max-w-xs truncate">{card.front}</td>
+						<td class="px-4 py-3 text-muted-foreground max-w-xs truncate">{card.back}</td>
+						<td class="px-4 py-3 text-muted-foreground">{getSourceName(card.sourceId)}</td>
 						<td class="px-4 py-3">
 							{#if card.due}
-								<span class="px-2 py-0.5 text-xs font-medium bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 rounded">Due</span>
+								<span class="px-2 py-0.5 text-xs font-medium bg-primary/10 text-primary rounded">Due</span>
 							{:else}
-								<span class="text-slate-400">-</span>
+								<span class="text-muted-foreground">-</span>
 							{/if}
 						</td>
-						<td class="px-4 py-3 text-slate-500 dark:text-slate-400">{card.interval}</td>
+						<td class="px-4 py-3 text-muted-foreground">{card.interval}</td>
 					</tr>
 				{:else}
 					<tr>
-						<td colspan="5" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+						<td colspan="5" class="px-4 py-12 text-center text-muted-foreground">
 							{#if searchQuery || selectedSourceId}
 								No cards match your filters
 							{:else}
