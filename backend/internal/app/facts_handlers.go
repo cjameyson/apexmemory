@@ -4,35 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 
 	"apexmemory.ai/internal/db"
 )
-
-const (
-	defaultPageLimit = 50
-	maxPageLimit     = 100
-)
-
-// parsePagination extracts limit and offset from query params with defaults.
-func parsePagination(r *http.Request) (limit, offset int32) {
-	limit = defaultPageLimit
-	if v := r.URL.Query().Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			limit = int32(n)
-		}
-	}
-	if limit > maxPageLimit {
-		limit = maxPageLimit
-	}
-
-	if v := r.URL.Query().Get("offset"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-			offset = int32(n)
-		}
-	}
-	return
-}
 
 // CreateFactHandler handles POST /v1/notebooks/{notebook_id}/facts
 func (app *Application) CreateFactHandler(w http.ResponseWriter, r *http.Request) {
@@ -124,10 +98,7 @@ func (app *Application) ListFactsHandler(w http.ResponseWriter, r *http.Request)
 		data[i] = toFactListResponse(n)
 	}
 
-	app.RespondJSON(w, r, http.StatusOK, map[string]any{
-		"data":  data,
-		"total": total,
-	})
+	app.RespondJSON(w, r, http.StatusOK, NewPageResponse(data, total, limit, offset))
 }
 
 // GetFactHandler handles GET /v1/notebooks/{notebook_id}/facts/{id}

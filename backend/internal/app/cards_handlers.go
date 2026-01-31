@@ -45,10 +45,7 @@ func (app *Application) ListCardsHandler(w http.ResponseWriter, r *http.Request)
 		data[i] = toCardResponse(c)
 	}
 
-	app.RespondJSON(w, r, http.StatusOK, map[string]any{
-		"data":  data,
-		"total": total,
-	})
+	app.RespondJSON(w, r, http.StatusOK, NewPageResponse(data, total, limit, offset))
 }
 
 // GetCardHandler handles GET /v1/notebooks/{notebook_id}/cards/{id}

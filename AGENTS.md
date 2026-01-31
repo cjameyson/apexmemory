@@ -36,6 +36,13 @@ The core value proposition is a flashcard SRS system with AI-enhanced workflows.
 
 Refer to `references/guide-backend.md` for an overview of backend structure.
 
+#### Pagination Convention
+All list endpoints use `?limit=&offset=` query params with `PageResponse[T]`:
+- **Defaults:** limit=50, max=100. Parsed by `parsePagination()` in `helpers.go`.
+- **Response shape:** `{"data": [...], "total": N, "has_more": bool}`
+- **Helper:** `NewPageResponse(data, total, limit, offset)` computes `has_more` automatically.
+- **Client derives:** current page (`floor(offset/limit)+1`), total pages (`ceil(total/limit)`), showing range.
+
 ### Core Entities
 **MVP**
 - Sources: source material the user is studying (pdfs, slides, audio, links, etc)

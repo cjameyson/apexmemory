@@ -6,9 +6,51 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 )
+
+const (
+	defaultPageLimit = 50
+	maxPageLimit     = 100
+)
+
+// parsePagination extracts limit and offset from query params with defaults.
+func parsePagination(r *http.Request) (limit, offset int32) {
+	limit = defaultPageLimit
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = int32(n)
+		}
+	}
+	if limit > maxPageLimit {
+		limit = maxPageLimit
+	}
+
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = int32(n)
+		}
+	}
+	return
+}
+
+// PageResponse is a typed wrapper for paginated list responses.
+type PageResponse[T any] struct {
+	Data    []T   `json:"data"`
+	Total   int64 `json:"total"`
+	HasMore bool  `json:"has_more"`
+}
+
+// NewPageResponse constructs a PageResponse with has_more calculated automatically.
+func NewPageResponse[T any](data []T, total int64, limit, offset int32) PageResponse[T] {
+	return PageResponse[T]{
+		Data:    data,
+		Total:   total,
+		HasMore: int64(offset)+int64(len(data)) < total,
+	}
+}
 
 // maxJSONBodySize is the maximum allowed size for JSON request bodies (1MB).
 // Prevents memory exhaustion from large payloads.
