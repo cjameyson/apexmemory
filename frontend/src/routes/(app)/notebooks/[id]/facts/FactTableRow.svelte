@@ -37,17 +37,17 @@
 	<td class="px-3 py-2.5">
 		<button
 			onclick={() => (expanded = !expanded)}
-			class="flex w-full items-start gap-2 text-left"
+			class="flex w-full items-center gap-2 text-left"
 			aria-expanded={expanded}
 			aria-label="Toggle fact details"
 		>
 			<ChevronRightIcon
-				class="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform {expanded ? 'rotate-90' : ''}"
+				class="h-4 w-4 shrink-0 text-muted-foreground transition-transform {expanded ? 'rotate-90' : ''}"
 			/>
 			<div class="min-w-0 flex-1">
-				<p class="text-sm font-medium text-foreground">{display.primary}</p>
+				<p class="line-clamp-2 text-sm font-medium text-foreground">{display.primary}</p>
 				{#if display.secondary}
-					<p class="mt-0.5 text-xs text-muted-foreground">{display.secondary}</p>
+					<p class="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{display.secondary}</p>
 				{/if}
 				{#if fact.tags.length > 0}
 					<div class="mt-1 flex flex-wrap gap-1">

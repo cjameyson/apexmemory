@@ -238,7 +238,7 @@ FactsToolbar.svelte
 
 ---
 
-## Phase 4: Facts Table View
+## Phase 4: Facts Table View -- COMPLETE
 
 ### Objective
 Build the main table displaying facts with expandable rows, selection, and inline actions.
@@ -322,17 +322,34 @@ function clearSelection() { ... }
 - Expansion reveals card details (Phase 5)
 
 ### Deliverables
-- [ ] `FactsTable.svelte` - main table container
-- [ ] `FactTableRow.svelte` - individual row with expansion
-- [ ] `FactTypeBadge.svelte` - reusable type badge
-- [ ] `$lib/utils/fact-display.ts` - content extraction utilities
+- [x] `FactsTable.svelte` - main table container
+- [x] `FactTableRow.svelte` - individual row with expansion
+- [x] `FactTypeBadge.svelte` - reusable type badge
+- [x] `$lib/utils/fact-display.ts` - content extraction utilities
+
+### What was built
+- **`$lib/utils/fact-display.ts`**: `getFactDisplayText()` extracts primary/secondary display text from JSONB content per fact type. Basic: front/back with truncation. Cloze: masks `{{cN::word}}` as `[...]`. Image occlusion: title + region count. Includes `stripHtml()` and `truncate()` helpers.
+- **`$lib/components/ui/FactTypeBadge.svelte`**: Renders icon + label badge with type-specific colors using `$derived` config. Basic (`bg-muted`), Cloze (`bg-cloze/15`), Image (`bg-warning/15`).
+- **`FactsTable.svelte`**: Table container with header row (checkbox with select-all/minus/empty states, Content, Type, Cards, Due, Actions columns). Keyed `{#each}` iteration rendering `FactTableRow` per fact.
+- **`FactTableRow.svelte`**: Row with checkbox selection, expandable content (ChevronRight rotates 90deg), primary/secondary text, tags as pills, type badge, card count, due count (blue info circle when > 0, em-dash when 0), hover-revealed action buttons (Edit/Delete/More as no-ops). Expansion shows placeholder for Phase 5.
+- **`+page.svelte`**: Wired up `FactsTable` with `selectedIds` state, `toggleSelect`/`toggleSelectAll` functions. `$effect` clears selection when `data.facts` changes (filter/search/page navigation).
+- **Accessibility**: `aria-label` on select/select-all buttons, `aria-expanded` on expand toggle, `aria-label` on all action buttons.
+
+### Schema change: Unified `value` key
+During this phase, we standardized the fact field schema so **all field types use `value` as the data key**. Previously cloze fields stored text in a `cloze_text` key; now all fields consistently have `name`, `type`, and `value` at minimum. Changes:
+- **Backend**: `extractClozeElementIDs()` in `facts.go` reads `json:"value"` instead of `json:"cloze_text"`
+- **Backend tests**: All cloze test fixtures updated to use `"value":` key
+- **Seed data**: All cloze entries in `notebooks.go` updated to use `"value":` key
+- **Note**: Existing database records with old `cloze_text` key need re-seeding (drop + reseed)
 
 ### Verification
-- All fact types display correctly
-- Selection works (individual and all)
-- Tags display properly
-- Due counts show correct styling
-- Row expansion toggles smoothly
+- [x] All fact types display correctly (basic front/back, cloze masked, image occlusion title)
+- [x] Selection works (individual + select all + clear on navigation)
+- [x] Tags display as pill badges
+- [x] Due counts show blue circle (>0) or em-dash (0)
+- [x] Row expansion toggles chevron rotation smoothly
+- [x] TypeScript compiles without errors (svelte-check clean for new files)
+- [x] Accessibility: aria-labels on interactive elements
 
 ---
 
