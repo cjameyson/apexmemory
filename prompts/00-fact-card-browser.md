@@ -84,7 +84,7 @@ interface FactsPageData {
 
 ---
 
-## Phase 2: Core Page Layout & Header
+## Phase 2: Core Page Layout & Header -- COMPLETE
 
 ### Objective
 Build the main page structure with header section containing title, stats summary, and action buttons.
@@ -133,15 +133,21 @@ Build the main page structure with header section containing title, stats summar
 - Due Today: Clock icon, bg-info/15, count in text-info
 
 ### Deliverables
-- [ ] `FactsHeader.svelte` component
-- [ ] `QuickStats.svelte` component  
-- [ ] Integrate into `+page.svelte`
+- [x] `FactsHeader.svelte` component
+- [x] `QuickStats.svelte` component
+- [x] Integrate into `+page.svelte`
+
+### What was built
+- **`QuickStats.svelte`**: 4 stat cards (Basic, Cloze, Image, Due Today) in horizontal flex row with colored icon squares using `@lucide/svelte` icons (Layers, Type, Image, Clock) and semantic color tokens (`bg-cloze/15`, `bg-warning/15`, `bg-info/15`, `bg-muted`)
+- **`FactsHeader.svelte`**: Title "Facts & Cards" with subtitle counts, Review button (links to `/notebooks/[id]/review` with due count), disabled Create Fact button (placeholder for Phase 6), gradient background `from-accent to-background`, renders QuickStats below
+- **`+page.svelte`**: Cleaned up debug content, imports FactsHeader, keeps basic fact list for data visibility
+- **`+page.server.ts`**: Added `notebookId: params.id` to return object for header links
 
 ### Verification
-- Stats display correctly from server data
-- Review button shows correct due count
-- Responsive layout maintained
-- Color scheme matches design
+- [x] Stats display correctly from server data
+- [x] Review button shows correct due count
+- [x] Responsive layout maintained (flex-wrap on stats)
+- [x] Color scheme uses semantic tokens
 
 ---
 
