@@ -73,3 +73,5 @@ frontend/e2e/.cache/
 
 # Husky (if initialized at frontend level)
 frontend/.husky/
+
+# Prompts
