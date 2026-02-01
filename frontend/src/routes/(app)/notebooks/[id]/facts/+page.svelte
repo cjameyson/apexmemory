@@ -1,11 +1,17 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import type { PageData } from './$types';
 	import FactsHeader from './FactsHeader.svelte';
 	import FactsToolbar from './FactsToolbar.svelte';
 	import FactsTable from './FactsTable.svelte';
 	import BulkActionsBar from './BulkActionsBar.svelte';
+	import Pagination from './Pagination.svelte';
+	import EmptyState from './EmptyState.svelte';
 
 	let { data }: { data: PageData } = $props();
+
+	let searchQuery = $derived($page.url.searchParams.get('q') || '');
+	let typeFilter = $derived($page.url.searchParams.get('type') || '');
 
 	let selectedIds = $state<Set<string>>(new Set());
 
@@ -50,9 +56,13 @@
 			onToggleSelect={toggleSelect}
 			onToggleAll={toggleSelectAll}
 		/>
+		<Pagination
+			page={data.pagination.page}
+			totalPages={data.pagination.totalPages}
+			total={data.pagination.total}
+			pageSize={data.pagination.pageSize}
+		/>
 	{:else}
-		<div class="p-6">
-			<p class="text-muted-foreground">No facts found.</p>
-		</div>
+		<EmptyState totalFacts={data.stats.totalFacts} {searchQuery} {typeFilter} />
 	{/if}
 </div>

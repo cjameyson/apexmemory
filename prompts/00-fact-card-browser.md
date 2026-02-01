@@ -354,7 +354,7 @@ During this phase, we standardized the fact field schema so **all field types us
 
 ---
 
-## Phase 5: Expanded Row & Bulk Actions
+## Phase 5: Expanded Row & Bulk Actions -- COMPLETE
 
 ### Objective
 Build the expanded row detail view showing fact preview and cards list, plus the bulk actions bar.
@@ -388,9 +388,16 @@ When a row is expanded, show below the main row:
 | new | bg-info/15 text-info |
 | learning | bg-warning/15 text-warning |
 | review | bg-success/15 text-success |
-| relearning | bg-error/15 text-error |
+| relearning | bg-destructive/15 text-destructive |
 
-For learning/relearning, append step: "learning (1)"
+### Cards Table Columns by Fact Type
+
+Columns vary per fact type to show relevant information:
+- **Basic**: State, Due, Reps, Lapses (no element ID -- single card per fact)
+- **Cloze**: State, Cloze ID, Cloze Text (extracted answer), Hint, Due, Reps, Lapses
+- **Image Occlusion**: State, Label, Hint, Due, Reps, Lapses (element ID hidden from user)
+
+Cloze text/hint extraction parses `{{c1::answer::hint}}` patterns from the fact content using the card's `elementId`.
 
 ### Bulk Actions Bar
 
@@ -398,7 +405,7 @@ Appears when `selectedIds.size > 0`:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│ 3 selected  [Clear]              [🏷️ Add Tags] [📦 Suspend] [🗑️ Delete] │
+│ 3 selected  [Clear]              [Add Tags] [Suspend] [Delete]      │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -408,46 +415,48 @@ Appears when `selectedIds.size > 0`:
 
 ### Data Fetching for Expanded Rows
 
-Options:
-1. **Eager load**: Include cards array in initial facts query (heavier)
-2. **Lazy load**: Fetch cards on expansion via API call
+Lazy loading via `$effect` with a `fetched` boolean guard to avoid reactive loops (reading and writing `cards` in the same effect would cause infinite re-runs). Cards are cached in component state -- collapse and re-expand shows cached data instantly.
 
-Recommend lazy loading with component-level fetch:
+### Row Action Buttons
 
-```typescript
-// In FactTableRow.svelte
-let cards = $state<Card[] | null>(null);
-let isLoadingCards = $state(false);
-
-async function loadCards() {
-  if (cards !== null) return;
-  isLoadingCards = true;
-  cards = await fetch(`/api/facts/${fact.id}/cards`).then(r => r.json());
-  isLoadingCards = false;
-}
-
-$effect(() => {
-  if (isExpanded && cards === null) loadCards();
-});
-```
+Each row has three hover-revealed action buttons with titles:
+- Preview fact (EyeIcon)
+- Edit fact (PencilIcon)
+- Delete fact (Trash2Icon)
 
 ### Deliverables
-- [ ] `FactExpandedContent.svelte` - expanded row content
-- [ ] `CardStateBadge.svelte` - reusable state badge
-- [ ] `CardsList.svelte` - cards table within expanded view
-- [ ] `BulkActionsBar.svelte` - conditional bulk actions
-- [ ] `/api/facts/[factId]/cards/+server.ts` - cards fetch endpoint
+- [x] `FactExpandedContent.svelte` - expanded row content with fact fields and per-type cards table
+- [x] `CardStateBadge.svelte` - reusable state badge (new/learning/review/relearning)
+- [x] `BulkActionsBar.svelte` - conditional bulk actions (Add Tags, Suspend, Delete -- no-op for now)
+- [x] `/api/notebooks/[notebookId]/facts/[factId]/+server.ts` - SvelteKit proxy route to backend fact detail endpoint
+
+### What was built
+- **`CardStateBadge.svelte`** (`$lib/components/ui/`): Color-coded badge using `$derived` config map. new=info, learning=warning, review=success, relearning=destructive.
+- **`FactExpandedContent.svelte`**: Two sections -- "Fields" (renders all fact content fields with labels) and "Cards" (table with columns varying by fact type). Lazy-loads cards via fetch to proxy route on mount. Uses `fetched` guard in `$effect` to prevent reactive loop. Includes `getClozeInfo()` to extract cloze answer text and hint from `{{cN::answer::hint}}` patterns. `stripHtml()` guards against undefined field values.
+- **`BulkActionsBar.svelte`**: Flexbox bar with selected count + Clear button on left, action buttons (Add Tags with TagIcon, Suspend with PauseIcon, Delete with Trash2Icon) on right. Delete styled with `text-destructive`.
+- **Proxy route** (`/api/notebooks/[notebookId]/facts/[factId]/+server.ts`): GET handler calling `apiRequest<ApiFactDetail>` on backend, returns full fact detail with cards array.
+- **`FactTableRow.svelte`** modified: Added `notebookId` prop, replaced Phase 5 placeholder with `FactExpandedContent`, replaced MoreHorizontalIcon with EyeIcon "Preview fact" button, added `title` attributes to all action buttons.
+- **`FactsTable.svelte`** modified: Added `notebookId` prop, passes through to rows.
+- **`+page.svelte`** modified: Added `BulkActionsBar` conditionally rendered when `selectedIds.size > 0`, passes `notebookId` to `FactsTable`.
+
+### Lessons learned
+- **`$effect` reactive loops**: Never read and write the same `$state` variable inside a single `$effect`. Use a separate boolean guard (`fetched`) to prevent re-triggering. `onMount` works but `$effect` with a guard is idiomatic Svelte 5.
+- **Undefined field values**: Not all fact field types have a string `value` (e.g. image occlusion). Guard `stripHtml()` against undefined input.
 
 ### Verification
-- Expansion loads cards correctly
-- Loading state shown while fetching
-- All card states display with correct colors
-- Bulk actions bar appears/disappears correctly
-- Bulk action buttons are wired (can be no-op for now)
+- [x] Expand a row -> loading spinner -> cards load and display
+- [x] Collapse and re-expand -> cards display immediately (cached)
+- [x] All 4 card states show correct badge colors
+- [x] Cloze cards show cloze ID, extracted text, and hint columns
+- [x] Basic cards show simplified columns (no element ID)
+- [x] Select facts -> bulk bar appears with count
+- [x] Clear selection -> bulk bar disappears
+- [x] Row action buttons have titles (Preview/Edit/Delete fact)
+- [x] No new svelte-check errors introduced
 
 ---
 
-## Phase 6: Pagination & Empty States
+## Phase 6: Pagination & Empty States -- COMPLETE
 
 ### Objective
 Build pagination controls and empty state displays.
@@ -590,8 +599,8 @@ src/routes/(app)/notebooks/[id]/facts/
 ├── FactsToolbar.svelte           ✅ Phase 3
 ├── FactsTable.svelte             ✅ Phase 4
 ├── FactTableRow.svelte           ✅ Phase 4
-├── FactExpandedContent.svelte    ⬜ Phase 5
-├── BulkActionsBar.svelte         ⬜ Phase 5
+├── FactExpandedContent.svelte    ✅ Phase 5
+├── BulkActionsBar.svelte         ✅ Phase 5
 ├── Pagination.svelte             ⬜ Phase 6
 ├── EmptyState.svelte             ⬜ Phase 6
 ├── FactsGrid.svelte              ⬜ Phase 7 (optional)
@@ -608,7 +617,7 @@ src/lib/
 │   └── fact-display.ts           ✅ Phase 4
 └── components/ui/
     ├── FactTypeBadge.svelte      ✅ Phase 4
-    └── CardStateBadge.svelte     ⬜ Phase 5
+    └── CardStateBadge.svelte     ✅ Phase 5
 ```
 
 ---
