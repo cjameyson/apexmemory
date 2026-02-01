@@ -19,7 +19,7 @@ Create TypeScript types and the `+page.server.ts` loader that fetches facts with
 Facts table key fields:
 - `id`, `user_id`, `notebook_id`
 - `fact_type`: `'basic' | 'cloze' | 'image_occlusion'`
-- `content`: JSONB with `{ version: number, fields: Field[] }`
+- `content`: JSONB with `{ version: number, fields: Field[] }` where each field has `{ name, type, value }` at minimum
 - `source_id`: optional FK to sources
 - `created_at`, `updated_at`
 
@@ -56,11 +56,11 @@ interface FactsPageData {
 
 ### Server Load Function Requirements
 
-1. Accept URL search params: `?type=`, `?q=`, `?sort=`, `?order=`, `?page=`
+1. Accept URL search params: `?type=`, `?q=`, `?sort=` (e.g. `-updated`, `created`), `?page=`
 2. Query facts with LEFT JOIN to cards for aggregated counts
 3. Compute `dueCount` as cards where `due <= now()` AND `suspended_at IS NULL` AND `buried_until IS NULL`
 4. Return stats aggregated across all facts (not just current page)
-5. Apply pagination (default 10 per page)
+5. Apply pagination (default 20 per page)
 
 ### Deliverables
 - [x] `$lib/types/facts.ts` - Type definitions (added `FactStats` interface)
@@ -210,8 +210,9 @@ FactsToolbar.svelte
 - Each tab shows icon + label
 
 **Sort Dropdown:**
-- Options: Recently Updated, Oldest Updated, Recently Created, Most Cards, Most Due
+- Options: Recently Updated, Oldest Updated, Recently Created, Oldest Created
 - Native select styled with border, rounded-lg
+- Unified `sort` param: `-updated` (default), `updated`, `-created`, `created`
 
 **View Toggle:**
 - Two icon buttons in pill container
@@ -581,30 +582,33 @@ Create these shared components in `$lib/components/ui/`:
 ## File Structure
 
 ```
-src/routes/notebooks/[notebookId]/facts/
-├── +page.svelte
-├── +page.server.ts
-├── FactsHeader.svelte
-├── FactsToolbar.svelte
-├── FactsTable.svelte
-├── FactTableRow.svelte
-├── FactExpandedContent.svelte
-├── FactsGrid.svelte (optional)
-├── FactGridCard.svelte (optional)
-├── BulkActionsBar.svelte
-├── Pagination.svelte
-└── EmptyState.svelte
+src/routes/(app)/notebooks/[id]/facts/
+├── +page.svelte                  ✅ Phase 1-4
+├── +page.server.ts               ✅ Phase 1
+├── FactsHeader.svelte            ✅ Phase 2
+├── QuickStats.svelte             ✅ Phase 2
+├── FactsToolbar.svelte           ✅ Phase 3
+├── FactsTable.svelte             ✅ Phase 4
+├── FactTableRow.svelte           ✅ Phase 4
+├── FactExpandedContent.svelte    ⬜ Phase 5
+├── BulkActionsBar.svelte         ⬜ Phase 5
+├── Pagination.svelte             ⬜ Phase 6
+├── EmptyState.svelte             ⬜ Phase 6
+├── FactsGrid.svelte              ⬜ Phase 7 (optional)
+└── FactGridCard.svelte           ⬜ Phase 7 (optional)
 
 src/lib/
 ├── types/
-│   └── facts.ts
+│   └── fact.ts                   ✅ Phase 1
+├── api/
+│   └── types.ts                  ✅ Phase 1 (ApiFactStats, ApiFactsListWithStats)
+├── services/
+│   └── facts.ts                  ✅ Phase 1 (toFact, toFactDetail, toCard)
 ├── utils/
-│   ├── fact-display.ts
-│   └── url.ts
+│   └── fact-display.ts           ✅ Phase 4
 └── components/ui/
-    ├── Badge.svelte
-    ├── FactTypeBadge.svelte
-    └── CardStateBadge.svelte
+    ├── FactTypeBadge.svelte      ✅ Phase 4
+    └── CardStateBadge.svelte     ⬜ Phase 5
 ```
 
 ---
