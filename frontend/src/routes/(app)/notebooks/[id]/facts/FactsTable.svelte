@@ -6,11 +6,13 @@
 	let {
 		facts,
 		selectedIds,
+		notebookId,
 		onToggleSelect,
 		onToggleAll
 	}: {
 		facts: Fact[];
 		selectedIds: Set<string>;
+		notebookId: string;
 		onToggleSelect: (id: string) => void;
 		onToggleAll: () => void;
 	} = $props();
@@ -58,7 +60,7 @@
 		</thead>
 		<tbody>
 			{#each facts as fact (fact.id)}
-				<FactTableRow {fact} selected={selectedIds.has(fact.id)} {onToggleSelect} />
+				<FactTableRow {fact} selected={selectedIds.has(fact.id)} {notebookId} {onToggleSelect} />
 			{/each}
 		</tbody>
 	</table>

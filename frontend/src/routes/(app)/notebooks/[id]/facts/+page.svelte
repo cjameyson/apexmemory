@@ -3,6 +3,7 @@
 	import FactsHeader from './FactsHeader.svelte';
 	import FactsToolbar from './FactsToolbar.svelte';
 	import FactsTable from './FactsTable.svelte';
+	import BulkActionsBar from './BulkActionsBar.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -37,10 +38,15 @@
 	<FactsHeader stats={data.stats} notebookId={data.notebookId} />
 	<FactsToolbar />
 
+	{#if selectedIds.size > 0}
+		<BulkActionsBar selectedCount={selectedIds.size} onClear={() => (selectedIds = new Set())} />
+	{/if}
+
 	{#if data.facts.length > 0}
 		<FactsTable
 			facts={data.facts}
 			{selectedIds}
+			notebookId={data.notebookId}
 			onToggleSelect={toggleSelect}
 			onToggleAll={toggleSelectAll}
 		/>
