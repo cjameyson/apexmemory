@@ -1,14 +1,14 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import FactsHeader from './FactsHeader.svelte';
+	import FactsToolbar from './FactsToolbar.svelte';
 
 	let { data }: { data: PageData } = $props();
 </script>
 
 <div id="notebook-main" class="flex flex-1 flex-col overflow-auto">
 	<FactsHeader stats={data.stats} notebookId={data.notebookId} />
-
-	<!-- Toolbar + Table placeholder (Phase 3+) -->
+	<FactsToolbar />
 
 	<div class="space-y-2 p-6">
 		{#each data.facts as fact}
