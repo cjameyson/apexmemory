@@ -73,6 +73,7 @@ func (app *Application) CreateFactHandler(w http.ResponseWriter, r *http.Request
 }
 
 // ListFactsHandler handles GET /v1/notebooks/{notebook_id}/facts
+// Query params: limit, offset, type (fact_type filter), q (search), stats=true (include stats)
 func (app *Application) ListFactsHandler(w http.ResponseWriter, r *http.Request) {
 	user := app.GetUser(r.Context())
 	if user.IsAnonymous() {
@@ -86,19 +87,53 @@ func (app *Application) ListFactsHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	limit, offset := parsePagination(r)
+	q := r.URL.Query()
 
-	facts, total, err := app.ListFacts(r.Context(), user.ID, notebookID, limit, offset)
+	filters := FactListFilters{
+		FactType: q.Get("type"),
+		Search:   q.Get("q"),
+	}
+
+	facts, total, err := app.ListFactsFiltered(r.Context(), user.ID, notebookID, filters, limit, offset)
 	if err != nil {
 		app.RespondServerError(w, r, ErrDBQuery("list facts", err))
 		return
 	}
 
-	data := make([]FactResponse, len(facts))
+	data := make([]FactFilteredResponse, len(facts))
 	for i, n := range facts {
-		data[i] = toFactListResponse(n)
+		data[i] = toFactFilteredResponse(n)
 	}
 
-	app.RespondJSON(w, r, http.StatusOK, NewPageResponse(data, total, limit, offset))
+	resp := NewPageResponse(data, total, limit, offset)
+
+	// If stats requested, include them
+	if q.Get("stats") == "true" {
+		stats, err := app.GetFactStats(r.Context(), user.ID, notebookID)
+		if err != nil {
+			app.RespondServerError(w, r, ErrDBQuery("get fact stats", err))
+			return
+		}
+		app.RespondJSON(w, r, http.StatusOK, struct {
+			PageResponse[FactFilteredResponse]
+			Stats FactStatsResponse `json:"stats"`
+		}{
+			PageResponse: resp,
+			Stats: FactStatsResponse{
+				TotalFacts: stats.TotalFacts,
+				TotalCards: stats.TotalCards,
+				TotalDue:   stats.TotalDue,
+				ByType: FactStatsTypeBreakdown{
+					Basic:          stats.BasicCount,
+					Cloze:          stats.ClozeCount,
+					ImageOcclusion: stats.ImageOcclusionCount,
+				},
+			},
+		})
+		return
+	}
+
+	app.RespondJSON(w, r, http.StatusOK, resp)
 }
 
 // GetFactHandler handles GET /v1/notebooks/{notebook_id}/facts/{id}

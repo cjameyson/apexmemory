@@ -30,6 +30,32 @@ func (q *Queries) CountFactsByNotebook(ctx context.Context, arg CountFactsByNote
 	return count, err
 }
 
+const countFactsByNotebookFiltered = `-- name: CountFactsByNotebookFiltered :one
+SELECT count(*) FROM app.facts f
+WHERE f.user_id = $1 AND f.notebook_id = $2
+  AND ($3::text IS NULL OR f.fact_type = $3)
+  AND ($4::text IS NULL OR f.content::text ILIKE '%' || $4::text || '%')
+`
+
+type CountFactsByNotebookFilteredParams struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	NotebookID uuid.UUID   `json:"notebook_id"`
+	FactType   pgtype.Text `json:"fact_type"`
+	Search     pgtype.Text `json:"search"`
+}
+
+func (q *Queries) CountFactsByNotebookFiltered(ctx context.Context, arg CountFactsByNotebookFilteredParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countFactsByNotebookFiltered,
+		arg.UserID,
+		arg.NotebookID,
+		arg.FactType,
+		arg.Search,
+	)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createFact = `-- name: CreateFact :one
 INSERT INTO app.facts (user_id, notebook_id, fact_type, content, source_id)
 VALUES ($1, $2, $3, $4, $5)
@@ -126,6 +152,45 @@ func (q *Queries) GetFact(ctx context.Context, arg GetFactParams) (GetFactRow, e
 	return i, err
 }
 
+const getFactStatsByNotebook = `-- name: GetFactStatsByNotebook :one
+SELECT
+  (SELECT count(*) FROM app.facts f1 WHERE f1.user_id = $1 AND f1.notebook_id = $2) AS total_facts,
+  (SELECT count(*) FROM app.cards c1 WHERE c1.user_id = $1 AND c1.notebook_id = $2) AS total_cards,
+  (SELECT count(*) FROM app.cards c2 WHERE c2.user_id = $1 AND c2.notebook_id = $2
+    AND c2.due <= now() AND c2.suspended_at IS NULL AND c2.buried_until IS NULL) AS total_due,
+  (SELECT count(*) FROM app.facts f2 WHERE f2.user_id = $1 AND f2.notebook_id = $2 AND f2.fact_type = 'basic') AS basic_count,
+  (SELECT count(*) FROM app.facts f3 WHERE f3.user_id = $1 AND f3.notebook_id = $2 AND f3.fact_type = 'cloze') AS cloze_count,
+  (SELECT count(*) FROM app.facts f4 WHERE f4.user_id = $1 AND f4.notebook_id = $2 AND f4.fact_type = 'image_occlusion') AS image_occlusion_count
+`
+
+type GetFactStatsByNotebookParams struct {
+	UserID     uuid.UUID `json:"user_id"`
+	NotebookID uuid.UUID `json:"notebook_id"`
+}
+
+type GetFactStatsByNotebookRow struct {
+	TotalFacts          int64 `json:"total_facts"`
+	TotalCards          int64 `json:"total_cards"`
+	TotalDue            int64 `json:"total_due"`
+	BasicCount          int64 `json:"basic_count"`
+	ClozeCount          int64 `json:"cloze_count"`
+	ImageOcclusionCount int64 `json:"image_occlusion_count"`
+}
+
+func (q *Queries) GetFactStatsByNotebook(ctx context.Context, arg GetFactStatsByNotebookParams) (GetFactStatsByNotebookRow, error) {
+	row := q.db.QueryRow(ctx, getFactStatsByNotebook, arg.UserID, arg.NotebookID)
+	var i GetFactStatsByNotebookRow
+	err := row.Scan(
+		&i.TotalFacts,
+		&i.TotalCards,
+		&i.TotalDue,
+		&i.BasicCount,
+		&i.ClozeCount,
+		&i.ImageOcclusionCount,
+	)
+	return i, err
+}
+
 const listFactsByNotebook = `-- name: ListFactsByNotebook :many
 SELECT n.user_id, n.id, n.notebook_id, n.fact_type, n.content, n.source_id, n.created_at, n.updated_at, (SELECT count(*) FROM app.cards c WHERE c.user_id = n.user_id AND c.fact_id = n.id) AS card_count
 FROM app.facts n
@@ -177,6 +242,79 @@ func (q *Queries) ListFactsByNotebook(ctx context.Context, arg ListFactsByNotebo
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.CardCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFactsByNotebookFiltered = `-- name: ListFactsByNotebookFiltered :many
+SELECT f.user_id, f.id, f.notebook_id, f.fact_type, f.content, f.source_id, f.created_at, f.updated_at,
+  (SELECT count(*) FROM app.cards c WHERE c.user_id = f.user_id AND c.fact_id = f.id) AS card_count,
+  (SELECT count(*) FROM app.cards c WHERE c.user_id = f.user_id AND c.fact_id = f.id
+    AND c.due <= now() AND c.suspended_at IS NULL AND c.buried_until IS NULL) AS due_count
+FROM app.facts f
+WHERE f.user_id = $1 AND f.notebook_id = $2
+  AND ($3::text IS NULL OR f.fact_type = $3)
+  AND ($4::text IS NULL OR f.content::text ILIKE '%' || $4::text || '%')
+ORDER BY f.updated_at DESC
+LIMIT $6 OFFSET $5
+`
+
+type ListFactsByNotebookFilteredParams struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	NotebookID uuid.UUID   `json:"notebook_id"`
+	FactType   pgtype.Text `json:"fact_type"`
+	Search     pgtype.Text `json:"search"`
+	RowOffset  int32       `json:"row_offset"`
+	RowLimit   int32       `json:"row_limit"`
+}
+
+type ListFactsByNotebookFilteredRow struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	ID         uuid.UUID   `json:"id"`
+	NotebookID uuid.UUID   `json:"notebook_id"`
+	FactType   string      `json:"fact_type"`
+	Content    []byte      `json:"content"`
+	SourceID   pgtype.UUID `json:"source_id"`
+	CreatedAt  time.Time   `json:"created_at"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+	CardCount  int64       `json:"card_count"`
+	DueCount   int64       `json:"due_count"`
+}
+
+func (q *Queries) ListFactsByNotebookFiltered(ctx context.Context, arg ListFactsByNotebookFilteredParams) ([]ListFactsByNotebookFilteredRow, error) {
+	rows, err := q.db.Query(ctx, listFactsByNotebookFiltered,
+		arg.UserID,
+		arg.NotebookID,
+		arg.FactType,
+		arg.Search,
+		arg.RowOffset,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListFactsByNotebookFilteredRow{}
+	for rows.Next() {
+		var i ListFactsByNotebookFilteredRow
+		if err := rows.Scan(
+			&i.UserID,
+			&i.ID,
+			&i.NotebookID,
+			&i.FactType,
+			&i.Content,
+			&i.SourceID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.CardCount,
+			&i.DueCount,
 		); err != nil {
 			return nil, err
 		}

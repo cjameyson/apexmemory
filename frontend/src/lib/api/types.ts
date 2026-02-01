@@ -123,6 +123,24 @@ export interface UpdateFactResponse {
 export interface PaginatedResponse<T> {
 	data: T[];
 	total: number;
+	has_more: boolean;
+}
+
+// Stats returned when ?stats=true on facts list
+export interface ApiFactStats {
+	total_facts: number;
+	total_cards: number;
+	total_due: number;
+	by_type: {
+		basic: number;
+		cloze: number;
+		image_occlusion: number;
+	};
+}
+
+// Extended facts list response when stats=true
+export interface ApiFactsListWithStats extends PaginatedResponse<ApiFact> {
+	stats: ApiFactStats;
 }
 
 // Discriminated union for API results

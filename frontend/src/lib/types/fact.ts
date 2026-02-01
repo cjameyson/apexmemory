@@ -4,6 +4,13 @@ export type CardState = 'new' | 'learning' | 'review' | 'relearning';
 export type FactTypeFilter = 'all' | FactType;
 export type FactSortField = 'updated' | 'created' | 'cards' | 'due';
 
+export interface FactStats {
+	totalFacts: number;
+	totalCards: number;
+	totalDue: number;
+	byType: { basic: number; cloze: number; imageOcclusion: number };
+}
+
 export interface Fact {
 	id: string;
 	notebookId: string;

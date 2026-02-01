@@ -9,7 +9,7 @@ Build a **Facts & Cards Browser** for the Apex Memory spaced repetition applicat
 
 ---
 
-## Phase 1: Data Layer & Types
+## Phase 1: Data Layer & Types -- COMPLETE
 
 ### Objective
 Create TypeScript types and the `+page.server.ts` loader that fetches facts with aggregated card statistics.
@@ -63,16 +63,24 @@ interface FactsPageData {
 5. Apply pagination (default 10 per page)
 
 ### Deliverables
-- [ ] `$lib/types/facts.ts` - Type definitions
-- [ ] `+page.server.ts` - Load function with filtering, sorting, pagination
-- [ ] SQL queries (via sqlc or inline) for facts list with card counts
+- [x] `$lib/types/facts.ts` - Type definitions (added `FactStats` interface)
+- [x] `+page.server.ts` - Load function with filtering, sorting, pagination
+- [x] SQL queries (via sqlc) for facts list with card counts
+
+### What was built
+- **Backend SQL:** `ListFactsByNotebookFiltered` (optional `fact_type` + `search` filters, `card_count` + `due_count` subqueries), `CountFactsByNotebookFiltered`, `GetFactStatsByNotebook` (aggregate stats by type)
+- **Backend Go:** `ListFactsFiltered()`, `GetFactStats()`, updated `ListFactsHandler` with `?type=`, `?q=`, `?stats=true` query params, new response types `FactFilteredResponse`, `FactStatsResponse`
+- **Frontend types:** `ApiFactStats`, `ApiFactsListWithStats` in `api/types.ts`; `FactStats` in `types/fact.ts`
+- **Frontend load:** `+page.server.ts` reads `?type=`, `?q=`, `?page=` from URL, calls API with `?stats=true`, returns `facts`, `pagination`, `stats`, `filters`
+- **Temp page:** Debug view in `+page.svelte` showing raw data (to be replaced in Phase 2)
+- **Note:** Dynamic sort deferred to Phase 3 (sqlc limitation — currently fixed `ORDER BY updated_at DESC`)
 
 ### Verification
-- Load function returns correctly shaped data
-- Filtering by type works
-- Search query filters content
-- Pagination returns correct slice
-- Stats reflect full dataset, not just current page
+- [x] Load function returns correctly shaped data
+- [x] Filtering by type works
+- [x] Search query filters content
+- [x] Pagination returns correct slice
+- [x] Stats reflect full dataset, not just current page
 
 ---
 

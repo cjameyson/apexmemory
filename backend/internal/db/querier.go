@@ -15,6 +15,7 @@ type Querier interface {
 	ArchiveNotebook(ctx context.Context, arg ArchiveNotebookParams) (int64, error)
 	CountCardsByNotebook(ctx context.Context, arg CountCardsByNotebookParams) (int64, error)
 	CountFactsByNotebook(ctx context.Context, arg CountFactsByNotebookParams) (int64, error)
+	CountFactsByNotebookFiltered(ctx context.Context, arg CountFactsByNotebookFilteredParams) (int64, error)
 	CreateAuthIdentity(ctx context.Context, arg CreateAuthIdentityParams) (AuthIdentity, error)
 	CreateCard(ctx context.Context, arg CreateCardParams) (Card, error)
 	CreateFact(ctx context.Context, arg CreateFactParams) (AppFact, error)
@@ -33,6 +34,7 @@ type Querier interface {
 	GetAuthIdentityByProviderID(ctx context.Context, arg GetAuthIdentityByProviderIDParams) (GetAuthIdentityByProviderIDRow, error)
 	GetCard(ctx context.Context, arg GetCardParams) (Card, error)
 	GetFact(ctx context.Context, arg GetFactParams) (GetFactRow, error)
+	GetFactStatsByNotebook(ctx context.Context, arg GetFactStatsByNotebookParams) (GetFactStatsByNotebookRow, error)
 	GetNotebook(ctx context.Context, arg GetNotebookParams) (Notebook, error)
 	GetSessionByToken(ctx context.Context, tokenHash []byte) (GetSessionByTokenRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
@@ -46,6 +48,7 @@ type Querier interface {
 	ListCardsByFact(ctx context.Context, arg ListCardsByFactParams) ([]Card, error)
 	ListCardsByNotebook(ctx context.Context, arg ListCardsByNotebookParams) ([]Card, error)
 	ListFactsByNotebook(ctx context.Context, arg ListFactsByNotebookParams) ([]ListFactsByNotebookRow, error)
+	ListFactsByNotebookFiltered(ctx context.Context, arg ListFactsByNotebookFilteredParams) ([]ListFactsByNotebookFilteredRow, error)
 	ListNotebooks(ctx context.Context, userID uuid.UUID) ([]Notebook, error)
 	SoftDeleteUser(ctx context.Context, id uuid.UUID) error
 	UnarchiveNotebook(ctx context.Context, arg UnarchiveNotebookParams) error

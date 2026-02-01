@@ -14,6 +14,7 @@ import (
 	"apexmemory.ai/internal/db"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 var (
@@ -89,6 +90,47 @@ func toFactListResponse(n db.ListFactsByNotebookRow) FactResponse {
 		CardCount:  n.CardCount,
 		CreatedAt:  n.CreatedAt,
 		UpdatedAt:  n.UpdatedAt,
+	}
+	if n.SourceID.Valid {
+		id := uuid.UUID(n.SourceID.Bytes)
+		resp.SourceID = &id
+	}
+	return resp
+}
+
+// FactFilteredResponse extends FactResponse with due_count.
+type FactFilteredResponse struct {
+	FactResponse
+	DueCount int64 `json:"due_count"`
+}
+
+// FactStatsResponse is the stats summary for a notebook's facts.
+type FactStatsResponse struct {
+	TotalFacts int64                    `json:"total_facts"`
+	TotalCards int64                    `json:"total_cards"`
+	TotalDue   int64                    `json:"total_due"`
+	ByType     FactStatsTypeBreakdown   `json:"by_type"`
+}
+
+// FactStatsTypeBreakdown is the per-type breakdown.
+type FactStatsTypeBreakdown struct {
+	Basic          int64 `json:"basic"`
+	Cloze          int64 `json:"cloze"`
+	ImageOcclusion int64 `json:"image_occlusion"`
+}
+
+func toFactFilteredResponse(n db.ListFactsByNotebookFilteredRow) FactFilteredResponse {
+	resp := FactFilteredResponse{
+		FactResponse: FactResponse{
+			ID:         n.ID,
+			NotebookID: n.NotebookID,
+			FactType:   n.FactType,
+			Content:    json.RawMessage(n.Content),
+			CardCount:  n.CardCount,
+			CreatedAt:  n.CreatedAt,
+			UpdatedAt:  n.UpdatedAt,
+		},
+		DueCount: n.DueCount,
 	}
 	if n.SourceID.Valid {
 		id := uuid.UUID(n.SourceID.Bytes)
@@ -488,6 +530,54 @@ func (app *Application) UpdateFact(ctx context.Context, userID, notebookID, fact
 	})
 
 	return result, err
+}
+
+// FactListFilters holds optional filters for listing facts.
+type FactListFilters struct {
+	FactType string // empty = all
+	Search   string // empty = no search
+}
+
+// ListFactsFiltered retrieves paginated facts with optional filters and due counts.
+func (app *Application) ListFactsFiltered(ctx context.Context, userID, notebookID uuid.UUID, filters FactListFilters, limit, offset int32) ([]db.ListFactsByNotebookFilteredRow, int64, error) {
+	params := db.ListFactsByNotebookFilteredParams{
+		UserID:     userID,
+		NotebookID: notebookID,
+		RowLimit:   limit,
+		RowOffset:  offset,
+	}
+	if filters.FactType != "" {
+		params.FactType = pgtype.Text{String: filters.FactType, Valid: true}
+	}
+	if filters.Search != "" {
+		params.Search = pgtype.Text{String: filters.Search, Valid: true}
+	}
+
+	facts, err := app.Queries.ListFactsByNotebookFiltered(ctx, params)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	countParams := db.CountFactsByNotebookFilteredParams{
+		UserID:     userID,
+		NotebookID: notebookID,
+		FactType:   params.FactType,
+		Search:     params.Search,
+	}
+	total, err := app.Queries.CountFactsByNotebookFiltered(ctx, countParams)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return facts, total, nil
+}
+
+// GetFactStats returns aggregate stats for a notebook.
+func (app *Application) GetFactStats(ctx context.Context, userID, notebookID uuid.UUID) (db.GetFactStatsByNotebookRow, error) {
+	return app.Queries.GetFactStatsByNotebook(ctx, db.GetFactStatsByNotebookParams{
+		UserID:     userID,
+		NotebookID: notebookID,
+	})
 }
 
 // DeleteFact deletes a fact (cascades to cards).
