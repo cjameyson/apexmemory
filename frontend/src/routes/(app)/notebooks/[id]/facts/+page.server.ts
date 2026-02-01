@@ -13,7 +13,6 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const typeFilter = url.searchParams.get('type') || '';
 	const search = url.searchParams.get('q') || '';
 	const sort = url.searchParams.get('sort') || '';
-	const order = url.searchParams.get('order') || '';
 	const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
 	const pageSize = 20;
 	const offset = (page - 1) * pageSize;
@@ -27,7 +26,6 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	if (typeFilter) apiParams.set('type', typeFilter);
 	if (search) apiParams.set('q', search);
 	if (sort) apiParams.set('sort', sort);
-	if (order) apiParams.set('order', order);
 
 	const result = await apiRequest<ApiFactsListWithStats>(
 		`/v1/notebooks/${params.id}/facts?${apiParams}`,

@@ -534,8 +534,9 @@ func (app *Application) UpdateFact(ctx context.Context, userID, notebookID, fact
 
 // FactListFilters holds optional filters for listing facts.
 type FactListFilters struct {
-	FactType string // empty = all
-	Search   string // empty = no search
+	FactType string    // empty = all
+	Search   string    // empty = no search
+	Sort     SortParam // Field: "created", "updated"; empty = default (updated desc)
 }
 
 // ListFactsFiltered retrieves paginated facts with optional filters and due counts.
@@ -552,6 +553,8 @@ func (app *Application) ListFactsFiltered(ctx context.Context, userID, notebookI
 	if filters.Search != "" {
 		params.Search = pgtype.Text{String: filters.Search, Valid: true}
 	}
+	params.SortField = filters.Sort.Field
+	params.SortAsc = filters.Sort.Asc
 
 	facts, err := app.Queries.ListFactsByNotebookFiltered(ctx, params)
 	if err != nil {

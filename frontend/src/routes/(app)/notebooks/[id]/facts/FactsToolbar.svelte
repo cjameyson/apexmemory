@@ -13,7 +13,7 @@
 
 	const VALID_TYPES = new Set<FactTypeFilter>(['all', 'basic', 'cloze', 'image_occlusion']);
 	const VALID_SORT_VALUES = new Set([
-		'updated-desc', 'updated-asc', 'created-desc', 'created-asc', 'cards-desc', 'due-desc'
+		'-updated', 'updated', '-created', 'created'
 	]);
 
 	// All state derived from URL — single source of truth
@@ -21,13 +21,11 @@
 	let currentType = $derived<FactTypeFilter>(
 		VALID_TYPES.has(rawType as FactTypeFilter) ? (rawType as FactTypeFilter) : 'all'
 	);
-	let currentSort = $derived($page.url.searchParams.get('sort') || 'updated');
-	let currentOrder = $derived($page.url.searchParams.get('order') || 'desc');
+	let sortValue = $derived($page.url.searchParams.get('sort') || '-updated');
 	let currentView = $derived<'table' | 'grid'>(
 		$page.url.searchParams.get('view') === 'grid' ? 'grid' : 'table'
 	);
 	let currentSearch = $derived($page.url.searchParams.get('q') || '');
-	let sortValue = $derived(`${currentSort}-${currentOrder}`);
 
 	// Local search input tracks the text field during typing,
 	// synced back to URL state after debounce
@@ -76,8 +74,7 @@
 	function onSortChange(e: Event) {
 		const value = (e.target as HTMLSelectElement).value;
 		if (!VALID_SORT_VALUES.has(value)) return;
-		const [sort, order] = value.split('-');
-		updateUrl({ sort, order });
+		updateUrl({ sort: value === '-updated' ? '' : value });
 	}
 
 	function setView(view: 'table' | 'grid') {
@@ -92,12 +89,10 @@
 	];
 
 	const sortOptions = [
-		{ value: 'updated-desc', label: 'Recently Updated' },
-		{ value: 'updated-asc', label: 'Oldest Updated' },
-		{ value: 'created-desc', label: 'Recently Created' },
-		{ value: 'created-asc', label: 'Oldest Created' },
-		{ value: 'cards-desc', label: 'Most Cards' },
-		{ value: 'due-desc', label: 'Most Due' }
+		{ value: '-updated', label: 'Recently Updated' },
+		{ value: 'updated', label: 'Oldest Updated' },
+		{ value: '-created', label: 'Recently Created' },
+		{ value: 'created', label: 'Oldest Created' }
 	];
 </script>
 

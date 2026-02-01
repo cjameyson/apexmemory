@@ -262,8 +262,13 @@ FROM app.facts f
 WHERE f.user_id = $1 AND f.notebook_id = $2
   AND ($3::text IS NULL OR f.fact_type = $3)
   AND ($4::text IS NULL OR f.content::text ILIKE '%' || $4::text || '%')
-ORDER BY f.updated_at DESC
-LIMIT $6 OFFSET $5
+ORDER BY
+  CASE WHEN $5::text = 'created'  AND $6::bool = true  THEN f.created_at END ASC,
+  CASE WHEN $5::text = 'created'  AND $6::bool = false THEN f.created_at END DESC,
+  CASE WHEN $5::text = 'updated'  AND $6::bool = true  THEN f.updated_at END ASC,
+  CASE WHEN $5::text = 'updated'  AND $6::bool = false THEN f.updated_at END DESC,
+  f.updated_at DESC
+LIMIT $8 OFFSET $7
 `
 
 type ListFactsByNotebookFilteredParams struct {
@@ -271,6 +276,8 @@ type ListFactsByNotebookFilteredParams struct {
 	NotebookID uuid.UUID   `json:"notebook_id"`
 	FactType   pgtype.Text `json:"fact_type"`
 	Search     pgtype.Text `json:"search"`
+	SortField  string      `json:"sort_field"`
+	SortAsc    bool        `json:"sort_asc"`
 	RowOffset  int32       `json:"row_offset"`
 	RowLimit   int32       `json:"row_limit"`
 }
@@ -294,6 +301,8 @@ func (q *Queries) ListFactsByNotebookFiltered(ctx context.Context, arg ListFacts
 		arg.NotebookID,
 		arg.FactType,
 		arg.Search,
+		arg.SortField,
+		arg.SortAsc,
 		arg.RowOffset,
 		arg.RowLimit,
 	)

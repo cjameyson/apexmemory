@@ -89,9 +89,16 @@ func (app *Application) ListFactsHandler(w http.ResponseWriter, r *http.Request)
 	limit, offset := parsePagination(r)
 	q := r.URL.Query()
 
+	sort, err := parseSort(r, "created", "updated")
+	if err != nil {
+		app.RespondError(w, r, http.StatusBadRequest, err.Error())
+		return
+	}
+
 	filters := FactListFilters{
 		FactType: q.Get("type"),
 		Search:   q.Get("q"),
+		Sort:     sort,
 	}
 
 	facts, total, err := app.ListFactsFiltered(r.Context(), user.ID, notebookID, filters, limit, offset)

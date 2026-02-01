@@ -28,7 +28,12 @@ FROM app.facts f
 WHERE f.user_id = @user_id AND f.notebook_id = @notebook_id
   AND (sqlc.narg('fact_type')::text IS NULL OR f.fact_type = sqlc.narg('fact_type'))
   AND (sqlc.narg('search')::text IS NULL OR f.content::text ILIKE '%' || sqlc.narg('search')::text || '%')
-ORDER BY f.updated_at DESC
+ORDER BY
+  CASE WHEN @sort_field::text = 'created'  AND @sort_asc::bool = true  THEN f.created_at END ASC,
+  CASE WHEN @sort_field::text = 'created'  AND @sort_asc::bool = false THEN f.created_at END DESC,
+  CASE WHEN @sort_field::text = 'updated'  AND @sort_asc::bool = true  THEN f.updated_at END ASC,
+  CASE WHEN @sort_field::text = 'updated'  AND @sort_asc::bool = false THEN f.updated_at END DESC,
+  f.updated_at DESC
 LIMIT @row_limit OFFSET @row_offset;
 
 -- name: CountFactsByNotebookFiltered :one

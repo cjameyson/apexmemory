@@ -123,6 +123,37 @@ func (app *Application) PathUUID(w http.ResponseWriter, r *http.Request, param s
 	return id, true
 }
 
+// SortParam holds a parsed sort field and direction.
+type SortParam struct {
+	Field string // empty = use query default
+	Asc   bool
+}
+
+// parseSort parses `?sort=field` or `?sort=-field` from the request.
+// Returns error if the field is not in allowedFields.
+// Empty/missing sort param returns zero SortParam (no error).
+func parseSort(r *http.Request, allowedFields ...string) (SortParam, error) {
+	raw := r.URL.Query().Get("sort")
+	if raw == "" {
+		return SortParam{}, nil
+	}
+
+	var sp SortParam
+	if raw[0] == '-' {
+		sp.Field = raw[1:]
+	} else {
+		sp.Field = raw
+		sp.Asc = true
+	}
+
+	for _, f := range allowedFields {
+		if sp.Field == f {
+			return sp, nil
+		}
+	}
+	return SortParam{}, fmt.Errorf("invalid sort field: %q", sp.Field)
+}
+
 // Optional types for distinguishing "not provided" from "explicitly null" in JSON
 
 // OptionalString distinguishes between missing, null, and present string values.
