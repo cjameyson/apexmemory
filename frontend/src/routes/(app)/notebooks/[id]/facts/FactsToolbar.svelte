@@ -137,8 +137,8 @@
 			{/each}
 		</select>
 
-		<!-- View Mode Toggle -->
-		<div class="flex rounded-lg bg-muted p-0.5">
+		<!-- View Mode Toggle (hidden until grid view is implemented) -->
+		<!-- <div class="flex rounded-lg bg-muted p-0.5">
 			<button
 				onclick={() => setView('table')}
 				class="rounded-md p-1.5 transition-colors {currentView === 'table'
@@ -157,6 +157,6 @@
 			>
 				<LayoutGridIcon class="h-4 w-4" />
 			</button>
-		</div>
+		</div> -->
 	</div>
 </div>
