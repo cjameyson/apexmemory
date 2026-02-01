@@ -1,7 +1,6 @@
 import type { PageServerLoad } from './$types';
 
+// Placeholder for future source-specific API calls (chunks, embeddings, annotations)
 export const load: PageServerLoad = async () => {
-	// Notebook, sources, and cards are loaded by +layout.server.ts
-	// Add dashboard-specific data here as needed
 	return {};
 };

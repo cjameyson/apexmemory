@@ -42,6 +42,7 @@ Add a special source type for practice tests or previous exams. This allows the 
 - [ ] Screen grab capability for image occlusion cards (or support paste from native screenshot tool)
 
 ### Backend
+- [ ] Slugify notebook and sources on creation/edit - append nanoid to end if collision.  Use slugs for URLs
 - [ ] Determine best way to automatically apply migrations to the test database during unit tests
 - [ ] Add pagination to ListNotebooks endpoint (deferred: max notebooks per user is sub-100)
 - [ ] Consider storing desired_retention as separate column for performance optimization on high-volume lists

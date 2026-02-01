@@ -7,6 +7,11 @@
 **Core Values:** Progress > Perfection, Performance First, Clean/Composable Code (No over-abstraction).
 **Solo Dev:** Progress and delightful user experiences are very motivating!
 
+## Agent First Design
+- How to think about "agent first" design?
+- Can apex memory be used by Claude Code, etc? 
+- Apex Memory handles the FSRS system and card management
+- Agent could generate flashcards from sources via API calls
 
 ## Domain
 Apex Memory is centered around the notebook concept. A notebooks is typically created by a user for a particular subject, class or area of study.  Notebooks contain sources (pdfs, slides, audio, links, etc), flashcards, notes, etc.  These sources can be viewed and searched in the product, but more importantly can be parsed, chunked, embedded and indexed. This enables the product to:
