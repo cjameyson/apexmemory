@@ -325,11 +325,11 @@ func (app *Application) seedExampleFacts(ctx context.Context, userID uuid.UUID, 
 		{bioID, "basic", `{"version":1,"fields":[{"name":"front","type":"plain_text","value":"What is the role of ATP in cellular metabolism?"},{"name":"back","type":"plain_text","value":"ATP (adenosine triphosphate) is the primary energy currency of the cell. It stores and transfers chemical energy for cellular processes like muscle contraction, active transport, and biosynthesis."}]}`},
 
 		// Biology 202 - Cloze (5)
-		{bioID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","cloze_text":"The process of {{c1::photosynthesis}} converts light energy into {{c2::chemical energy}} stored in glucose."}]}`},
-		{bioID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","cloze_text":"DNA replication is {{c1::semi-conservative}}, meaning each new double helix contains one {{c2::original}} strand and one {{c3::newly synthesized}} strand."}]}`},
-		{bioID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","cloze_text":"The {{c1::endoplasmic reticulum}} is responsible for protein folding and lipid synthesis within the cell."}]}`},
-		{bioID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","cloze_text":"In genetics, a {{c1::phenotype}} is the observable characteristic, while a {{c2::genotype}} is the genetic makeup."}]}`},
-		{bioID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","cloze_text":"The {{c1::Krebs cycle}} (citric acid cycle) takes place in the {{c2::mitochondrial matrix}} and produces {{c3::NADH}} and FADH2."}]}`},
+		{bioID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","value":"The process of {{c1::photosynthesis}} converts light energy into {{c2::chemical energy}} stored in glucose."}]}`},
+		{bioID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","value":"DNA replication is {{c1::semi-conservative}}, meaning each new double helix contains one {{c2::original}} strand and one {{c3::newly synthesized}} strand."}]}`},
+		{bioID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","value":"The {{c1::endoplasmic reticulum}} is responsible for protein folding and lipid synthesis within the cell."}]}`},
+		{bioID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","value":"In genetics, a {{c1::phenotype}} is the observable characteristic, while a {{c2::genotype}} is the genetic makeup."}]}`},
+		{bioID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","value":"The {{c1::Krebs cycle}} (citric acid cycle) takes place in the {{c2::mitochondrial matrix}} and produces {{c3::NADH}} and FADH2."}]}`},
 
 		// Biology 202 - Image Occlusion (2)
 		{bioID, "image_occlusion", `{"version":1,"fields":[{"name":"title","type":"plain_text","value":"Animal Cell Diagram"},{"name":"image","type":"image_occlusion","image":{"url":"https://placeholder.apexmemory.ai/cell-diagram.png","width":800,"height":600},"regions":[{"id":"m_region01nucleus","shape":{"type":"rect","x":300,"y":200,"width":200,"height":200}},{"id":"m_region02mito","shape":{"type":"rect","x":100,"y":350,"width":120,"height":80}}]}]}`},
@@ -343,9 +343,9 @@ func (app *Application) seedExampleFacts(ctx context.Context, userID uuid.UUID, 
 		{qmID, "basic", `{"version":1,"fields":[{"name":"front","type":"plain_text","value":"What is the Schrödinger equation used for?"},{"name":"back","type":"plain_text","value":"The Schrödinger equation describes how the quantum state (wave function) of a physical system changes over time. It is the fundamental equation of non-relativistic quantum mechanics."}]}`},
 
 		// Quantum Mechanics - Cloze (3)
-		{qmID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","cloze_text":"The energy of a photon is given by E = {{c1::hf}}, where h is Planck's constant and f is the {{c2::frequency}}."}]}`},
-		{qmID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","cloze_text":"In the double-slit experiment, single particles create an {{c1::interference pattern}}, demonstrating {{c2::wave-particle duality}}."}]}`},
-		{qmID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","cloze_text":"The {{c1::Pauli exclusion principle}} states that no two {{c2::fermions}} can occupy the same quantum state simultaneously."}]}`},
+		{qmID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","value":"The energy of a photon is given by E = {{c1::hf}}, where h is Planck's constant and f is the {{c2::frequency}}."}]}`},
+		{qmID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","value":"In the double-slit experiment, single particles create an {{c1::interference pattern}}, demonstrating {{c2::wave-particle duality}}."}]}`},
+		{qmID, "cloze", `{"version":1,"fields":[{"name":"text","type":"cloze_text","value":"The {{c1::Pauli exclusion principle}} states that no two {{c2::fermions}} can occupy the same quantum state simultaneously."}]}`},
 
 		// Quantum Mechanics - Image Occlusion (2)
 		{qmID, "image_occlusion", `{"version":1,"fields":[{"name":"title","type":"plain_text","value":"Hydrogen Energy Levels"},{"name":"image","type":"image_occlusion","image":{"url":"https://placeholder.apexmemory.ai/energy-levels.png","width":800,"height":600},"regions":[{"id":"m_region05ground","shape":{"type":"rect","x":100,"y":450,"width":600,"height":50}},{"id":"m_region06excited","shape":{"type":"rect","x":100,"y":200,"width":600,"height":50}}]}]}`},

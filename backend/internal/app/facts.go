@@ -223,7 +223,7 @@ func extractElementIDs(factType string, content json.RawMessage) ([]string, erro
 func extractClozeElementIDs(content json.RawMessage) ([]string, error) {
 	var parsed struct {
 		Fields []struct {
-			ClozeText string `json:"cloze_text"`
+			Value string `json:"value"`
 		} `json:"fields"`
 	}
 	if err := json.Unmarshal(content, &parsed); err != nil {
@@ -232,7 +232,7 @@ func extractClozeElementIDs(content json.RawMessage) ([]string, error) {
 
 	seen := make(map[string]bool)
 	for _, field := range parsed.Fields {
-		matches := clozePattern.FindAllStringSubmatch(field.ClozeText, -1)
+		matches := clozePattern.FindAllStringSubmatch(field.Value, -1)
 		for _, m := range matches {
 			num, err := strconv.Atoi(m[1])
 			if err != nil || num < 1 || num > 999 {

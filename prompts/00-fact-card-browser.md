@@ -151,7 +151,7 @@ Build the main page structure with header section containing title, stats summar
 
 ---
 
-## Phase 3: Toolbar & Filtering
+## Phase 3: Toolbar & Filtering -- COMPLETE
 
 ### Objective
 Build the filter/search toolbar with type filter tabs, search input, sort dropdown, and view toggle.
@@ -219,16 +219,22 @@ FactsToolbar.svelte
 - Active: bg-white shadow-sm
 
 ### Deliverables
-- [ ] `FactsToolbar.svelte` component
-- [ ] `SearchInput.svelte` component
-- [ ] `TypeFilterTabs.svelte` component
-- [ ] URL sync utilities in `$lib/utils/url.ts`
+- [x] `FactsToolbar.svelte` component (includes search, type tabs, sort, view toggle inline)
+- [x] URL-driven state management (all filters synced via `goto()` with `replaceState`)
+- [x] Debounced search input (300ms)
+- [x] Sort dropdown with unified sort parameter (`-updated`, `updated`, `-created`, `created`)
+
+### What was built
+- **`FactsToolbar.svelte`**: Single component with search input (debounced 300ms), type filter tabs (All/Basic/Cloze/Image as pill toggle), sort dropdown, and view mode toggle (table/grid icons). All state derived from URL search params via `$derived`, updates via `goto()` with `replaceState: true`. Resets to page 1 on filter changes.
+- **Backend sort**: Unified `sort` query param (e.g. `-updated`, `created`) replacing separate `sort`/`order` params. Dynamic ORDER BY in SQL.
+- **SearchInput/TypeFilterTabs** were inlined into FactsToolbar rather than separate components.
+- **URL pattern**: `/notebooks/[id]/facts?type=cloze&q=search&sort=-updated&view=table&page=1`
 
 ### Verification
-- Changing filters updates URL params
-- Page reload preserves filter state
-- Search is debounced
-- All filter combinations work correctly
+- [x] Changing filters updates URL params
+- [x] Page reload preserves filter state
+- [x] Search is debounced
+- [x] All filter combinations work correctly
 
 ---
 

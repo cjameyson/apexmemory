@@ -35,7 +35,7 @@ func basicContent() json.RawMessage {
 func clozeContent(text string) json.RawMessage {
 	return json.RawMessage(`{
 		"version": 1,
-		"fields": [{"name": "text", "type": "cloze_text", "cloze_text": "` + text + `"}]
+		"fields": [{"name": "text", "type": "cloze_text", "value": "` + text + `"}]
 	}`)
 }
 
@@ -91,7 +91,7 @@ func TestCreateFactHandler(t *testing.T) {
 				"fact_type": "cloze",
 				"content": map[string]any{
 					"version": 1,
-					"fields":  []any{map[string]any{"name": "text", "type": "cloze_text", "cloze_text": "The {{c1::mitochondria}} is the {{c2::powerhouse}}"}},
+					"fields":  []any{map[string]any{"name": "text", "type": "cloze_text", "value": "The {{c1::mitochondria}} is the {{c2::powerhouse}}"}},
 				},
 			},
 			wantStatus: http.StatusCreated,
@@ -157,7 +157,7 @@ func TestCreateFactHandler(t *testing.T) {
 				"fact_type": "cloze",
 				"content": map[string]any{
 					"version": 1,
-					"fields":  []any{map[string]any{"name": "text", "type": "cloze_text", "cloze_text": "no cloze here"}},
+					"fields":  []any{map[string]any{"name": "text", "type": "cloze_text", "value": "no cloze here"}},
 				},
 			},
 			wantStatus: http.StatusBadRequest,
