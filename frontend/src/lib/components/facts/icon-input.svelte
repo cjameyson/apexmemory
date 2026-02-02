@@ -15,7 +15,7 @@
 		value?: string;
 		multiline?: boolean;
 		resizable?: boolean;
-		oninput?: (value: string) => void;
+		oninput?: () => void;
 		error?: string;
 	} = $props();
 
@@ -26,7 +26,7 @@
 	function handleInput(e: Event) {
 		const target = e.target as HTMLInputElement | HTMLTextAreaElement;
 		value = target.value;
-		oninput?.(value);
+		oninput?.();
 	}
 </script>
 

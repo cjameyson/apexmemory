@@ -38,6 +38,9 @@
 
 	// Card count from cloze editor
 	let clozeCardCount = $state(0);
+	// Incrementing formKey forces {#key} to destroy and recreate editor components,
+	// clearing their internal state (e.g. input values) after "Save & New".
+	let formKey = $state(0);
 
 	let cardCount = $derived(
 		selectedType === 'basic' ? 1 : selectedType === 'cloze' ? clozeCardCount : 0
@@ -108,6 +111,7 @@
 			clozeData = { text: '', backExtra: '' };
 			clozeErrors = {};
 		}
+		formKey++;
 	}
 
 	async function handleCreate(andNew = false) {
@@ -190,24 +194,26 @@
 		</div>
 
 		<div class="flex-1 space-y-6 overflow-y-auto px-0.5 py-2">
-			{#if selectedType === 'basic'}
-				<BasicFactEditor
-					bind:this={basicEditor}
-					initialData={basicData}
-					onchange={handleBasicChange}
-					errors={basicErrors}
-				/>
-			{:else if selectedType === 'cloze'}
-				<ClozeFactEditor
-					bind:this={clozeEditor}
-					initialData={clozeData}
-					onchange={handleClozeChange}
-					errors={clozeErrors}
-					oncardcount={(count) => (clozeCardCount = count)}
-				/>
-			{:else}
-				<ImageOcclusionPlaceholder />
-			{/if}
+			{#key formKey}
+				{#if selectedType === 'basic'}
+					<BasicFactEditor
+						bind:this={basicEditor}
+						initialData={basicData}
+						onchange={handleBasicChange}
+						errors={basicErrors}
+					/>
+				{:else if selectedType === 'cloze'}
+					<ClozeFactEditor
+						bind:this={clozeEditor}
+						initialData={clozeData}
+						onchange={handleClozeChange}
+						errors={clozeErrors}
+						oncardcount={(count) => (clozeCardCount = count)}
+					/>
+				{:else}
+					<ImageOcclusionPlaceholder />
+				{/if}
+			{/key}
 		</div>
 
 		{#if submitError}

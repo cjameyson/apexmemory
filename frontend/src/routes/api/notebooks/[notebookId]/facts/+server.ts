@@ -9,7 +9,12 @@ export const POST: RequestHandler = async ({ params, request, locals }) => {
 		error(401, { message: 'Unauthorized' });
 	}
 
-	const body = await request.json();
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		error(400, { message: 'Invalid JSON in request body' });
+	}
 
 	const result = await apiRequest<ApiFactDetail>(
 		`/v1/notebooks/${params.notebookId}/facts`,
