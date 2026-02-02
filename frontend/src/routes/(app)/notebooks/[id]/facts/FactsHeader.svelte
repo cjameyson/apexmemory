@@ -2,8 +2,11 @@
 	import type { FactStats } from '$lib/types/fact';
 	import { PlusIcon } from '@lucide/svelte';
 	import QuickStats from './QuickStats.svelte';
+	import CreateFactModal from '$lib/components/facts/create-fact-modal.svelte';
 
 	let { stats, notebookId }: { stats: FactStats; notebookId: string } = $props();
+
+	let createModalOpen = $state(false);
 </script>
 
 <div class="border-border border-b">
@@ -22,8 +25,8 @@
 				Review ({stats.totalDue})
 			</a>
 			<button
-				disabled
-				class="bg-foreground text-background inline-flex cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium opacity-50"
+				class="bg-foreground text-background hover:bg-foreground/90 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium"
+				onclick={() => (createModalOpen = true)}
 			>
 				<PlusIcon class="h-4 w-4" />
 				Create Fact
@@ -32,3 +35,14 @@
 	</div>
 	<QuickStats {stats} />
 </div>
+
+<CreateFactModal
+	bind:open={createModalOpen}
+	{notebookId}
+	onclose={() => (createModalOpen = false)}
+	onsubmit={async (data) => {
+		// TODO: wire up actual API call in phase 2+
+		console.log('Create fact:', data);
+		createModalOpen = false;
+	}}
+/>
