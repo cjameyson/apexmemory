@@ -16,12 +16,14 @@
 		fact,
 		selected,
 		notebookId,
-		onToggleSelect
+		onToggleSelect,
+		onedit
 	}: {
 		fact: Fact;
 		selected: boolean;
 		notebookId: string;
 		onToggleSelect: (id: string) => void;
+		onedit: (factId: string) => void;
 	} = $props();
 
 	let expanded = $state(false);
@@ -118,6 +120,7 @@
 				class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1"
 				title="Edit fact"
 				aria-label="Edit fact"
+				onclick={() => onedit(fact.id)}
 			>
 				<PencilIcon class="h-4 w-4" />
 			</button>

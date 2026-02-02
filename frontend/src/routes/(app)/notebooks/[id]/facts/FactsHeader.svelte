@@ -1,6 +1,8 @@
 <script lang="ts">
-	import type { FactStats } from '$lib/types/fact';
+	import type { FactStats, FactDetail } from '$lib/types/fact';
+	import type { ApiFactDetail } from '$lib/api/types';
 	import type { FactFormData } from '$lib/components/facts/create-fact-modal.svelte';
+	import { toFactDetail } from '$lib/services/facts';
 	import { PlusIcon } from '@lucide/svelte';
 	import { invalidateAll } from '$app/navigation';
 	import QuickStats from './QuickStats.svelte';
@@ -8,27 +10,77 @@
 
 	let { stats, notebookId }: { stats: FactStats; notebookId: string } = $props();
 
-	let createModalOpen = $state(false);
+	let modalOpen = $state(false);
+	let editingFact = $state<FactDetail | null>(null);
+	let fetchError = $state<string | null>(null);
+	let editRequestId = 0;
+
+	export async function openEdit(factId: string) {
+		fetchError = null;
+		const reqId = ++editRequestId;
+		let res: Response;
+		try {
+			res = await fetch(`/api/notebooks/${notebookId}/facts/${factId}`);
+		} catch {
+			fetchError = 'Network error — could not load fact.';
+			return;
+		}
+		if (reqId !== editRequestId) return; // stale
+		if (!res.ok) {
+			fetchError = 'Failed to load fact for editing.';
+			return;
+		}
+		const raw: ApiFactDetail = await res.json();
+		editingFact = toFactDetail(raw);
+		modalOpen = true;
+	}
+
+	$effect(() => {
+		if (!fetchError) return;
+		const timer = setTimeout(() => (fetchError = null), 4000);
+		return () => clearTimeout(timer);
+	});
+
+	function openCreate() {
+		editingFact = null;
+		modalOpen = true;
+	}
 
 	async function handleSubmit(data: FactFormData) {
-		const res = await fetch(`/api/notebooks/${notebookId}/facts`, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				fact_type: data.factType,
-				content: data.content
-			})
-		});
-
-		if (!res.ok) {
-			const err = await res.json().catch(() => ({ message: 'Failed to create fact' }));
-			throw new Error(err.message ?? 'Failed to create fact');
+		if (editingFact) {
+			const res = await fetch(`/api/notebooks/${notebookId}/facts/${editingFact.id}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ content: data.content })
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({ message: 'Failed to save fact' }));
+				throw new Error(err.message ?? 'Failed to save fact');
+			}
+		} else {
+			const res = await fetch(`/api/notebooks/${notebookId}/facts`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					fact_type: data.factType,
+					content: data.content
+				})
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({ message: 'Failed to create fact' }));
+				throw new Error(err.message ?? 'Failed to create fact');
+			}
 		}
 
 		await invalidateAll();
 	}
 </script>
 
+{#if fetchError}
+	<div class="bg-destructive/10 text-destructive border-destructive/20 border-b px-6 py-2 text-sm">
+		{fetchError}
+	</div>
+{/if}
 <div class="border-border border-b">
 	<div class="flex items-center justify-between px-6 py-4">
 		<div>
@@ -46,7 +98,7 @@
 			</a>
 			<button
 				class="bg-foreground text-background hover:bg-foreground/90 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium"
-				onclick={() => (createModalOpen = true)}
+				onclick={openCreate}
 			>
 				<PlusIcon class="h-4 w-4" />
 				Create Fact
@@ -57,8 +109,9 @@
 </div>
 
 <CreateFactModal
-	bind:open={createModalOpen}
+	bind:open={modalOpen}
 	{notebookId}
-	onclose={() => (createModalOpen = false)}
+	editFact={editingFact}
+	onclose={() => { modalOpen = false; editingFact = null; }}
 	onsubmit={handleSubmit}
 />

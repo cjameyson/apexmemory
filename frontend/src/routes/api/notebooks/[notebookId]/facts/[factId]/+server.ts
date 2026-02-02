@@ -20,3 +20,23 @@ export const GET: RequestHandler = async ({ params, locals }) => {
 
 	return json(result.data);
 };
+
+export const PATCH: RequestHandler = async ({ params, locals, request }) => {
+	const token = locals.sessionToken;
+	if (!token) {
+		error(401, { message: 'Unauthorized' });
+	}
+
+	const body = await request.json();
+
+	const result = await apiRequest<ApiFactDetail>(
+		`/v1/notebooks/${params.notebookId}/facts/${params.factId}`,
+		{ token, method: 'PATCH', body }
+	);
+
+	if (!result.ok) {
+		error(result.status, { message: result.error.error });
+	}
+
+	return json(result.data);
+};

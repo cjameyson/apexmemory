@@ -10,6 +10,8 @@
 
 	let { data }: { data: PageData } = $props();
 
+	let factsHeader: FactsHeader;
+
 	let searchQuery = $derived($page.url.searchParams.get('q') || '');
 	let typeFilter = $derived($page.url.searchParams.get('type') || '');
 
@@ -41,7 +43,7 @@
 </script>
 
 <div id="notebook-main" class="flex flex-1 flex-col overflow-auto">
-	<FactsHeader stats={data.stats} notebookId={data.notebookId} />
+	<FactsHeader bind:this={factsHeader} stats={data.stats} notebookId={data.notebookId} />
 	<FactsToolbar />
 
 	{#if selectedIds.size > 0}
@@ -55,6 +57,7 @@
 			notebookId={data.notebookId}
 			onToggleSelect={toggleSelect}
 			onToggleAll={toggleSelectAll}
+			onedit={(factId) => factsHeader.openEdit(factId)}
 		/>
 		<Pagination
 			page={data.pagination.page}

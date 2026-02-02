@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { FactType } from '$lib/types/fact';
+	import type { FactType, FactDetail } from '$lib/types/fact';
+	import { untrack } from 'svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import FactTypeSelector from './fact-type-selector.svelte';
@@ -15,14 +16,18 @@
 	let {
 		open = $bindable(false),
 		notebookId,
+		editFact,
 		onclose,
 		onsubmit
 	}: {
 		open: boolean;
 		notebookId: string;
+		editFact?: FactDetail | null;
 		onclose: () => void;
 		onsubmit: (data: FactFormData) => Promise<void>;
 	} = $props();
+
+	let isEditMode = $derived(!!editFact);
 
 	let selectedType = $state<FactType>('basic');
 	let submitting = $state(false);
@@ -131,7 +136,7 @@
 				open = false;
 			}
 		} catch (err) {
-			submitError = err instanceof Error ? err.message : 'Failed to create fact';
+			submitError = err instanceof Error ? err.message : isEditMode ? 'Failed to save fact' : 'Failed to create fact';
 		} finally {
 			submitting = false;
 		}
@@ -140,7 +145,7 @@
 	function handleKeydown(e: KeyboardEvent) {
 		if ((e.metaKey || e.ctrlKey) && e.key === 's') {
 			e.preventDefault();
-			if (e.shiftKey) {
+			if (e.shiftKey && !isEditMode) {
 				handleCreate(true);
 			} else {
 				handleCreate(false);
@@ -158,6 +163,52 @@
 		clozeData = data;
 		clozeErrors = {};
 	}
+
+	function parseContentToEditorData(content: Record<string, unknown>, factType: FactType) {
+		const fields = (content as { fields?: { name: string; value: string }[] }).fields ?? [];
+		const fieldMap = new Map(fields.map((f) => [f.name, f.value]));
+
+		if (factType === 'basic') {
+			basicData = {
+				front: fieldMap.get('front') ?? '',
+				back: fieldMap.get('back') ?? '',
+				backExtra: fieldMap.get('back_extra') ?? '',
+				hint: fieldMap.get('hint') ?? ''
+			};
+			basicErrors = {};
+		} else if (factType === 'cloze') {
+			clozeData = {
+				text: fieldMap.get('text') ?? '',
+				backExtra: fieldMap.get('back_extra') ?? ''
+			};
+			clozeErrors = {};
+		}
+	}
+
+	// Hydrate editor state when the modal opens.
+	// Uses a prevOpen flag to detect the open transition, so we only hydrate once
+	// per open (not while the modal stays open). This fixes the bug where
+	// re-editing the same fact wouldn't re-populate fields.
+	let prevOpen = false;
+	$effect(() => {
+		const isOpen = open;
+		if (isOpen && !prevOpen) {
+			// Modal just opened
+			if (editFact) {
+				const { factType, content } = editFact;
+				untrack(() => {
+					selectedType = factType;
+					parseContentToEditorData(content, factType);
+					formKey++;
+				});
+			} else {
+				untrack(() => {
+					resetActiveType();
+				});
+			}
+		}
+		prevOpen = isOpen;
+	});
 
 	// Auto-focus on type change
 	$effect(() => {
@@ -180,13 +231,13 @@
 	>
 		<div class="space-y-4">
 			<Dialog.Header>
-				<Dialog.Title>Create Fact</Dialog.Title>
+				<Dialog.Title>{isEditMode ? 'Edit Fact' : 'Create Fact'}</Dialog.Title>
 				<Dialog.Description></Dialog.Description>
 			</Dialog.Header>
 			<FactTypeSelector
 				selected={selectedType}
 				onchange={(t) => (selectedType = t)}
-				disabled={submitting}
+				disabled={submitting || isEditMode}
 			/>
 		</div>
 
@@ -223,10 +274,12 @@
 				<span
 					><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">&#8984;S</kbd> Save</span
 				>
-				<span
-					><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">&#8984;&#8679;S</kbd> Save
-					& New</span
-				>
+				{#if !isEditMode}
+					<span
+						><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">&#8984;&#8679;S</kbd> Save
+						& New</span
+					>
+				{/if}
 				<span
 					><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">&#9099;</kbd> Cancel</span
 				>
@@ -238,20 +291,22 @@
 						{cardCount === 1 ? 'card' : 'cards'}
 					</span>
 				{/if}
-				<Button
-					variant="secondary"
-					size="sm"
-					onclick={() => handleCreate(true)}
-					disabled={submitting || selectedType === 'image_occlusion'}
-				>
-					Save & New
-				</Button>
+				{#if !isEditMode}
+					<Button
+						variant="secondary"
+						size="sm"
+						onclick={() => handleCreate(true)}
+						disabled={submitting || selectedType === 'image_occlusion'}
+					>
+						Save & New
+					</Button>
+				{/if}
 				<Button
 					size="sm"
 					onclick={() => handleCreate(false)}
 					disabled={submitting || selectedType === 'image_occlusion'}
 				>
-					Create Fact
+					{isEditMode ? 'Save' : 'Create Fact'}
 				</Button>
 			</div>
 		</Dialog.Footer>
