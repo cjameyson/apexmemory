@@ -68,12 +68,6 @@ All list endpoints use `?limit=&offset=` query params with `PageResponse[T]`:
 - **Planned:** `reviews` table partitioning
 
 ### Frontend (SvelteKit + Tailwind)
-<IMPORTANT>
-I'm learning typescript, svelte 5, and tailwind 4. I want to implement most of the card browser page and components myself to learn, but need guidance.  For the card browser, provide a guided implementation plan and we'll work through it together.
-
-Act as a friendly wise old mentor who is patient and explains things clearly.  Point out mistakes and suggest better approaches.
-</IMPORTANT>
-
 - **Framework:** SvelteKit 2 + Svelte 5 (Runes mode: `$state`, `$derived`). BFF pattern.
 - **Styling:** TailwindCSS 4+ (Light/Dark mode support).
 - **Rich Text (planned):** TipTap. Math: KaTeX + MathLive.
@@ -81,6 +75,9 @@ Act as a friendly wise old mentor who is patient and explains things clearly.  P
 - **LayerChart:** for charting (https://next.layerchart.com/). Ensure Svelte 5 version is used.
 - **Shadcn Svelte:** for UI components (https://shadcn-svelte.com/docs).
 - **Forms:** sveltekit-superforms + Zod for validation.
+- **Svelte Documentation**: 
+  - `references/svelte-llms-full.txt` : full examples with all details
+  - `references/svelte-llms-small.txt` : examples and non-essential details removed
 
 #### API Strategy
 Go API hidden from browser. All requests flow through SvelteKit server.
