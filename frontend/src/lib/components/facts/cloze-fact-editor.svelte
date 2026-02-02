@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Info } from '@lucide/svelte';
+	import { cn } from '$lib/utils';
 	import MiniToolbar from './mini-toolbar.svelte';
 	import IconInput from './icon-input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
@@ -134,7 +135,7 @@
 			id="cloze-text"
 			bind:this={textareaRef}
 			rows={2}
-			class="{textareaBase} font-mono {errors?.text ? 'border-destructive' : ''}"
+			class={cn(textareaBase, 'font-mono', errors?.text && 'border-destructive focus:ring-destructive')}
 			placeholder={'The {{c1::answer}} is hidden...'}
 			bind:value={text}
 			oninput={notify}

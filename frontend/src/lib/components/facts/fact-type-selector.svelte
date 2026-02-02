@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { FactType } from '$lib/types/fact';
-	import { Layers, TextCursorInput, Image } from '@lucide/svelte';
+	import { Layers, TextCursorInput, Image, Braces, Layers3 } from '@lucide/svelte';
 
 	let {
 		selected,
@@ -14,7 +14,7 @@
 
 	const types: { value: FactType; label: string; description: string; icon: typeof Layers }[] = [
 		{ value: 'basic', label: 'Basic', description: 'Front & back', icon: Layers },
-		{ value: 'cloze', label: 'Cloze', description: 'Fill in the blank', icon: TextCursorInput },
+		{ value: 'cloze', label: 'Cloze', description: 'Fill in the blank', icon: Braces },
 		{
 			value: 'image_occlusion',
 			label: 'Image Occlusion',

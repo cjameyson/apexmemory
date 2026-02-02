@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Info, Lightbulb } from '@lucide/svelte';
+	import { cn } from '$lib/utils';
 	import MiniToolbar from './mini-toolbar.svelte';
 	import IconInput from './icon-input.svelte';
 
@@ -28,6 +29,7 @@
 	let hint = $state(initialData?.hint ?? '');
 
 	const textareaBase = 'border-input bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full resize-y rounded-md border p-3 text-sm focus:ring-2 focus:outline-none';
+	const errorClasses = 'border-destructive focus:ring-destructive';
 
 	let frontRef: HTMLTextAreaElement | undefined = $state();
 
@@ -48,7 +50,7 @@
 			id="basic-front"
 			bind:this={frontRef}
 			rows={2}
-			class="{textareaBase} {errors?.front ? 'border-destructive' : ''}"
+			class={cn(textareaBase, errors?.front && errorClasses)}
 			placeholder="Question or prompt..."
 			bind:value={front}
 			oninput={notify}
@@ -64,7 +66,7 @@
 		<textarea
 			id="basic-back"
 			rows={2}
-			class="{textareaBase} {errors?.back ? 'border-destructive' : ''}"
+			class={cn(textareaBase, errors?.back && errorClasses)}
 			placeholder="Answer..."
 			bind:value={back}
 			oninput={notify}

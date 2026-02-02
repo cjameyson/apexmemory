@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Component } from 'svelte';
+	import { cn } from '$lib/utils';
 
 	let {
 		icon,
@@ -20,8 +21,7 @@
 	} = $props();
 
 	const inputBase = 'border-input bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full rounded-md border text-sm focus:ring-2 focus:outline-none';
-	const textareaClasses = `${inputBase} resize-y py-2 pr-3 pl-9`;
-	const inputClasses = `${inputBase} h-9 py-2 pr-3 pl-9`;
+	const errorClasses = 'border-destructive focus:ring-destructive';
 
 	function handleInput(e: Event) {
 		const target = e.target as HTMLInputElement | HTMLTextAreaElement;
@@ -38,7 +38,7 @@
 		{#if multiline}
 			<textarea
 				rows={2}
-				class="{textareaClasses} {error ? 'border-destructive' : ''}"
+				class={cn(inputBase, 'resize-y py-2 pr-3 pl-9', error && errorClasses)}
 				{placeholder}
 				{value}
 				oninput={handleInput}
@@ -46,7 +46,7 @@
 		{:else if resizable}
 			<textarea
 				rows={1}
-				class="{textareaClasses} {error ? 'border-destructive' : ''}"
+				class={cn(inputBase, 'min-h-9 resize-y py-2 pr-3 pl-9', error && errorClasses)}
 				{placeholder}
 				{value}
 				oninput={handleInput}
@@ -54,7 +54,7 @@
 		{:else}
 			<input
 				type="text"
-				class="{inputClasses} {error ? 'border-destructive' : ''}"
+				class={cn(inputBase, 'h-9 py-2 pr-3 pl-9', error && errorClasses)}
 				{placeholder}
 				{value}
 				oninput={handleInput}

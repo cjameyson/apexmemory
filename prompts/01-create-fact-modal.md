@@ -116,7 +116,7 @@ Verify modal positioning, type selector interaction, and basic accessibility bef
 
 ---
 
-## Phase 2: Basic Fact Editor
+## Phase 2: Basic Fact Editor - COMPLETED
 
 ### Deliverables
 
@@ -165,14 +165,14 @@ Verify modal positioning, type selector interaction, and basic accessibility bef
    - Only active type's data is submitted on save
 
 ### Exit Criteria
-- [ ] All four fields render with correct layout
-- [ ] Front field auto-focuses when Basic is selected
-- [ ] icon-input component works for both single-line and multiline
-- [ ] mini-toolbar renders (buttons can be non-functional)
-- [ ] Typing in fields updates component state
-- [ ] Switching to Cloze and back preserves Basic form data
-- [ ] Card count shows "1 card" for Basic type
-- [ ] Tab order flows logically through fields
+- [x] All four fields render with correct layout
+- [x] Front field auto-focuses when Basic is selected
+- [x] icon-input component works for both single-line and multiline
+- [x] mini-toolbar renders (buttons can be non-functional)
+- [x] Typing in fields updates component state
+- [x] Switching to Cloze and back preserves Basic form data
+- [x] Card count shows "1 card" for Basic type
+- [x] Tab order flows logically through fields
 
 ### Human Review Checkpoint
 Verify field layout, focus behavior, and state persistence before proceeding.

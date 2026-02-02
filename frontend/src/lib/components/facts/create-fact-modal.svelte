@@ -66,8 +66,8 @@
 			const errs: typeof clozeErrors = {};
 			if (!clozeData.text.trim()) {
 				errs.text = 'Cloze text is required';
-			} else if (!/\{\{c\d+::/.test(clozeData.text)) {
-				errs.text = 'Must contain at least one cloze deletion (e.g. {{c1::answer}})';
+			} else if (!/\{\{c\d+::.+?\}\}/.test(clozeData.text)) {
+				errs.text = 'Each cloze deletion must have content (e.g. {{c1::answer}})';
 			}
 			clozeErrors = errs;
 			if (Object.keys(errs).length > 0) {
@@ -178,14 +178,11 @@
 		class="top-[40px] flex max-h-[calc(100vh-80px)] translate-y-0 flex-col overflow-visible sm:max-w-[80vw]"
 		showCloseButton={true}
 	>
-		<div class="">
+		<div class="space-y-4">
 			<Dialog.Header>
 				<Dialog.Title>Create Fact</Dialog.Title>
 				<Dialog.Description></Dialog.Description>
 			</Dialog.Header>
-		</div>
-
-		<div class="px-0.5">
 			<FactTypeSelector
 				selected={selectedType}
 				onchange={(t) => (selectedType = t)}
@@ -194,6 +191,7 @@
 		</div>
 
 		<div class="flex-1 space-y-6 overflow-y-auto px-0.5 py-2">
+
 			{#key formKey}
 				{#if selectedType === 'basic'}
 					<BasicFactEditor
@@ -236,7 +234,8 @@
 			<div class="flex items-center gap-2">
 				{#if cardCount > 0}
 					<span class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium">
-						{cardCount} {cardCount === 1 ? 'card' : 'cards'}
+						{cardCount}
+						{cardCount === 1 ? 'card' : 'cards'}
 					</span>
 				{/if}
 				<Button
