@@ -112,6 +112,6 @@
 	bind:open={modalOpen}
 	{notebookId}
 	editFact={editingFact}
-	onclose={() => { modalOpen = false; editingFact = null; }}
+	onclose={() => { modalOpen = false; }}
 	onsubmit={handleSubmit}
 />

@@ -3,8 +3,15 @@
 	import { untrack } from 'svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import { Layers, Braces, Image } from '@lucide/svelte';
 	import FactTypeSelector from './fact-type-selector.svelte';
 	import BasicFactEditor, { type BasicFactData } from './basic-fact-editor.svelte';
+
+	const factTypeMeta: Record<FactType, { label: string; icon: typeof Layers }> = {
+		basic: { label: 'Basic', icon: Layers },
+		cloze: { label: 'Cloze', icon: Braces },
+		image_occlusion: { label: 'Image Occlusion', icon: Image }
+	};
 	import ClozeFactEditor, { type ClozeFactData } from './cloze-fact-editor.svelte';
 	import ImageOcclusionPlaceholder from './image-occlusion-placeholder.svelte';
 
@@ -231,14 +238,27 @@
 	>
 		<div class="space-y-4">
 			<Dialog.Header>
-				<Dialog.Title>{isEditMode ? 'Edit Fact' : 'Create Fact'}</Dialog.Title>
+				{#if isEditMode}
+					{@const meta = factTypeMeta[selectedType]}
+					<Dialog.Title class="flex items-center gap-2">
+						Edit Fact
+						<span class="bg-muted text-muted-foreground inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium">
+							<meta.icon class="h-3.5 w-3.5" />
+							{meta.label}
+						</span>
+					</Dialog.Title>
+				{:else}
+					<Dialog.Title>Create Fact</Dialog.Title>
+				{/if}
 				<Dialog.Description></Dialog.Description>
 			</Dialog.Header>
-			<FactTypeSelector
-				selected={selectedType}
-				onchange={(t) => (selectedType = t)}
-				disabled={submitting || isEditMode}
-			/>
+			{#if !isEditMode}
+				<FactTypeSelector
+					selected={selectedType}
+					onchange={(t) => (selectedType = t)}
+					disabled={submitting}
+				/>
+			{/if}
 		</div>
 
 		<div class="flex-1 space-y-6 overflow-y-auto px-0.5 py-2">
