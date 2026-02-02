@@ -1,12 +1,32 @@
 <script lang="ts">
 	import type { FactStats } from '$lib/types/fact';
+	import type { FactFormData } from '$lib/components/facts/create-fact-modal.svelte';
 	import { PlusIcon } from '@lucide/svelte';
+	import { invalidateAll } from '$app/navigation';
 	import QuickStats from './QuickStats.svelte';
 	import CreateFactModal from '$lib/components/facts/create-fact-modal.svelte';
 
 	let { stats, notebookId }: { stats: FactStats; notebookId: string } = $props();
 
 	let createModalOpen = $state(false);
+
+	async function handleSubmit(data: FactFormData) {
+		const res = await fetch(`/api/notebooks/${notebookId}/facts`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				fact_type: data.factType,
+				content: data.content
+			})
+		});
+
+		if (!res.ok) {
+			const err = await res.json().catch(() => ({ message: 'Failed to create fact' }));
+			throw new Error(err.message ?? 'Failed to create fact');
+		}
+
+		await invalidateAll();
+	}
 </script>
 
 <div class="border-border border-b">
@@ -40,9 +60,5 @@
 	bind:open={createModalOpen}
 	{notebookId}
 	onclose={() => (createModalOpen = false)}
-	onsubmit={async (data) => {
-		// TODO: wire up actual API call in phase 2+
-		console.log('Create fact:', data);
-		createModalOpen = false;
-	}}
+	onsubmit={handleSubmit}
 />
