@@ -166,6 +166,7 @@ type AppReview struct {
 	ReviewedAt       time.Time     `json:"reviewed_at"`
 	Rating           AppRating     `json:"rating"`
 	ReviewDurationMs pgtype.Int4   `json:"review_duration_ms"`
+	Mode             string        `json:"mode"`
 	StateBefore      AppCardState  `json:"state_before"`
 	StabilityBefore  pgtype.Float4 `json:"stability_before"`
 	DifficultyBefore pgtype.Float4 `json:"difficulty_before"`

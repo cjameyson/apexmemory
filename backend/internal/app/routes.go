@@ -43,5 +43,10 @@ func (app *Application) Routes() http.Handler {
 	mux.Handle("GET /v1/notebooks/{notebook_id}/cards", protected.ThenFunc(app.ListCardsHandler))
 	mux.Handle("GET /v1/notebooks/{notebook_id}/cards/{id}", protected.ThenFunc(app.GetCardHandler))
 
+	// Reviews
+	mux.Handle("GET /v1/reviews/study", protected.ThenFunc(app.GetStudyCardsHandler))
+	mux.Handle("GET /v1/reviews/practice", protected.ThenFunc(app.GetPracticeCardsHandler))
+	mux.Handle("POST /v1/reviews", protected.ThenFunc(app.SubmitReviewHandler))
+
 	return global.Then(mux)
 }

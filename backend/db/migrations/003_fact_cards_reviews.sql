@@ -196,6 +196,7 @@ CREATE TABLE app.reviews (
     reviewed_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
     rating             app.rating NOT NULL,
     review_duration_ms INTEGER,
+    mode               TEXT NOT NULL DEFAULT 'scheduled',
     -- State before review (for optimizer training)
     state_before       app.card_state NOT NULL,
     stability_before   REAL,
@@ -217,7 +218,11 @@ CREATE TABLE app.reviews (
         REFERENCES app.cards(user_id, id) ON DELETE SET NULL,
     -- SET NULL preserves review history when fact is deleted
     FOREIGN KEY (user_id, fact_id)
-        REFERENCES app.facts(user_id, id) ON DELETE SET NULL
+        REFERENCES app.facts(user_id, id) ON DELETE SET NULL,
+
+    CONSTRAINT reviews_valid_mode CHECK (
+        mode IN ('scheduled', 'practice')
+    )
 );
 
 -- For fetching review history of a specific card

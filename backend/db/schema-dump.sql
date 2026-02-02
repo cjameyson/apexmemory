@@ -185,6 +185,7 @@ CREATE TABLE app.reviews (
     reviewed_at timestamp with time zone DEFAULT now() NOT NULL,
     rating app.rating NOT NULL,
     review_duration_ms integer,
+    mode text DEFAULT 'scheduled'::text NOT NULL,
     state_before app.card_state NOT NULL,
     stability_before real,
     difficulty_before real,
@@ -195,7 +196,8 @@ CREATE TABLE app.reviews (
     difficulty_after real NOT NULL,
     interval_days real NOT NULL,
     retrievability real,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT reviews_valid_mode CHECK ((mode = ANY (ARRAY['scheduled'::text, 'practice'::text])))
 );
 
 

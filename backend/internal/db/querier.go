@@ -16,11 +16,13 @@ type Querier interface {
 	CountCardsByNotebook(ctx context.Context, arg CountCardsByNotebookParams) (int64, error)
 	CountFactsByNotebook(ctx context.Context, arg CountFactsByNotebookParams) (int64, error)
 	CountFactsByNotebookFiltered(ctx context.Context, arg CountFactsByNotebookFilteredParams) (int64, error)
+	CountPracticeCards(ctx context.Context, arg CountPracticeCardsParams) (int64, error)
 	CreateAuthIdentity(ctx context.Context, arg CreateAuthIdentityParams) (AuthIdentity, error)
 	CreateCard(ctx context.Context, arg CreateCardParams) (Card, error)
 	CreateFact(ctx context.Context, arg CreateFactParams) (AppFact, error)
 	// Note: fsrs_settings is always provided from Go code (source of truth for defaults)
 	CreateNotebook(ctx context.Context, arg CreateNotebookParams) (Notebook, error)
+	CreateReview(ctx context.Context, arg CreateReviewParams) (AppReview, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (UserSession, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// Creates a user and their password auth identity in a single transaction-friendly call
@@ -33,10 +35,16 @@ type Querier interface {
 	GetAuthIdentityByEmail(ctx context.Context, email pgtype.Text) (GetAuthIdentityByEmailRow, error)
 	GetAuthIdentityByProviderID(ctx context.Context, arg GetAuthIdentityByProviderIDParams) (GetAuthIdentityByProviderIDRow, error)
 	GetCard(ctx context.Context, arg GetCardParams) (Card, error)
+	GetCardForReview(ctx context.Context, arg GetCardForReviewParams) (Card, error)
 	GetFact(ctx context.Context, arg GetFactParams) (GetFactRow, error)
 	GetFactStatsByNotebook(ctx context.Context, arg GetFactStatsByNotebookParams) (GetFactStatsByNotebookRow, error)
 	GetNotebook(ctx context.Context, arg GetNotebookParams) (Notebook, error)
+	// Returns all non-suspended cards for practice mode (no due filter).
+	GetPracticeCards(ctx context.Context, arg GetPracticeCardsParams) ([]GetPracticeCardsRow, error)
 	GetSessionByToken(ctx context.Context, tokenHash []byte) (GetSessionByTokenRow, error)
+	// Returns due cards for review: overdue first, then learning, then new.
+	// New card cap limits how many new cards are introduced per day.
+	GetStudyCards(ctx context.Context, arg GetStudyCardsParams) ([]GetStudyCardsRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	// Get user with password hash for authentication
 	GetUserByEmailPassword(ctx context.Context, email pgtype.Text) (GetUserByEmailPasswordRow, error)
@@ -52,6 +60,7 @@ type Querier interface {
 	ListNotebooks(ctx context.Context, userID uuid.UUID) ([]Notebook, error)
 	SoftDeleteUser(ctx context.Context, id uuid.UUID) error
 	UnarchiveNotebook(ctx context.Context, arg UnarchiveNotebookParams) error
+	UpdateCardAfterReview(ctx context.Context, arg UpdateCardAfterReviewParams) error
 	UpdateFactContent(ctx context.Context, arg UpdateFactContentParams) (AppFact, error)
 	UpdateNotebook(ctx context.Context, arg UpdateNotebookParams) (Notebook, error)
 	UpdateSessionLastUsed(ctx context.Context, tokenHash []byte) error
