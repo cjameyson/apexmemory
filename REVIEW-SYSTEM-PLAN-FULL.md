@@ -7,10 +7,10 @@
 | **Phase 1** | COMPLETED | Backend Core -- Due Cards + Submit Review |
 | **Phase 2** | COMPLETED | Frontend Wiring -- Connect Focus Mode to Real API |
 | **Phase 3** | COMPLETED | Due Counts + Review Launcher Polish |
-| **Phase 4** | PARTIALLY COMPLETE | Undo + Learning Card Queue Management (re-queue done, undo not started) |
+| **Phase 4** | COMPLETED | Undo + Learning Card Queue Management |
 | **Phase 5** | NOT STARTED | Session Stats + Review History |
 
-**Last Updated:** 2026-02-03 (Phase 3 completed)
+**Last Updated:** 2026-02-03 (Phase 4 completed)
 
 ---
 
@@ -178,36 +178,43 @@ Two GET endpoints with optional `notebook_id` query param. When omitted, they op
 
 ---
 
-## Phase 4: Undo + Learning Card Queue Management [PARTIALLY COMPLETE]
+## Phase 4: Undo + Learning Card Queue Management [COMPLETED]
 
 **Goal:** Undo last review within a session. Proper handling of learning/relearning cards that come due within the session.
 
 ### New Files
-- [ ] `backend/internal/app/reviews_undo.go` -- undo handler logic
+- N/A (undo logic integrated into `reviews.go` and `reviews_handlers.go`)
 
 ### Modified Files
 - **Backend:**
-  - [ ] `backend/db/queries/reviews.sql` -- add `GetReview`, `GetLatestReviewForCard`, `DeleteReview` (`:execrows`), `RestoreCardState`
-  - [ ] `backend/internal/app/routes.go` -- add `DELETE /v1/reviews/{id}`
+  - [x] `backend/db/queries/reviews.sql` -- added `GetReviewByID`, `GetLatestReviewForCard`, `DeleteReview` (`:execrows`), `RestoreCardAfterUndo`
+  - [x] `backend/internal/app/routes.go` -- added `DELETE /v1/reviews/{id}`
+  - [x] `backend/internal/app/reviews.go` -- added `undoReview()` service method, `UndoReviewResponse` type
+  - [x] `backend/internal/app/reviews_handlers.go` -- added `UndoReviewHandler`
+  - [x] `backend/internal/app/reviews_test.go` -- added 4 undo tests: success, not-latest (409), not-found (404), practice mode
 - **Frontend:**
-  - [ ] `frontend/src/routes/api/reviews/[reviewId]/+server.ts` -- DELETE proxy
+  - [x] `frontend/src/routes/api/reviews/[reviewId]/+server.ts` -- DELETE proxy
+  - [x] `frontend/src/lib/api/types.ts` -- added `ApiUndoReviewResponse` type
   - `frontend/src/lib/components/overlays/focus-mode.svelte`:
-    - [ ] Track `lastReviewId` in session state
-    - [ ] Show undo toast/snackbar for ~8s after each rating
-    - [ ] On undo: DELETE, re-insert card at current position, reset reveal state
+    - [x] Track `lastReview` (UndoState) in session state with `reviewId`, `cardBefore`, `insertPosition`, `wasRequeued`
+    - [x] Show undo toast/snackbar for 8s after each rating with "Undo" action button
+    - [x] On undo: DELETE, re-insert card at original position with restored FSRS state, reset reveal state
+    - [x] Handle requeued card removal on undo (removes duplicate from end of queue)
+    - [x] Z key shortcut for undo
     - [x] Learning card re-queue (scheduled mode only): when POST response shows card due within session window (<10min), insert it back into the queue at end *(implemented in Phase 2)*
     - [x] Practice mode: no re-queue logic needed (cards are already all served)
 
 ### Exit Criteria
-- [ ] Undo appears after rating, clicking it restores card for re-rating
-- [ ] Undo of non-latest review returns 409
+- [x] Undo appears after rating, clicking it restores card for re-rating
+- [x] Undo of non-latest review returns 409
 - [x] Learning cards with short intervals reappear in scheduled session *(implemented in Phase 2)*
-- [ ] Undo works in both scheduled and practice modes (practice undo deletes the practice review log)
+- [x] Undo works in both scheduled and practice modes (practice undo deletes the practice review log)
 
-### Current State
-- Learning card re-queue logic implemented in Phase 2 (cards due within 10min are re-inserted at queue end).
-- No undo functionality exists -- no DELETE endpoint, no undo UI.
-- No `lastReviewId` tracking in session state.
+### Key Design Details
+- **Undo window:** 8 seconds after each rating, toast with action button
+- **State restoration:** For scheduled reviews, card FSRS state (stability, difficulty, due, reps, lapses) restored from previous review's `prev_*` columns. For practice reviews, only review log deleted (card state unchanged).
+- **Conflict detection:** Only the most recent review for a card can be undone (verified via `GetLatestReviewForCard`). Attempting to undo an earlier review returns 409 Conflict.
+- **Requeue handling:** If the undone card was requeued (learning card due soon), it's removed from the queue end before being re-inserted at original position.
 
 ---
 

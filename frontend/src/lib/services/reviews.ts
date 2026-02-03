@@ -57,7 +57,9 @@ export async function fetchPracticeCards(notebookId?: string): Promise<StudyCard
 		toast.error('Failed to load practice cards. Please try again.');
 		return [];
 	}
-	const data: ApiStudyCard[] = await res.json();
+	const response = await res.json();
+	// Practice endpoint returns paginated response
+	const data: ApiStudyCard[] = response.data ?? response;
 	return toStudyCards(data);
 }
 

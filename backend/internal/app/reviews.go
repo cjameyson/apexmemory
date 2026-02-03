@@ -65,13 +65,17 @@ type ReviewData struct {
 }
 
 // UndoSnapshot captures card state fields needed for undo restoration.
-// This is stored as JSONB in the review record.
+// Stored as JSONB in the review record's undo_snapshot column.
+// These fields aren't stored as separate review columns (unlike state/stability/difficulty
+// which have *_before columns), so we capture them here to enable full restoration.
 type UndoSnapshot struct {
-	Step       *int16     `json:"step"`
-	Due        *time.Time `json:"due"`
-	LastReview *time.Time `json:"last_review"`
-	Reps       int32      `json:"reps"`
-	Lapses     int32      `json:"lapses"`
+	Step          *int16     `json:"step"`
+	Due           *time.Time `json:"due"`
+	LastReview    *time.Time `json:"last_review"`
+	Reps          int32      `json:"reps"`
+	Lapses        int32      `json:"lapses"`
+	ElapsedDays   float32    `json:"elapsed_days"`
+	ScheduledDays float32    `json:"scheduled_days"`
 }
 
 // UndoReviewResponse is returned after undoing a review.
@@ -128,8 +132,10 @@ func (app *Application) submitReview(ctx context.Context, userID uuid.UUID, req 
 
 		// Capture undo snapshot before processing
 		undoSnapshot := UndoSnapshot{
-			Reps:   card.Reps,
-			Lapses: card.Lapses,
+			Reps:          card.Reps,
+			Lapses:        card.Lapses,
+			ElapsedDays:   card.ElapsedDays,
+			ScheduledDays: card.ScheduledDays,
 		}
 		if card.Step.Valid {
 			step := card.Step.Int16
@@ -147,8 +153,7 @@ func (app *Application) submitReview(ctx context.Context, userID uuid.UUID, req 
 		// Map DB card to FSRS card
 		fsrsCard := dbCardToFSRS(card)
 
-		// Build scheduler (no fuzzing for actual review to keep deterministic for now;
-		// we can enable later)
+		// Build scheduler with fuzzing enabled for natural interval variation
 		scheduler, txErr := fsrs.NewScheduler(fsrs.WithEnableFuzzing(true))
 		if txErr != nil {
 			return txErr
@@ -619,11 +624,17 @@ func (app *Application) undoReview(ctx context.Context, userID uuid.UUID, review
 
 		// Practice mode: just delete the review, no card state change
 		if review.Mode == "practice" {
-			_, txErr = q.DeleteReview(ctx, db.DeleteReviewParams{
+			rowsAffected, txErr := q.DeleteReview(ctx, db.DeleteReviewParams{
 				UserID: userID,
 				ID:     reviewID,
 			})
-			return txErr
+			if txErr != nil {
+				return txErr
+			}
+			if rowsAffected == 0 {
+				return errReviewNotFound
+			}
+			return nil
 		}
 
 		// Scheduled mode: need to restore card state
@@ -685,8 +696,8 @@ func (app *Application) undoReview(ctx context.Context, userID uuid.UUID, review
 			Step:          step,
 			Due:           due,
 			LastReview:    lastReview,
-			ElapsedDays:   review.ElapsedDays,
-			ScheduledDays: review.ScheduledDays,
+			ElapsedDays:   snapshot.ElapsedDays,
+			ScheduledDays: snapshot.ScheduledDays,
 			Reps:          snapshot.Reps,
 			Lapses:        snapshot.Lapses,
 			UserID:        userID,
@@ -697,12 +708,15 @@ func (app *Application) undoReview(ctx context.Context, userID uuid.UUID, review
 		}
 
 		// Delete the review
-		_, txErr = q.DeleteReview(ctx, db.DeleteReviewParams{
+		rowsAffected, txErr := q.DeleteReview(ctx, db.DeleteReviewParams{
 			UserID: userID,
 			ID:     reviewID,
 		})
 		if txErr != nil {
 			return fmt.Errorf("delete review: %w", txErr)
+		}
+		if rowsAffected == 0 {
+			return errReviewNotFound
 		}
 
 		// Build restored card for response
@@ -713,8 +727,8 @@ func (app *Application) undoReview(ctx context.Context, userID uuid.UUID, review
 		restoredCard.Step = step
 		restoredCard.Due = due
 		restoredCard.LastReview = lastReview
-		restoredCard.ElapsedDays = review.ElapsedDays
-		restoredCard.ScheduledDays = review.ScheduledDays
+		restoredCard.ElapsedDays = snapshot.ElapsedDays
+		restoredCard.ScheduledDays = snapshot.ScheduledDays
 		restoredCard.Reps = snapshot.Reps
 		restoredCard.Lapses = snapshot.Lapses
 
