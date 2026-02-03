@@ -29,6 +29,7 @@
 		"@tailwindcss/vite": "^4.1.18",
 		"@testing-library/svelte": "^5.3.1",
 		"@types/node": "^25.0.9",
+		"@types/uuid": "^10.0.0",
 		"bits-ui": "^2.15.4",
 		"clsx": "^2.1.1",
 		"eslint": "^9.39.2",
@@ -56,6 +57,7 @@
 		"d3-scale": "^4.0.2",
 		"d3-shape": "^3.2.0",
 		"layerchart": "^1.0.13",
-		"svelte-ux": "^1.0.9"
+		"svelte-ux": "^1.0.9",
+		"uuid": "^13.0.0"
 	}
 }

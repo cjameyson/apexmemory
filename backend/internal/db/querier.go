@@ -30,6 +30,8 @@ type Querier interface {
 	DeleteCardsByFactAndElements(ctx context.Context, arg DeleteCardsByFactAndElementsParams) error
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteFact(ctx context.Context, arg DeleteFactParams) (int64, error)
+	// Delete a review (for undo).
+	DeleteReview(ctx context.Context, arg DeleteReviewParams) (int64, error)
 	DeleteSession(ctx context.Context, tokenHash []byte) error
 	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
 	GetAuthIdentityByEmail(ctx context.Context, email pgtype.Text) (GetAuthIdentityByEmailRow, error)
@@ -38,13 +40,19 @@ type Querier interface {
 	GetCardForReview(ctx context.Context, arg GetCardForReviewParams) (Card, error)
 	GetFact(ctx context.Context, arg GetFactParams) (GetFactRow, error)
 	GetFactStatsByNotebook(ctx context.Context, arg GetFactStatsByNotebookParams) (GetFactStatsByNotebookRow, error)
+	// Get the most recent review for a card to verify undo is for latest.
+	GetLatestReviewForCard(ctx context.Context, arg GetLatestReviewForCardParams) (uuid.UUID, error)
 	GetNotebook(ctx context.Context, arg GetNotebookParams) (Notebook, error)
 	// Returns all non-suspended cards for practice mode (no due filter).
 	GetPracticeCards(ctx context.Context, arg GetPracticeCardsParams) ([]GetPracticeCardsRow, error)
+	// Fetch a review for undo validation.
+	GetReviewByID(ctx context.Context, arg GetReviewByIDParams) (AppReview, error)
 	GetSessionByToken(ctx context.Context, tokenHash []byte) (GetSessionByTokenRow, error)
 	// Returns due cards for review: overdue first, then learning, then new.
 	// New card cap limits how many new cards are introduced per day.
 	GetStudyCards(ctx context.Context, arg GetStudyCardsParams) ([]GetStudyCardsRow, error)
+	// Returns due card counts per notebook for the review launcher.
+	GetStudyCountsByNotebook(ctx context.Context, userID uuid.UUID) ([]GetStudyCountsByNotebookRow, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	// Get user with password hash for authentication
 	GetUserByEmailPassword(ctx context.Context, email pgtype.Text) (GetUserByEmailPasswordRow, error)
@@ -58,6 +66,9 @@ type Querier interface {
 	ListFactsByNotebook(ctx context.Context, arg ListFactsByNotebookParams) ([]ListFactsByNotebookRow, error)
 	ListFactsByNotebookFiltered(ctx context.Context, arg ListFactsByNotebookFilteredParams) ([]ListFactsByNotebookFilteredRow, error)
 	ListNotebooks(ctx context.Context, userID uuid.UUID) ([]Notebook, error)
+	// Restore card state from review's before columns + undo_snapshot.
+	// undo_snapshot contains: step, due, last_review, reps, lapses
+	RestoreCardAfterUndo(ctx context.Context, arg RestoreCardAfterUndoParams) error
 	SoftDeleteUser(ctx context.Context, id uuid.UUID) error
 	UnarchiveNotebook(ctx context.Context, arg UnarchiveNotebookParams) error
 	UpdateCardAfterReview(ctx context.Context, arg UpdateCardAfterReviewParams) error

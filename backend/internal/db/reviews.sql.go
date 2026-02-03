@@ -40,17 +40,17 @@ INSERT INTO app.reviews (
     state_before, stability_before, difficulty_before,
     elapsed_days, scheduled_days,
     state_after, stability_after, difficulty_after,
-    interval_days, retrievability
+    interval_days, retrievability, undo_snapshot
 ) VALUES (
     $1, $2, $3, $4, $5, $6,
     $7, $8, $9, $10,
     $11, $12, $13,
     $14, $15,
     $16, $17, $18,
-    $19, $20
+    $19, $20, $21
 )
 ON CONFLICT (user_id, id) DO NOTHING
-RETURNING user_id, id, card_id, notebook_id, fact_id, element_id, reviewed_at, rating, review_duration_ms, mode, state_before, stability_before, difficulty_before, elapsed_days, scheduled_days, state_after, stability_after, difficulty_after, interval_days, retrievability, created_at
+RETURNING user_id, id, card_id, notebook_id, fact_id, element_id, reviewed_at, rating, review_duration_ms, mode, state_before, stability_before, difficulty_before, elapsed_days, scheduled_days, state_after, stability_after, difficulty_after, interval_days, retrievability, undo_snapshot, created_at
 `
 
 type CreateReviewParams struct {
@@ -74,6 +74,7 @@ type CreateReviewParams struct {
 	DifficultyAfter  float32       `json:"difficulty_after"`
 	IntervalDays     float32       `json:"interval_days"`
 	Retrievability   pgtype.Float4 `json:"retrievability"`
+	UndoSnapshot     []byte        `json:"undo_snapshot"`
 }
 
 func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (AppReview, error) {
@@ -98,6 +99,7 @@ func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (App
 		arg.DifficultyAfter,
 		arg.IntervalDays,
 		arg.Retrievability,
+		arg.UndoSnapshot,
 	)
 	var i AppReview
 	err := row.Scan(
@@ -121,9 +123,29 @@ func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (App
 		&i.DifficultyAfter,
 		&i.IntervalDays,
 		&i.Retrievability,
+		&i.UndoSnapshot,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const deleteReview = `-- name: DeleteReview :execrows
+DELETE FROM app.reviews
+WHERE user_id = $1 AND id = $2
+`
+
+type DeleteReviewParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	ID     uuid.UUID `json:"id"`
+}
+
+// Delete a review (for undo).
+func (q *Queries) DeleteReview(ctx context.Context, arg DeleteReviewParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteReview, arg.UserID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getCardForReview = `-- name: GetCardForReview :one
@@ -162,6 +184,26 @@ func (q *Queries) GetCardForReview(ctx context.Context, arg GetCardForReviewPara
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getLatestReviewForCard = `-- name: GetLatestReviewForCard :one
+SELECT id FROM app.reviews
+WHERE user_id = $1 AND card_id = $2
+ORDER BY reviewed_at DESC
+LIMIT 1
+`
+
+type GetLatestReviewForCardParams struct {
+	UserID uuid.UUID   `json:"user_id"`
+	CardID pgtype.UUID `json:"card_id"`
+}
+
+// Get the most recent review for a card to verify undo is for latest.
+func (q *Queries) GetLatestReviewForCard(ctx context.Context, arg GetLatestReviewForCardParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, getLatestReviewForCard, arg.UserID, arg.CardID)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }
 
 const getPracticeCards = `-- name: GetPracticeCards :many
@@ -253,6 +295,47 @@ func (q *Queries) GetPracticeCards(ctx context.Context, arg GetPracticeCardsPara
 		return nil, err
 	}
 	return items, nil
+}
+
+const getReviewByID = `-- name: GetReviewByID :one
+SELECT user_id, id, card_id, notebook_id, fact_id, element_id, reviewed_at, rating, review_duration_ms, mode, state_before, stability_before, difficulty_before, elapsed_days, scheduled_days, state_after, stability_after, difficulty_after, interval_days, retrievability, undo_snapshot, created_at FROM app.reviews
+WHERE user_id = $1 AND id = $2
+`
+
+type GetReviewByIDParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	ID     uuid.UUID `json:"id"`
+}
+
+// Fetch a review for undo validation.
+func (q *Queries) GetReviewByID(ctx context.Context, arg GetReviewByIDParams) (AppReview, error) {
+	row := q.db.QueryRow(ctx, getReviewByID, arg.UserID, arg.ID)
+	var i AppReview
+	err := row.Scan(
+		&i.UserID,
+		&i.ID,
+		&i.CardID,
+		&i.NotebookID,
+		&i.FactID,
+		&i.ElementID,
+		&i.ReviewedAt,
+		&i.Rating,
+		&i.ReviewDurationMs,
+		&i.Mode,
+		&i.StateBefore,
+		&i.StabilityBefore,
+		&i.DifficultyBefore,
+		&i.ElapsedDays,
+		&i.ScheduledDays,
+		&i.StateAfter,
+		&i.StabilityAfter,
+		&i.DifficultyAfter,
+		&i.IntervalDays,
+		&i.Retrievability,
+		&i.UndoSnapshot,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getStudyCards = `-- name: GetStudyCards :many
@@ -366,6 +449,99 @@ func (q *Queries) GetStudyCards(ctx context.Context, arg GetStudyCardsParams) ([
 		return nil, err
 	}
 	return items, nil
+}
+
+const getStudyCountsByNotebook = `-- name: GetStudyCountsByNotebook :many
+SELECT
+    c.notebook_id,
+    count(*) FILTER (WHERE c.state != 'new' AND c.due <= now()) AS due_count,
+    count(*) FILTER (WHERE c.state = 'new') AS new_count
+FROM app.cards c
+WHERE c.user_id = $1
+  AND c.suspended_at IS NULL
+  AND c.buried_until IS NULL
+  AND (
+    (c.state != 'new' AND c.due <= now())
+    OR c.state = 'new'
+  )
+GROUP BY c.notebook_id
+`
+
+type GetStudyCountsByNotebookRow struct {
+	NotebookID uuid.UUID `json:"notebook_id"`
+	DueCount   int64     `json:"due_count"`
+	NewCount   int64     `json:"new_count"`
+}
+
+// Returns due card counts per notebook for the review launcher.
+func (q *Queries) GetStudyCountsByNotebook(ctx context.Context, userID uuid.UUID) ([]GetStudyCountsByNotebookRow, error) {
+	rows, err := q.db.Query(ctx, getStudyCountsByNotebook, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetStudyCountsByNotebookRow{}
+	for rows.Next() {
+		var i GetStudyCountsByNotebookRow
+		if err := rows.Scan(&i.NotebookID, &i.DueCount, &i.NewCount); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const restoreCardAfterUndo = `-- name: RestoreCardAfterUndo :exec
+UPDATE app.cards SET
+    state = $1,
+    stability = $2,
+    difficulty = $3,
+    step = $4,
+    due = $5,
+    last_review = $6,
+    elapsed_days = $7,
+    scheduled_days = $8,
+    reps = $9,
+    lapses = $10
+WHERE user_id = $11 AND id = $12
+`
+
+type RestoreCardAfterUndoParams struct {
+	State         AppCardState       `json:"state"`
+	Stability     pgtype.Float4      `json:"stability"`
+	Difficulty    pgtype.Float4      `json:"difficulty"`
+	Step          pgtype.Int2        `json:"step"`
+	Due           pgtype.Timestamptz `json:"due"`
+	LastReview    pgtype.Timestamptz `json:"last_review"`
+	ElapsedDays   float32            `json:"elapsed_days"`
+	ScheduledDays float32            `json:"scheduled_days"`
+	Reps          int32              `json:"reps"`
+	Lapses        int32              `json:"lapses"`
+	UserID        uuid.UUID          `json:"user_id"`
+	ID            uuid.UUID          `json:"id"`
+}
+
+// Restore card state from review's before columns + undo_snapshot.
+// undo_snapshot contains: step, due, last_review, reps, lapses
+func (q *Queries) RestoreCardAfterUndo(ctx context.Context, arg RestoreCardAfterUndoParams) error {
+	_, err := q.db.Exec(ctx, restoreCardAfterUndo,
+		arg.State,
+		arg.Stability,
+		arg.Difficulty,
+		arg.Step,
+		arg.Due,
+		arg.LastReview,
+		arg.ElapsedDays,
+		arg.ScheduledDays,
+		arg.Reps,
+		arg.Lapses,
+		arg.UserID,
+		arg.ID,
+	)
+	return err
 }
 
 const updateCardAfterReview = `-- name: UpdateCardAfterReview :exec

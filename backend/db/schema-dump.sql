@@ -196,6 +196,7 @@ CREATE TABLE app.reviews (
     difficulty_after real NOT NULL,
     interval_days real NOT NULL,
     retrievability real,
+    undo_snapshot jsonb,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT reviews_valid_mode CHECK ((mode = ANY (ARRAY['scheduled'::text, 'practice'::text])))
 );

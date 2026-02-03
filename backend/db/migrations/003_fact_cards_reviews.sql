@@ -209,6 +209,8 @@ CREATE TABLE app.reviews (
     difficulty_after   REAL NOT NULL,
     interval_days      REAL NOT NULL,
     retrievability     REAL,
+    -- Undo support: snapshot of card state before review (step, due, last_review, reps, lapses)
+    undo_snapshot      JSONB,
     created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
 
     PRIMARY KEY (user_id, id),

@@ -173,6 +173,18 @@ export interface ApiReviewResponse {
 	card: ApiCard;
 }
 
+// Study counts response from GET /v1/reviews/study-counts
+export interface ApiStudyCountsResponse {
+	counts: Record<string, { due: number; new: number; total: number }>;
+	total_due: number;
+	total_new: number;
+}
+
+// Undo review response from DELETE /v1/reviews/{id}
+export interface ApiUndoReviewResponse {
+	card: ApiCard | null; // null for practice mode
+}
+
 // Discriminated union for API results
 export type ApiResult<T> =
 	| { ok: true; data: T }

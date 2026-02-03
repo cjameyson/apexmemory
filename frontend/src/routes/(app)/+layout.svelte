@@ -7,13 +7,13 @@
 	import FocusMode from '$lib/components/overlays/focus-mode.svelte';
 	import type { Notebook, ReviewScope, StudyCard } from '$lib/types';
 	import type { ReviewMode } from '$lib/types/review';
-	import { toNotebooks } from '$lib/services/notebooks';
+	import { toNotebooksWithCounts } from '$lib/services/notebooks';
 	import { fetchStudyCards, fetchPracticeCards } from '$lib/services/reviews';
 
 	let { data, children } = $props();
 
-	// Transform API data to frontend types
-	let notebooks = $derived(toNotebooks(data.notebooks));
+	// Transform API data to frontend types with study counts
+	let notebooks = $derived(toNotebooksWithCounts(data.notebooks, data.studyCounts));
 
 	// Create lookup map for notebook by ID
 	let notebookMap = $derived(new Map(notebooks.map((n) => [n.id, n])));

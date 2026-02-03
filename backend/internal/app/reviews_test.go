@@ -338,3 +338,359 @@ func TestFormatInterval(t *testing.T) {
 		})
 	}
 }
+
+func TestGetStudyCountsHandler_Empty(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	// Create notebook with no cards
+	createTestNotebook(t, app, user.ID)
+
+	req := httptest.NewRequest("GET", "/v1/reviews/study-counts", nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetStudyCountsHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp StudyCountsResponse
+	decodeResponse(t, rr, &resp)
+
+	if resp.TotalDue != 0 {
+		t.Errorf("expected total_due 0, got %d", resp.TotalDue)
+	}
+	if resp.TotalNew != 0 {
+		t.Errorf("expected total_new 0, got %d", resp.TotalNew)
+	}
+	if len(resp.Counts) != 1 {
+		t.Errorf("expected 1 notebook in counts, got %d", len(resp.Counts))
+	}
+}
+
+func TestGetStudyCountsHandler_WithNewCards(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	// Create two notebooks with cards
+	nbID1, _ := createTestCard(t, app, user.ID)
+	nbID2, _ := createTestCard(t, app, user.ID)
+
+	req := httptest.NewRequest("GET", "/v1/reviews/study-counts", nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetStudyCountsHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp StudyCountsResponse
+	decodeResponse(t, rr, &resp)
+
+	// Both notebooks should have 1 new card each
+	if resp.TotalNew != 2 {
+		t.Errorf("expected total_new 2, got %d", resp.TotalNew)
+	}
+	if resp.TotalDue != 0 {
+		t.Errorf("expected total_due 0, got %d", resp.TotalDue)
+	}
+
+	// Check individual notebook counts
+	counts1, ok := resp.Counts[nbID1.String()]
+	if !ok {
+		t.Fatal("expected counts for notebook 1")
+	}
+	if counts1.New != 1 {
+		t.Errorf("notebook 1: expected new 1, got %d", counts1.New)
+	}
+	if counts1.Total != 1 {
+		t.Errorf("notebook 1: expected total 1, got %d", counts1.Total)
+	}
+
+	counts2, ok := resp.Counts[nbID2.String()]
+	if !ok {
+		t.Fatal("expected counts for notebook 2")
+	}
+	if counts2.New != 1 {
+		t.Errorf("notebook 2: expected new 1, got %d", counts2.New)
+	}
+}
+
+func TestGetStudyCountsHandler_AfterReview(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	// Create notebook with card
+	nbID, cardID := createTestCard(t, app, user.ID)
+
+	// Review the card (moves from new to learning)
+	reviewReq := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      uuid.New().String(),
+		"card_id": cardID.String(),
+		"rating":  "good",
+		"mode":    "scheduled",
+	})
+	reviewReq = app.WithUser(reviewReq, user)
+	rrReview := httptest.NewRecorder()
+	app.SubmitReviewHandler(rrReview, reviewReq)
+
+	if rrReview.Code != http.StatusOK {
+		t.Fatalf("review failed: %d. Body: %s", rrReview.Code, rrReview.Body.String())
+	}
+
+	// Get counts - card is now not due (scheduled in future)
+	req := httptest.NewRequest("GET", "/v1/reviews/study-counts", nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetStudyCountsHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp StudyCountsResponse
+	decodeResponse(t, rr, &resp)
+
+	// After review, card is not new and not due
+	if resp.TotalNew != 0 {
+		t.Errorf("expected total_new 0 after review, got %d", resp.TotalNew)
+	}
+	if resp.TotalDue != 0 {
+		t.Errorf("expected total_due 0 (card scheduled in future), got %d", resp.TotalDue)
+	}
+
+	// But total_cards should still be 1
+	counts, ok := resp.Counts[nbID.String()]
+	if !ok {
+		t.Fatal("expected counts for notebook")
+	}
+	if counts.Total != 1 {
+		t.Errorf("expected total 1, got %d", counts.Total)
+	}
+}
+
+func TestGetStudyCountsHandler_TotalsMatchSum(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	// Create multiple notebooks with different card counts
+	createTestCard(t, app, user.ID) // nb1: 1 new
+	createTestCard(t, app, user.ID) // nb2: 1 new
+	createTestCard(t, app, user.ID) // nb3: 1 new
+
+	req := httptest.NewRequest("GET", "/v1/reviews/study-counts", nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetStudyCountsHandler(rr, req)
+
+	var resp StudyCountsResponse
+	decodeResponse(t, rr, &resp)
+
+	// Sum individual counts
+	var sumDue, sumNew int64
+	for _, counts := range resp.Counts {
+		sumDue += counts.Due
+		sumNew += counts.New
+	}
+
+	if sumDue != resp.TotalDue {
+		t.Errorf("sum of due counts (%d) != total_due (%d)", sumDue, resp.TotalDue)
+	}
+	if sumNew != resp.TotalNew {
+		t.Errorf("sum of new counts (%d) != total_new (%d)", sumNew, resp.TotalNew)
+	}
+}
+
+func TestUndoReviewHandler_Success(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	nbID, cardID := createTestCard(t, app, user.ID)
+	reviewID := uuid.New()
+
+	// Submit a review
+	submitReq := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      reviewID.String(),
+		"card_id": cardID.String(),
+		"rating":  "good",
+		"mode":    "scheduled",
+	})
+	submitReq = app.WithUser(submitReq, user)
+	rr := httptest.NewRecorder()
+	app.SubmitReviewHandler(rr, submitReq)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("submit review failed: %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	// Verify card is no longer in study queue
+	studyReq := httptest.NewRequest("GET", "/v1/reviews/study?notebook_id="+nbID.String(), nil)
+	studyReq = app.WithUser(studyReq, user)
+	rr = httptest.NewRecorder()
+	app.GetStudyCardsHandler(rr, studyReq)
+	var studyCards []map[string]any
+	decodeResponse(t, rr, &studyCards)
+	if len(studyCards) != 0 {
+		t.Fatalf("expected 0 study cards after review, got %d", len(studyCards))
+	}
+
+	// Undo the review
+	undoReq := httptest.NewRequest("DELETE", "/v1/reviews/"+reviewID.String(), nil)
+	undoReq.SetPathValue("id", reviewID.String())
+	undoReq = app.WithUser(undoReq, user)
+	rr = httptest.NewRecorder()
+	app.UndoReviewHandler(rr, undoReq)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("undo review failed: %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var undoResp UndoReviewResponse
+	decodeResponse(t, rr, &undoResp)
+
+	// Card should be restored
+	if undoResp.Card == nil {
+		t.Fatal("expected card in undo response")
+	}
+	if undoResp.Card.State != "new" {
+		t.Errorf("expected card state 'new' after undo, got %s", undoResp.Card.State)
+	}
+
+	// Card should be back in study queue
+	studyReq = httptest.NewRequest("GET", "/v1/reviews/study?notebook_id="+nbID.String(), nil)
+	studyReq = app.WithUser(studyReq, user)
+	rr = httptest.NewRecorder()
+	app.GetStudyCardsHandler(rr, studyReq)
+	decodeResponse(t, rr, &studyCards)
+	if len(studyCards) != 1 {
+		t.Fatalf("expected 1 study card after undo, got %d", len(studyCards))
+	}
+}
+
+func TestUndoReviewHandler_NotLatest(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	_, cardID := createTestCard(t, app, user.ID)
+	reviewID1 := uuid.New()
+	reviewID2 := uuid.New()
+
+	// Submit first review
+	submitReq := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      reviewID1.String(),
+		"card_id": cardID.String(),
+		"rating":  "again",
+		"mode":    "scheduled",
+	})
+	submitReq = app.WithUser(submitReq, user)
+	rr := httptest.NewRecorder()
+	app.SubmitReviewHandler(rr, submitReq)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("first review failed: %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	// Small delay to ensure different reviewed_at timestamp
+	time.Sleep(10 * time.Millisecond)
+
+	// Submit second review
+	submitReq = jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      reviewID2.String(),
+		"card_id": cardID.String(),
+		"rating":  "good",
+		"mode":    "scheduled",
+	})
+	submitReq = app.WithUser(submitReq, user)
+	rr = httptest.NewRecorder()
+	app.SubmitReviewHandler(rr, submitReq)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("second review failed: %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	// Try to undo the first review (should fail with 409)
+	undoReq := httptest.NewRequest("DELETE", "/v1/reviews/"+reviewID1.String(), nil)
+	undoReq.SetPathValue("id", reviewID1.String())
+	undoReq = app.WithUser(undoReq, user)
+	rr = httptest.NewRecorder()
+	app.UndoReviewHandler(rr, undoReq)
+	if rr.Code != http.StatusConflict {
+		t.Errorf("expected 409 Conflict, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestUndoReviewHandler_NotFound(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	// Try to undo a non-existent review
+	fakeID := uuid.New()
+	undoReq := httptest.NewRequest("DELETE", "/v1/reviews/"+fakeID.String(), nil)
+	undoReq.SetPathValue("id", fakeID.String())
+	undoReq = app.WithUser(undoReq, user)
+	rr := httptest.NewRecorder()
+	app.UndoReviewHandler(rr, undoReq)
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected 404 Not Found, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+}
+
+func TestUndoReviewHandler_PracticeMode(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	nbID, cardID := createTestCard(t, app, user.ID)
+	reviewID := uuid.New()
+
+	// Submit a practice mode review
+	submitReq := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      reviewID.String(),
+		"card_id": cardID.String(),
+		"rating":  "good",
+		"mode":    "practice",
+	})
+	submitReq = app.WithUser(submitReq, user)
+	rr := httptest.NewRecorder()
+	app.SubmitReviewHandler(rr, submitReq)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("submit practice review failed: %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	// Verify card is still in study queue (practice mode doesn't change card state)
+	studyReq := httptest.NewRequest("GET", "/v1/reviews/study?notebook_id="+nbID.String(), nil)
+	studyReq = app.WithUser(studyReq, user)
+	rr = httptest.NewRecorder()
+	app.GetStudyCardsHandler(rr, studyReq)
+	var studyCards []map[string]any
+	decodeResponse(t, rr, &studyCards)
+	if len(studyCards) != 1 {
+		t.Fatalf("expected 1 study card (practice doesn't change state), got %d", len(studyCards))
+	}
+
+	// Undo the practice review
+	undoReq := httptest.NewRequest("DELETE", "/v1/reviews/"+reviewID.String(), nil)
+	undoReq.SetPathValue("id", reviewID.String())
+	undoReq = app.WithUser(undoReq, user)
+	rr = httptest.NewRecorder()
+	app.UndoReviewHandler(rr, undoReq)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("undo practice review failed: %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var undoResp UndoReviewResponse
+	decodeResponse(t, rr, &undoResp)
+
+	// Practice mode undo returns nil card (no state restoration needed)
+	if undoResp.Card != nil {
+		t.Error("expected nil card for practice mode undo")
+	}
+
+	// Card should still be in study queue
+	studyReq = httptest.NewRequest("GET", "/v1/reviews/study?notebook_id="+nbID.String(), nil)
+	studyReq = app.WithUser(studyReq, user)
+	rr = httptest.NewRecorder()
+	app.GetStudyCardsHandler(rr, studyReq)
+	decodeResponse(t, rr, &studyCards)
+	if len(studyCards) != 1 {
+		t.Fatalf("expected 1 study card after practice undo, got %d", len(studyCards))
+	}
+}

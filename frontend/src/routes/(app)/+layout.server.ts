@@ -1,7 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { apiRequest } from '$lib/server/api';
-import type { ApiNotebook } from '$lib/api/types';
+import type { ApiNotebook, ApiStudyCountsResponse } from '$lib/api/types';
 
 export const load: LayoutServerLoad = async ({ locals }) => {
 	// Redirect unauthenticated users to login
@@ -9,13 +9,21 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		redirect(302, '/login');
 	}
 
-	// Fetch notebooks - graceful fallback on error
-	const result = await apiRequest<ApiNotebook[]>('/v1/notebooks?ui=true', {
-		token: locals.sessionToken!
-	});
+	// Fetch notebooks and study counts in parallel
+	const [notebooksResult, countsResult] = await Promise.all([
+		apiRequest<ApiNotebook[]>('/v1/notebooks?ui=true', {
+			token: locals.sessionToken!
+		}),
+		apiRequest<ApiStudyCountsResponse>('/v1/reviews/study-counts', {
+			token: locals.sessionToken!
+		})
+	]);
 
 	return {
 		user: locals.user,
-		notebooks: result.ok ? result.data : []
+		notebooks: notebooksResult.ok ? notebooksResult.data : [],
+		studyCounts: countsResult.ok
+			? countsResult.data
+			: { counts: {}, total_due: 0, total_new: 0 }
 	};
 };

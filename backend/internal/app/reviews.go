@@ -16,9 +16,12 @@ import (
 )
 
 var (
-	errCardNotReviewable = errors.New("card not found or not reviewable")
-	errInvalidRating     = errors.New("invalid rating")
-	errInvalidMode       = errors.New("invalid mode")
+	errCardNotReviewable  = errors.New("card not found or not reviewable")
+	errInvalidRating      = errors.New("invalid rating")
+	errInvalidMode        = errors.New("invalid mode")
+	errReviewNotFound     = errors.New("review not found")
+	errReviewNotLatest    = errors.New("review is not the latest for this card")
+	errCardAlreadyDeleted = errors.New("card has been deleted")
 )
 
 const defaultNewCardCap int64 = 20
@@ -34,17 +37,46 @@ type ReviewRequest struct {
 
 // ReviewResponse is the API response after submitting a review.
 type ReviewResponse struct {
-	Review ReviewData `json:"review"`
+	Review ReviewData   `json:"review"`
 	Card   CardResponse `json:"card"`
+}
+
+// StudyCountsResponse is the API response for GET /v1/reviews/study-counts.
+type StudyCountsResponse struct {
+	Counts   map[string]NotebookStudyCounts `json:"counts"`
+	TotalDue int64                          `json:"total_due"`
+	TotalNew int64                          `json:"total_new"`
+}
+
+// NotebookStudyCounts contains study counts for a single notebook.
+type NotebookStudyCounts struct {
+	Due   int64 `json:"due"`
+	New   int64 `json:"new"`
+	Total int32 `json:"total"`
 }
 
 // ReviewData is the review portion of the response.
 type ReviewData struct {
-	ID         uuid.UUID  `json:"id"`
-	CardID     uuid.UUID  `json:"card_id"`
-	Rating     string     `json:"rating"`
-	Mode       string     `json:"mode"`
-	ReviewedAt time.Time  `json:"reviewed_at"`
+	ID         uuid.UUID `json:"id"`
+	CardID     uuid.UUID `json:"card_id"`
+	Rating     string    `json:"rating"`
+	Mode       string    `json:"mode"`
+	ReviewedAt time.Time `json:"reviewed_at"`
+}
+
+// UndoSnapshot captures card state fields needed for undo restoration.
+// This is stored as JSONB in the review record.
+type UndoSnapshot struct {
+	Step       *int16     `json:"step"`
+	Due        *time.Time `json:"due"`
+	LastReview *time.Time `json:"last_review"`
+	Reps       int32      `json:"reps"`
+	Lapses     int32      `json:"lapses"`
+}
+
+// UndoReviewResponse is returned after undoing a review.
+type UndoReviewResponse struct {
+	Card *CardResponse `json:"card"` // nil for practice mode
 }
 
 // StudyCard is a card with precomputed intervals for all 4 ratings.
@@ -94,6 +126,24 @@ func (app *Application) submitReview(ctx context.Context, userID uuid.UUID, req 
 			return txErr
 		}
 
+		// Capture undo snapshot before processing
+		undoSnapshot := UndoSnapshot{
+			Reps:   card.Reps,
+			Lapses: card.Lapses,
+		}
+		if card.Step.Valid {
+			step := card.Step.Int16
+			undoSnapshot.Step = &step
+		}
+		if card.Due.Valid {
+			due := card.Due.Time
+			undoSnapshot.Due = &due
+		}
+		if card.LastReview.Valid {
+			lr := card.LastReview.Time
+			undoSnapshot.LastReview = &lr
+		}
+
 		// Map DB card to FSRS card
 		fsrsCard := dbCardToFSRS(card)
 
@@ -140,6 +190,12 @@ func (app *Application) submitReview(ctx context.Context, userID uuid.UUID, req 
 			actualIntervalDays = card.ScheduledDays
 		}
 
+		// Serialize undo snapshot to JSON
+		undoSnapshotJSON, txErr := json.Marshal(undoSnapshot)
+		if txErr != nil {
+			return fmt.Errorf("marshal undo snapshot: %w", txErr)
+		}
+
 		// Insert review (ON CONFLICT DO NOTHING — returns pgx.ErrNoRows on conflict)
 		review, txErr = q.CreateReview(ctx, db.CreateReviewParams{
 			UserID:           userID,
@@ -162,6 +218,7 @@ func (app *Application) submitReview(ctx context.Context, userID uuid.UUID, req 
 			DifficultyAfter:  actualDifficultyAfter,
 			IntervalDays:     actualIntervalDays,
 			Retrievability:   retrievability,
+			UndoSnapshot:     undoSnapshotJSON,
 		})
 		if txErr != nil {
 			if errors.Is(txErr, pgx.ErrNoRows) {
@@ -494,4 +551,177 @@ func practiceRowToCard(row db.GetPracticeCardsRow) db.Card {
 		CreatedAt:     row.CreatedAt,
 		UpdatedAt:     row.UpdatedAt,
 	}
+}
+
+// getStudyCounts returns due and new card counts grouped by notebook.
+func (app *Application) getStudyCounts(ctx context.Context, userID uuid.UUID) (StudyCountsResponse, error) {
+	// Get counts per notebook from cards table
+	countRows, err := app.Queries.GetStudyCountsByNotebook(ctx, userID)
+	if err != nil {
+		return StudyCountsResponse{}, err
+	}
+
+	// Get all notebooks to include total_cards and ensure all notebooks appear
+	notebooks, err := app.ListNotebooks(ctx, userID)
+	if err != nil {
+		return StudyCountsResponse{}, err
+	}
+
+	// Build map with all notebooks (zero counts for those with no due/new cards)
+	counts := make(map[string]NotebookStudyCounts, len(notebooks))
+	for _, nb := range notebooks {
+		counts[nb.ID.String()] = NotebookStudyCounts{
+			Due:   0,
+			New:   0,
+			Total: nb.TotalCards,
+		}
+	}
+
+	// Overlay actual counts from query results
+	var totalDue, totalNew int64
+	for _, row := range countRows {
+		nbID := row.NotebookID.String()
+		existing := counts[nbID]
+		counts[nbID] = NotebookStudyCounts{
+			Due:   row.DueCount,
+			New:   row.NewCount,
+			Total: existing.Total,
+		}
+		totalDue += row.DueCount
+		totalNew += row.NewCount
+	}
+
+	return StudyCountsResponse{
+		Counts:   counts,
+		TotalDue: totalDue,
+		TotalNew: totalNew,
+	}, nil
+}
+
+// undoReview deletes a review and restores the card to its pre-review state.
+// For practice mode: just deletes the review (card state wasn't changed).
+// For scheduled mode: verifies this is the latest review, restores card, deletes review.
+func (app *Application) undoReview(ctx context.Context, userID uuid.UUID, reviewID uuid.UUID) (UndoReviewResponse, error) {
+	var result UndoReviewResponse
+
+	err := WithTx(ctx, app.DB, func(q *db.Queries) error {
+		// Fetch the review
+		review, txErr := q.GetReviewByID(ctx, db.GetReviewByIDParams{
+			UserID: userID,
+			ID:     reviewID,
+		})
+		if txErr != nil {
+			if errors.Is(txErr, pgx.ErrNoRows) {
+				return errReviewNotFound
+			}
+			return txErr
+		}
+
+		// Practice mode: just delete the review, no card state change
+		if review.Mode == "practice" {
+			_, txErr = q.DeleteReview(ctx, db.DeleteReviewParams{
+				UserID: userID,
+				ID:     reviewID,
+			})
+			return txErr
+		}
+
+		// Scheduled mode: need to restore card state
+		if !review.CardID.Valid {
+			return errCardAlreadyDeleted
+		}
+		cardID := review.CardID.Bytes
+
+		// Verify this is the latest review for the card
+		latestID, txErr := q.GetLatestReviewForCard(ctx, db.GetLatestReviewForCardParams{
+			UserID: userID,
+			CardID: pgtype.UUID{Bytes: cardID, Valid: true},
+		})
+		if txErr != nil {
+			return fmt.Errorf("get latest review: %w", txErr)
+		}
+		if latestID != reviewID {
+			return errReviewNotLatest
+		}
+
+		// Lock and fetch the card
+		card, txErr := q.GetCardForReview(ctx, db.GetCardForReviewParams{
+			UserID: userID,
+			ID:     cardID,
+		})
+		if txErr != nil {
+			if errors.Is(txErr, pgx.ErrNoRows) {
+				return errCardAlreadyDeleted
+			}
+			return txErr
+		}
+
+		// Parse undo snapshot
+		var snapshot UndoSnapshot
+		if len(review.UndoSnapshot) > 0 {
+			if txErr = json.Unmarshal(review.UndoSnapshot, &snapshot); txErr != nil {
+				return fmt.Errorf("unmarshal undo snapshot: %w", txErr)
+			}
+		}
+
+		// Restore card state from before columns + undo snapshot
+		var step pgtype.Int2
+		if snapshot.Step != nil {
+			step = pgtype.Int2{Int16: *snapshot.Step, Valid: true}
+		}
+		var due pgtype.Timestamptz
+		if snapshot.Due != nil {
+			due = pgtype.Timestamptz{Time: *snapshot.Due, Valid: true}
+		}
+		var lastReview pgtype.Timestamptz
+		if snapshot.LastReview != nil {
+			lastReview = pgtype.Timestamptz{Time: *snapshot.LastReview, Valid: true}
+		}
+
+		txErr = q.RestoreCardAfterUndo(ctx, db.RestoreCardAfterUndoParams{
+			State:         review.StateBefore,
+			Stability:     review.StabilityBefore,
+			Difficulty:    review.DifficultyBefore,
+			Step:          step,
+			Due:           due,
+			LastReview:    lastReview,
+			ElapsedDays:   review.ElapsedDays,
+			ScheduledDays: review.ScheduledDays,
+			Reps:          snapshot.Reps,
+			Lapses:        snapshot.Lapses,
+			UserID:        userID,
+			ID:            cardID,
+		})
+		if txErr != nil {
+			return fmt.Errorf("restore card: %w", txErr)
+		}
+
+		// Delete the review
+		_, txErr = q.DeleteReview(ctx, db.DeleteReviewParams{
+			UserID: userID,
+			ID:     reviewID,
+		})
+		if txErr != nil {
+			return fmt.Errorf("delete review: %w", txErr)
+		}
+
+		// Build restored card for response
+		restoredCard := card
+		restoredCard.State = review.StateBefore
+		restoredCard.Stability = review.StabilityBefore
+		restoredCard.Difficulty = review.DifficultyBefore
+		restoredCard.Step = step
+		restoredCard.Due = due
+		restoredCard.LastReview = lastReview
+		restoredCard.ElapsedDays = review.ElapsedDays
+		restoredCard.ScheduledDays = review.ScheduledDays
+		restoredCard.Reps = snapshot.Reps
+		restoredCard.Lapses = snapshot.Lapses
+
+		cardResp := toCardResponse(restoredCard)
+		result.Card = &cardResp
+		return nil
+	})
+
+	return result, err
 }

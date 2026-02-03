@@ -115,3 +115,54 @@ func (app *Application) SubmitReviewHandler(w http.ResponseWriter, r *http.Reque
 	app.RespondJSON(w, r, http.StatusOK, resp)
 }
 
+// GetStudyCountsHandler handles GET /v1/reviews/study-counts
+func (app *Application) GetStudyCountsHandler(w http.ResponseWriter, r *http.Request) {
+	user := app.GetUser(r.Context())
+	if user.IsAnonymous() {
+		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	resp, err := app.getStudyCounts(r.Context(), user.ID)
+	if err != nil {
+		app.RespondServerError(w, r, ErrDBQuery("get study counts", err))
+		return
+	}
+
+	app.RespondJSON(w, r, http.StatusOK, resp)
+}
+
+// UndoReviewHandler handles DELETE /v1/reviews/{id}
+func (app *Application) UndoReviewHandler(w http.ResponseWriter, r *http.Request) {
+	user := app.GetUser(r.Context())
+	if user.IsAnonymous() {
+		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	reviewID, err := uuid.Parse(r.PathValue("id"))
+	if err != nil {
+		app.RespondError(w, r, http.StatusBadRequest, "invalid review id")
+		return
+	}
+
+	resp, err := app.undoReview(r.Context(), user.ID, reviewID)
+	if err != nil {
+		if errors.Is(err, errReviewNotFound) {
+			app.RespondError(w, r, http.StatusNotFound, "Review not found")
+			return
+		}
+		if errors.Is(err, errReviewNotLatest) {
+			app.RespondError(w, r, http.StatusConflict, "Cannot undo: this is not the most recent review for this card")
+			return
+		}
+		if errors.Is(err, errCardAlreadyDeleted) {
+			app.RespondError(w, r, http.StatusGone, "Cannot undo: card has been deleted")
+			return
+		}
+		app.RespondServerError(w, r, ErrDBTransaction("undo review", err))
+		return
+	}
+
+	app.RespondJSON(w, r, http.StatusOK, resp)
+}

@@ -1,4 +1,4 @@
-import type { ApiNotebook } from '$lib/api/types';
+import type { ApiNotebook, ApiStudyCountsResponse } from '$lib/api/types';
 import type { Notebook } from '$lib/types/notebook';
 
 // ============================================================================
@@ -52,6 +52,25 @@ export function toNotebook(api: ApiNotebook): Notebook {
  */
 export function toNotebooks(apiList: ApiNotebook[]): Notebook[] {
 	return apiList.map(toNotebook);
+}
+
+/**
+ * Transform array of API responses with study counts overlay.
+ * Merges due counts and total cards from the study-counts endpoint.
+ */
+export function toNotebooksWithCounts(
+	apiList: ApiNotebook[],
+	studyCounts: ApiStudyCountsResponse
+): Notebook[] {
+	return apiList.map((api) => {
+		const counts = studyCounts.counts[api.id];
+		const dueCount = counts ? counts.due + counts.new : 0;
+		return {
+			...toNotebook(api),
+			dueCount,
+			totalCards: counts?.total ?? 0
+		};
+	});
 }
 
 // ============================================================================

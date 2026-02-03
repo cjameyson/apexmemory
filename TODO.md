@@ -40,6 +40,8 @@ Add a special source type for practice tests or previous exams. This allows the 
 ### Bugs
 
 ### Frontend
+- [ ] Improve cloze card display in focus mode.  Currently, the front is shown with [...] for deletions, then the back is rendered with the full text.  1) the [...] should be visually distinct from the rest of the text and 2) the "back" should just replace the deletions in place, not fully re-display the front text again.
+
 - [ ] Generic 'select text' -> take action capability (create cards, add to notes, summarize, explain)
 - [ ] Screen grab capability for image occlusion cards (or support paste from native screenshot tool)
 - [ ] **image_occlusion region counting may be incorrect** - `fact-display.ts` line 61 filters fields by `f.type === 'image_occlusion'` to count regions. Verify against actual image_occlusion content shape from backend (the regions are nested inside the field, not separate fields). The current logic likely returns 1 (the image field itself) rather than the actual region count.

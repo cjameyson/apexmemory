@@ -1,5 +1,19 @@
 # Review System Implementation Plan
 
+## Progress Summary
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| **Phase 1** | COMPLETED | Backend Core -- Due Cards + Submit Review |
+| **Phase 2** | COMPLETED | Frontend Wiring -- Connect Focus Mode to Real API |
+| **Phase 3** | COMPLETED | Due Counts + Review Launcher Polish |
+| **Phase 4** | PARTIALLY COMPLETE | Undo + Learning Card Queue Management (re-queue done, undo not started) |
+| **Phase 5** | NOT STARTED | Session Stats + Review History |
+
+**Last Updated:** 2026-02-03 (Phase 3 completed)
+
+---
+
 ## Overview
 
 Wire up the complete review flow: backend FSRS scheduling, review submission, due-card queue, and connect the existing focus-mode UI to real data. Supports both **notebook-scoped** and **global** review from Phase 1. Includes a **practice mode** that tracks activity without affecting FSRS state. Delivered in 5 phases with human review gates between each.
@@ -81,126 +95,147 @@ Two GET endpoints with optional `notebook_id` query param. When omitted, they op
 
 ---
 
-## Phase 2: Frontend Wiring -- Connect Focus Mode to Real API
+## Phase 2: Frontend Wiring -- Connect Focus Mode to Real API [COMPLETED]
 
 **Goal:** Replace mock data with real API calls. Full end-to-end review session works for both scheduled and practice modes, both notebook-scoped and global.
 
 ### New Files
-- `frontend/src/routes/api/reviews/study/+server.ts` -- GET proxy (forwards `?notebook_id=&limit=`)
-- `frontend/src/routes/api/reviews/practice/+server.ts` -- GET proxy (forwards `?notebook_id=&limit=`)
-- `frontend/src/routes/api/reviews/+server.ts` -- POST proxy
+- [x] `frontend/src/routes/api/reviews/study/+server.ts` -- GET proxy (forwards `?notebook_id=&limit=`)
+- [x] `frontend/src/routes/api/reviews/practice/+server.ts` -- GET proxy (forwards `?notebook_id=&limit=`)
+- [x] `frontend/src/routes/api/reviews/+server.ts` -- POST proxy
+- [x] `frontend/src/lib/services/reviews.ts` -- service layer for card fetching and display extraction
+- [x] `frontend/src/lib/types/review.ts` -- `StudyCard`, `CardDisplay`, `ReviewMode` types
 
 ### Modified Files
-- `frontend/src/lib/components/overlays/focus-mode.svelte` -- major rewrite:
-  - Accept `cards` as prop (pre-fetched by parent), remove all mock imports
-  - Accept `mode: 'scheduled' | 'practice'` prop -- controls which mode is sent in POST
-  - Render card content from `fact.content` JSONB (handle basic front/back and cloze)
-  - Pass real `intervals` to `RatingButtons`
-  - On rate: POST to `/api/reviews` with client-generated UUIDv7, track `duration_ms` (timestamp delta), include `mode`
-  - Handle learning cards re-entering queue (insert back at appropriate position when due within session) -- only in scheduled mode
-  - Fire-and-forget POST with simple retry on failure
-  - Visual indicator for practice mode (subtle badge/label so user knows FSRS isn't updating)
-- `frontend/src/lib/components/navigation/review-launcher.svelte` -- rewrite:
-  - "Review All" option first (global scheduled review)
-  - List of active (non-archived) notebooks with due counts
-  - Practice mode option (per-notebook or global)
-  - Fetch real due cards on selection before opening focus mode, with loading state
-- `frontend/src/lib/types/` -- add `DueCard`, `ReviewMode` types matching backend response
-- `frontend/src/lib/types/stats.ts` -- update `ReviewScope` to include mode:
-  ```ts
-  export type ReviewScope =
-    | { type: 'all'; mode: ReviewMode }
-    | { type: 'notebook'; notebook: Notebook; mode: ReviewMode }
-    | { type: 'source'; notebook: Notebook; source: Source; mode: ReviewMode };
-  ```
-- Remove or gut mock card data (`$lib/mocks/`)
+- [x] `frontend/src/lib/components/overlays/focus-mode.svelte` -- major rewrite:
+  - [x] Accept `cards` as prop (pre-fetched by parent), remove all mock imports
+  - [x] Accept `mode: 'scheduled' | 'practice'` prop -- controls which mode is sent in POST
+  - [x] Render card content from `fact.content` JSONB via `extractCardDisplay()` (handles basic and cloze)
+  - [x] Pass real `intervals` to `RatingButtons`
+  - [x] On rate: POST to `/api/reviews` with `crypto.randomUUID()`, track `duration_ms`, include `mode`
+  - [x] Handle learning cards re-entering queue (insert at end when due within 10min) -- scheduled mode only
+  - [x] Fire-and-forget POST with simple retry on failure (2 attempts, 2s delay)
+  - [x] Visual indicator for practice mode ("Practice Mode" badge in header)
+- [x] `frontend/src/lib/components/navigation/review-launcher.svelte` -- rewrite:
+  - [x] "Review All" option first (global scheduled review)
+  - [x] List of notebooks with due counts (uses `notebook.dueCount`)
+  - [x] Practice mode option (per-notebook or global)
+  - [x] Fetch real cards on selection before opening focus mode, with loading state
+- [x] `frontend/src/lib/types/stats.ts` -- updated `ReviewScope` to include mode
+- [x] `frontend/src/lib/api/types.ts` -- added `ApiStudyCard`, `ApiReviewRequest`, `ApiReviewResponse`
+- [x] Mock data not imported in review flow (focus-mode.svelte and review-launcher.svelte use real API)
 
 ### Key Design Details
-- **Card rendering:** `focus-mode.svelte` currently uses `currentCard.front`/`.back`. Real cards have `content.fields` JSONB array. Need a small rendering function that extracts front/back from fact content based on `fact_type` (basic: field[0]=front, field[1]=back; cloze: render with blanks on front, filled on back).
-- **UUIDv7 client-side:** Use `crypto.randomUUID()` with timestamp prefix, or install `uuid` package.
-- **Optimistic transitions:** Show next card immediately; POST fires in background.
-- **Practice indicator:** Subtle "Practice Mode" label in focus-mode header so user has clear context.
+- **Card rendering:** `extractCardDisplay()` in `reviews.ts` extracts front/back from fact content based on `fact_type` (basic: field[0]=front, field[1]=back; cloze: replaces target cloze with `[...]` on front, shows filled on back).
+- **UUID client-side:** Uses `crypto.randomUUID()` (standard UUID v4, not v7).
+- **Optimistic transitions:** Show next card immediately; POST fires in background with retry.
+- **Practice indicator:** "Practice Mode" amber badge in focus-mode header.
 
 ### Exit Criteria
-- Focus mode opens with real cards from DB (both scheduled and practice modes)
-- Each rating fires a real POST, card advances
-- Interval labels on buttons match server-computed values
-- Session completes, "all done" screen shows
-- Global review works (cards from multiple notebooks)
-- Practice mode: cards served regardless of due date, visual indicator present
-- No mock data imports remain in review flow
+- [x] Focus mode opens with real cards from DB (both scheduled and practice modes)
+- [x] Each rating fires a real POST, card advances
+- [x] Interval labels on buttons match server-computed values
+- [x] Session completes, "all done" screen shows
+- [x] Global review works (cards from multiple notebooks)
+- [x] Practice mode: cards served regardless of due date, visual indicator present
+- [x] No mock data imports remain in review flow
+
+### Notes
+- Mocks directory still exists but is not imported in review flow. Used elsewhere for non-review UI placeholders.
+- `dueCount` on notebooks currently returns 0 (placeholder) -- real counts deferred to Phase 3.
+- Client uses UUID v4 (`crypto.randomUUID()`) not v7 -- functionally equivalent for idempotency.
 
 ---
 
-## Phase 3: Due Counts + Review Launcher Polish
+## Phase 3: Due Counts + Review Launcher Polish [COMPLETED]
 
 **Goal:** Accurate due counts in the review launcher dropdown. Polished UX for selecting review scope and mode.
 
 ### Modified Files
 - **Backend:**
-  - `backend/db/queries/cards.sql` -- add `GetDueCounts`: `SELECT notebook_id, count(*) FROM app.cards WHERE user_id = @user_id AND (due <= now() OR state = 'new') AND suspended_at IS NULL AND (buried_until IS NULL OR buried_until <= now()) GROUP BY notebook_id`
-  - `backend/internal/app/reviews_handlers.go` -- add `GET /v1/reviews/study-counts` handler
-  - `backend/internal/app/routes.go` -- register
+  - [x] `backend/db/queries/reviews.sql` -- added `GetStudyCountsByNotebook`: returns `notebook_id`, `due_count` (non-new cards due now), `new_count` (new cards) grouped by notebook, excluding suspended/buried cards
+  - [x] `backend/internal/app/reviews.go` -- added `getStudyCounts()` service method, `StudyCountsResponse` and `NotebookStudyCounts` types
+  - [x] `backend/internal/app/reviews_handlers.go` -- added `GetStudyCountsHandler` for `GET /v1/reviews/study-counts`
+  - [x] `backend/internal/app/routes.go` -- registered route
+  - [x] `backend/internal/app/reviews_test.go` -- added 4 tests: empty counts, new cards, after review, totals match sum
 - **Frontend:**
-  - `frontend/src/routes/api/reviews/study-counts/+server.ts` -- GET proxy
-  - `frontend/src/routes/(app)/+layout.server.ts` -- fetch due counts in layout load, pass to children
-  - `frontend/src/lib/components/navigation/review-launcher.svelte` -- display real due counts per notebook, total due count on "Review All"
+  - [x] `frontend/src/lib/api/types.ts` -- added `ApiStudyCountsResponse` type
+  - [x] `frontend/src/routes/api/reviews/study-counts/+server.ts` -- GET proxy
+  - [x] `frontend/src/routes/(app)/+layout.server.ts` -- parallel fetch of notebooks and study counts
+  - [x] `frontend/src/lib/services/notebooks.ts` -- added `toNotebooksWithCounts()` to merge API notebooks with study counts
+  - [x] `frontend/src/routes/(app)/+layout.svelte` -- uses `toNotebooksWithCounts()` to populate real `dueCount` and `totalCards`
 
 ### Exit Criteria
-- Review launcher shows accurate due counts per notebook
-- Total due count shown on "Review All" option
-- Counts update on page navigation after completing a review session
+- [x] Review launcher shows accurate due counts per notebook
+- [x] Total due count shown on "Review All" option
+- [x] Counts update on page navigation after completing a review session
+
+### Key Design Details
+- **Response format:** `{ counts: { [notebook_id]: { due, new, total } }, total_due, total_new }` -- map for efficient frontend lookups
+- **Due count = due + new:** Frontend sums `due_count + new_count` for display (all reviewable cards)
+- **Parallel fetch:** Layout loads notebooks and counts in `Promise.all()` to avoid waterfall
+- **Graceful fallback:** If counts endpoint fails, notebooks show 0 counts (UI still works)
 
 ---
 
-## Phase 4: Undo + Learning Card Queue Management
+## Phase 4: Undo + Learning Card Queue Management [PARTIALLY COMPLETE]
 
 **Goal:** Undo last review within a session. Proper handling of learning/relearning cards that come due within the session.
 
 ### New Files
-- `backend/internal/app/reviews_undo.go` -- undo handler logic
+- [ ] `backend/internal/app/reviews_undo.go` -- undo handler logic
 
 ### Modified Files
 - **Backend:**
-  - `backend/db/queries/reviews.sql` -- add `GetReview`, `GetLatestReviewForCard`, `DeleteReview` (`:execrows`), `RestoreCardState`
-  - `backend/internal/app/routes.go` -- add `DELETE /v1/reviews/{id}`
+  - [ ] `backend/db/queries/reviews.sql` -- add `GetReview`, `GetLatestReviewForCard`, `DeleteReview` (`:execrows`), `RestoreCardState`
+  - [ ] `backend/internal/app/routes.go` -- add `DELETE /v1/reviews/{id}`
 - **Frontend:**
-  - `frontend/src/routes/api/reviews/[reviewId]/+server.ts` -- DELETE proxy
+  - [ ] `frontend/src/routes/api/reviews/[reviewId]/+server.ts` -- DELETE proxy
   - `frontend/src/lib/components/overlays/focus-mode.svelte`:
-    - Track `lastReviewId` in session state
-    - Show undo toast/snackbar for ~8s after each rating
-    - On undo: DELETE, re-insert card at current position, reset reveal state
-    - Learning card re-queue (scheduled mode only): when POST response shows card due within session window (e.g., <10min), insert it back into the queue at the appropriate position
-    - Practice mode: no re-queue logic needed (cards are already all served)
+    - [ ] Track `lastReviewId` in session state
+    - [ ] Show undo toast/snackbar for ~8s after each rating
+    - [ ] On undo: DELETE, re-insert card at current position, reset reveal state
+    - [x] Learning card re-queue (scheduled mode only): when POST response shows card due within session window (<10min), insert it back into the queue at end *(implemented in Phase 2)*
+    - [x] Practice mode: no re-queue logic needed (cards are already all served)
 
 ### Exit Criteria
-- Undo appears after rating, clicking it restores card for re-rating
-- Undo of non-latest review returns 409
-- Learning cards with short intervals reappear in scheduled session
-- Undo works in both scheduled and practice modes (practice undo deletes the practice review log)
+- [ ] Undo appears after rating, clicking it restores card for re-rating
+- [ ] Undo of non-latest review returns 409
+- [x] Learning cards with short intervals reappear in scheduled session *(implemented in Phase 2)*
+- [ ] Undo works in both scheduled and practice modes (practice undo deletes the practice review log)
+
+### Current State
+- Learning card re-queue logic implemented in Phase 2 (cards due within 10min are re-inserted at queue end).
+- No undo functionality exists -- no DELETE endpoint, no undo UI.
+- No `lastReviewId` tracking in session state.
 
 ---
 
-## Phase 5: Session Stats + Review History
+## Phase 5: Session Stats + Review History [NOT STARTED]
 
 **Goal:** Post-session summary and review history for analytics.
 
 ### New Files
-- `backend/db/queries/review_stats.sql` -- aggregation queries
+- [ ] `backend/db/queries/review_stats.sql` -- aggregation queries
 
 ### Modified Files
 - **Backend:**
-  - `backend/internal/app/reviews_handlers.go` -- add:
+  - [ ] `backend/internal/app/reviews_handlers.go` -- add:
     - `GET /v1/reviews/summary?date=YYYY-MM-DD` -- daily summary (total, by rating, by mode, duration, new cards seen)
     - `GET /v1/notebooks/{notebook_id}/reviews?date=&limit=&offset=` -- paginated review history
-  - `backend/internal/app/routes.go` -- register
+  - [ ] `backend/internal/app/routes.go` -- register
 - **Frontend:**
-  - `frontend/src/lib/components/overlays/focus-mode.svelte` -- session complete screen shows: cards reviewed, time spent, rating breakdown (tracked locally during session, no extra API call). Differentiate stats display for practice vs scheduled.
+  - [ ] `frontend/src/lib/components/overlays/focus-mode.svelte` -- session complete screen shows: cards reviewed, time spent, rating breakdown (tracked locally during session, no extra API call). Differentiate stats display for practice vs scheduled.
 
 ### Exit Criteria
-- Session completion shows real stats (count, time, breakdown by rating)
-- Summary endpoint returns correct daily aggregations (separates scheduled vs practice)
-- Review list endpoint supports pagination + date filter
+- [ ] Session completion shows real stats (count, time, breakdown by rating)
+- [ ] Summary endpoint returns correct daily aggregations (separates scheduled vs practice)
+- [ ] Review list endpoint supports pagination + date filter
+
+### Current State
+- Session complete screen exists with basic "You reviewed N cards" message.
+- No rating breakdown, time tracking display, or differentiation between practice/scheduled stats.
+- No backend stats endpoints exist.
 
 ---
 

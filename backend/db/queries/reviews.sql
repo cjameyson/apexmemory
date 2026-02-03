@@ -63,14 +63,14 @@ INSERT INTO app.reviews (
     state_before, stability_before, difficulty_before,
     elapsed_days, scheduled_days,
     state_after, stability_after, difficulty_after,
-    interval_days, retrievability
+    interval_days, retrievability, undo_snapshot
 ) VALUES (
     @user_id, @id, @card_id, @notebook_id, @fact_id, @element_id,
     @reviewed_at, @rating, @review_duration_ms, @mode,
     @state_before, @stability_before, @difficulty_before,
     @elapsed_days, @scheduled_days,
     @state_after, @stability_after, @difficulty_after,
-    @interval_days, @retrievability
+    @interval_days, @retrievability, @undo_snapshot
 )
 ON CONFLICT (user_id, id) DO NOTHING
 RETURNING *;
@@ -87,4 +87,53 @@ UPDATE app.cards SET
     scheduled_days = @scheduled_days,
     reps = reps + 1,
     lapses = CASE WHEN @add_lapse::bool THEN lapses + 1 ELSE lapses END
+WHERE user_id = @user_id AND id = @id;
+
+-- name: GetStudyCountsByNotebook :many
+-- Returns due card counts per notebook for the review launcher.
+SELECT
+    c.notebook_id,
+    count(*) FILTER (WHERE c.state != 'new' AND c.due <= now()) AS due_count,
+    count(*) FILTER (WHERE c.state = 'new') AS new_count
+FROM app.cards c
+WHERE c.user_id = @user_id
+  AND c.suspended_at IS NULL
+  AND c.buried_until IS NULL
+  AND (
+    (c.state != 'new' AND c.due <= now())
+    OR c.state = 'new'
+  )
+GROUP BY c.notebook_id;
+
+-- name: GetReviewByID :one
+-- Fetch a review for undo validation.
+SELECT * FROM app.reviews
+WHERE user_id = @user_id AND id = @id;
+
+-- name: GetLatestReviewForCard :one
+-- Get the most recent review for a card to verify undo is for latest.
+SELECT id FROM app.reviews
+WHERE user_id = @user_id AND card_id = @card_id
+ORDER BY reviewed_at DESC
+LIMIT 1;
+
+-- name: DeleteReview :execrows
+-- Delete a review (for undo).
+DELETE FROM app.reviews
+WHERE user_id = @user_id AND id = @id;
+
+-- name: RestoreCardAfterUndo :exec
+-- Restore card state from review's before columns + undo_snapshot.
+-- undo_snapshot contains: step, due, last_review, reps, lapses
+UPDATE app.cards SET
+    state = @state,
+    stability = @stability,
+    difficulty = @difficulty,
+    step = @step,
+    due = @due,
+    last_review = @last_review,
+    elapsed_days = @elapsed_days,
+    scheduled_days = @scheduled_days,
+    reps = @reps,
+    lapses = @lapses
 WHERE user_id = @user_id AND id = @id;

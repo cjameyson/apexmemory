@@ -177,6 +177,7 @@ type AppReview struct {
 	DifficultyAfter  float32       `json:"difficulty_after"`
 	IntervalDays     float32       `json:"interval_days"`
 	Retrievability   pgtype.Float4 `json:"retrievability"`
+	UndoSnapshot     []byte        `json:"undo_snapshot"`
 	CreatedAt        time.Time     `json:"created_at"`
 }
 
