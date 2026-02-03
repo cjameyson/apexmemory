@@ -40,6 +40,7 @@
 			pushState('', {
 				focusMode: {
 					type: 'source',
+					mode: 'scheduled',
 					notebookId: data.notebook.id,
 					notebookName: data.notebook.name,
 					notebookEmoji: data.notebook.emoji,

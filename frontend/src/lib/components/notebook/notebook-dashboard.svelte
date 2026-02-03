@@ -27,6 +27,7 @@
 		pushState('', {
 			focusMode: {
 				type: 'notebook',
+				mode: 'scheduled',
 				notebookId: notebook.id,
 				notebookName: notebook.name,
 				notebookEmoji: notebook.emoji,

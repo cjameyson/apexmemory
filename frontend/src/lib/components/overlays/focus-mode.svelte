@@ -3,10 +3,14 @@
 	import { cn } from '$lib/utils';
 	import RatingButtons from '$lib/components/cards/rating-buttons.svelte';
 	import { XIcon, EyeIcon } from '@lucide/svelte';
-	import type { Card, ReviewScope } from '$lib/types';
-	import { getAllDueCards, getDueCardsForNotebook, getCardsForSource } from '$lib/mocks';
+	import type { ReviewScope, StudyCard } from '$lib/types';
+	import type { ReviewMode } from '$lib/types/review';
+	import { extractCardDisplay, ratingToString } from '$lib/services/reviews';
+	import type { ApiReviewResponse } from '$lib/api/types';
 
 	interface Props {
+		cards: StudyCard[];
+		mode: ReviewMode;
 		scope: ReviewScope;
 		initialIndex?: number;
 		onProgressChange?: (index: number) => void;
@@ -14,29 +18,21 @@
 		class?: string;
 	}
 
-	let { scope, initialIndex = 0, onProgressChange, onClose, class: className }: Props = $props();
+	let { cards: initialCards, mode, scope, initialIndex = 0, onProgressChange, onClose, class: className }: Props = $props();
 
-	// Get cards based on scope
-	let allCards = $derived.by(() => {
-		if (scope.type === 'all') {
-			return getAllDueCards();
-		} else if (scope.type === 'notebook') {
-			return getDueCardsForNotebook(scope.notebook.id);
-		} else if (scope.type === 'source') {
-			return getCardsForSource(scope.notebook.id, scope.source.id).filter(c => c.due);
-		}
-		return [];
-	});
-
-	// Session state - initialize from prop for session restore
+	// Mutable queue -- learning cards may be re-inserted
+	let cardQueue = $state<StudyCard[]>([...initialCards]);
 	let currentIndex = $state(initialIndex);
 	let isRevealed = $state(false);
-	let sessionComplete = $state(initialIndex >= allCards.length && allCards.length > 0);
+	let sessionComplete = $state(initialCards.length === 0);
+	let reviewedCount = $state(0);
+	let reviewStartTime = $state(Date.now());
+	let isSubmitting = $state(false);
 
-	let currentCard = $derived(allCards[currentIndex] as Card | undefined);
-	let progress = $derived(allCards.length > 0 ? ((currentIndex) / allCards.length) * 100 : 0);
+	let currentCard = $derived(cardQueue[currentIndex] as StudyCard | undefined);
+	let display = $derived(currentCard ? extractCardDisplay(currentCard) : null);
+	let progress = $derived(cardQueue.length > 0 ? (currentIndex / cardQueue.length) * 100 : 0);
 
-	// Title based on scope
 	let scopeTitle = $derived.by(() => {
 		if (scope.type === 'all') return 'All Due Cards';
 		if (scope.type === 'notebook') return scope.notebook.name;
@@ -48,17 +44,91 @@
 		isRevealed = true;
 	}
 
-	function handleRate(_rating: 1 | 2 | 3 | 4) {
-		// TODO: Send rating to backend via API
+	async function submitReview(card: StudyCard, rating: 1 | 2 | 3 | 4, durationMs: number): Promise<ApiReviewResponse | null> {
+		const body = {
+			id: crypto.randomUUID(),
+			card_id: card.id,
+			rating: ratingToString(rating),
+			duration_ms: durationMs,
+			mode
+		};
 
-		// Move to next card
-		if (currentIndex < allCards.length - 1) {
+		for (let attempt = 0; attempt < 2; attempt++) {
+			try {
+				const res = await fetch('/api/reviews', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body)
+				});
+				if (res.ok) {
+					return await res.json();
+				}
+			} catch {
+				// retry after delay
+			}
+			if (attempt === 0) await new Promise((r) => setTimeout(r, 2000));
+		}
+		return null;
+	}
+
+	async function handleRate(rating: 1 | 2 | 3 | 4) {
+		if (!currentCard || isSubmitting) return;
+
+		const card = currentCard;
+		const durationMs = Date.now() - reviewStartTime;
+		isSubmitting = true;
+
+		// Fire-and-forget with retry
+		const responsePromise = submitReview(card, rating, durationMs);
+
+		reviewedCount++;
+
+		// In scheduled mode, check if learning card should be re-queued
+		if (mode === 'scheduled') {
+			responsePromise.then((resp) => {
+				if (!resp) return;
+				const updatedDue = resp.card.due;
+				if (updatedDue) {
+					const dueTime = new Date(updatedDue).getTime();
+					const now = Date.now();
+					const tenMinutes = 10 * 60 * 1000;
+					if (dueTime - now < tenMinutes && dueTime > now) {
+						// Re-insert card at end of queue with updated state
+						const requeued: StudyCard = {
+							...card,
+							state: resp.card.state,
+							due: resp.card.due,
+							stability: resp.card.stability,
+							difficulty: resp.card.difficulty,
+							reps: resp.card.reps,
+							lapses: resp.card.lapses
+						};
+						cardQueue = [...cardQueue, requeued];
+					}
+				}
+			});
+		}
+
+		// Advance to next card
+		if (currentIndex < cardQueue.length - 1) {
 			currentIndex++;
 			isRevealed = false;
-			// Update URL state for session restore (without creating history entry)
+			reviewStartTime = Date.now();
+			isSubmitting = false;
 			onProgressChange?.(currentIndex);
 		} else {
-			sessionComplete = true;
+			// Wait for response to check re-queue before completing
+			await responsePromise;
+			isSubmitting = false;
+			if (currentIndex < cardQueue.length - 1) {
+				// Card was re-queued
+				currentIndex++;
+				isRevealed = false;
+				reviewStartTime = Date.now();
+				onProgressChange?.(currentIndex);
+			} else {
+				sessionComplete = true;
+			}
 		}
 	}
 
@@ -68,20 +138,18 @@
 
 	let dialogEl = $state<HTMLDivElement>();
 
-	// Focus the dialog on mount to capture keyboard events and prevent trigger re-activation
 	onMount(() => {
 		dialogEl?.focus();
+		reviewStartTime = Date.now();
 
 		function handleKeydown(e: KeyboardEvent) {
-			if (sessionComplete) return;
+			if (sessionComplete || isSubmitting) return;
 
-			// Space to reveal
 			if (e.key === ' ' && !isRevealed) {
 				e.preventDefault();
 				reveal();
 			}
 
-			// 1-4 to rate (only when revealed)
 			if (isRevealed && ['1', '2', '3', '4'].includes(e.key)) {
 				e.preventDefault();
 				handleRate(parseInt(e.key) as 1 | 2 | 3 | 4);
@@ -116,6 +184,9 @@
 		</button>
 
 		<div class="flex items-center gap-3 text-white">
+			{#if mode === 'practice'}
+				<span class="px-2 py-0.5 text-xs font-medium bg-amber-500/20 text-amber-300 rounded-full">Practice Mode</span>
+			{/if}
 			{#if scope.type === 'notebook' || scope.type === 'source'}
 				<span class="text-xl">{scope.notebook.emoji}</span>
 			{/if}
@@ -123,7 +194,7 @@
 		</div>
 
 		<div class="flex items-center gap-3 text-white/70">
-			<span class="text-sm">{currentIndex + 1}/{allCards.length}</span>
+			<span class="text-sm">{currentIndex + 1}/{cardQueue.length}</span>
 			<div class="w-24 h-2 bg-white/20 rounded-full overflow-hidden">
 				<div
 					class="h-full bg-white transition-all duration-300"
@@ -136,12 +207,11 @@
 	<!-- Main content -->
 	<div class="flex-1 flex items-center justify-center px-6 pb-6">
 		{#if sessionComplete}
-			<!-- Completion state -->
 			<div class="text-center text-white">
-				<div class="text-6xl mb-6">🎉</div>
+				<div class="text-6xl mb-6">&#127881;</div>
 				<h2 class="text-3xl font-bold mb-2">All done!</h2>
 				<p class="text-white/70 mb-8">
-					You reviewed {allCards.length} cards.
+					You reviewed {reviewedCount} card{reviewedCount === 1 ? '' : 's'}.
 				</p>
 				<button
 					type="button"
@@ -151,31 +221,25 @@
 					Close
 				</button>
 			</div>
-		{:else if currentCard}
-			<!-- Card display -->
+		{:else if currentCard && display}
 			<div class="w-full max-w-2xl">
 				<div
 					class="bg-white/10 backdrop-blur-sm rounded-3xl p-8 mb-8 min-h-64 flex flex-col justify-center"
 				>
-					<!-- Front (question) -->
 					<div class={cn('text-center', isRevealed && 'opacity-60')}>
 						<p class="text-2xl font-medium text-white">
-							{currentCard.front}
+							{display.front}
 						</p>
 					</div>
 
 					{#if isRevealed}
-						<!-- Separator -->
 						<div class="my-6 border-t border-white/20"></div>
-
-						<!-- Back (answer) -->
 						<div class="text-center">
 							<p class="text-xl text-white/90">
-								{currentCard.back}
+								{display.back}
 							</p>
 						</div>
 					{:else}
-						<!-- Reveal prompt -->
 						<button
 							type="button"
 							onclick={reveal}
@@ -187,15 +251,17 @@
 					{/if}
 				</div>
 
-				<!-- Rating buttons (shown after reveal) -->
 				{#if isRevealed}
-					<RatingButtons onRate={handleRate} />
+					<RatingButtons
+						onRate={handleRate}
+						intervals={currentCard.intervals}
+						disabled={isSubmitting}
+					/>
 				{/if}
 			</div>
 		{:else}
-			<!-- No cards state -->
 			<div class="text-center text-white">
-				<div class="text-6xl mb-6">📚</div>
+				<div class="text-6xl mb-6">&#128218;</div>
 				<h2 class="text-2xl font-bold mb-2">No cards due</h2>
 				<p class="text-white/70 mb-8">
 					You're all caught up! Check back later.
@@ -211,10 +277,9 @@
 		{/if}
 	</div>
 
-	<!-- Footer hint -->
 	{#if !sessionComplete && currentCard}
 		<div class="text-center py-4 text-white/40 text-sm">
-			Space to flip • 1-4 to rate • Esc to exit
+			Space to flip &bull; 1-4 to rate &bull; Esc to exit
 		</div>
 	{/if}
 </div>

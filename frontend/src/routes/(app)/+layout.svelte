@@ -5,7 +5,8 @@
 	import TopNavBar from '$lib/components/layout/top-nav-bar.svelte';
 	import CommandPalette from '$lib/components/overlays/command-palette.svelte';
 	import FocusMode from '$lib/components/overlays/focus-mode.svelte';
-	import type { Notebook, ReviewScope } from '$lib/types';
+	import type { Notebook, ReviewScope, StudyCard } from '$lib/types';
+	import type { ReviewMode } from '$lib/types/review';
 	import { toNotebooks } from '$lib/services/notebooks';
 
 	let { data, children } = $props();
@@ -16,12 +17,10 @@
 	// Create lookup map for notebook by ID
 	let notebookMap = $derived(new Map(notebooks.map((n) => [n.id, n])));
 
-	// Helper to get notebook by ID (replaces mock getNotebook)
 	function getNotebook(id: string) {
 		return notebookMap.get(id);
 	}
 
-	// Derive current notebook from URL params
 	let currentNotebook = $derived.by(() => {
 		const match = page.url.pathname.match(/\/notebooks\/([^/]+)/);
 		if (match) {
@@ -30,17 +29,23 @@
 		return undefined;
 	});
 
+	// Focus mode cards stored in component state (too large for URL state)
+	let focusModeCards = $state<StudyCard[]>([]);
+	let focusModeMode = $state<ReviewMode>('scheduled');
+
 	// Reconstruct ReviewScope from page state for focus mode
 	let focusModeScope = $derived.by((): ReviewScope | null => {
 		const fm = page.state.focusMode;
 		if (!fm) return null;
 
+		const mode = fm.mode ?? 'scheduled';
+
 		if (fm.type === 'all') {
-			return { type: 'all' };
+			return { type: 'all', mode };
 		} else if (fm.type === 'notebook' && fm.notebookId) {
 			const notebook = getNotebook(fm.notebookId);
 			if (notebook) {
-				return { type: 'notebook', notebook };
+				return { type: 'notebook', notebook, mode };
 			}
 		} else if (fm.type === 'source' && fm.notebookId && fm.sourceId) {
 			const notebook = getNotebook(fm.notebookId);
@@ -48,6 +53,7 @@
 				return {
 					type: 'source',
 					notebook,
+					mode,
 					source: {
 						id: fm.sourceId,
 						notebookId: fm.notebookId,
@@ -64,9 +70,13 @@
 	});
 
 	// Start focus mode using shallow routing (pushState)
-	function startFocusMode(scope: ReviewScope) {
+	function startFocusMode(scope: ReviewScope, cards: StudyCard[]) {
+		focusModeCards = cards;
+		focusModeMode = scope.mode;
+
 		const focusState: App.PageState['focusMode'] = {
 			type: scope.type,
+			mode: scope.mode,
 			currentIndex: 0
 		};
 
@@ -85,7 +95,6 @@
 		pushState('', { focusMode: focusState });
 	}
 
-	// Update progress without creating new history entry
 	function handleProgressChange(index: number) {
 		if (page.state.focusMode) {
 			replaceState('', {
@@ -95,7 +104,6 @@
 		}
 	}
 
-	// Exit focus mode by going back in history
 	function exitFocusMode() {
 		history.back();
 	}
@@ -118,7 +126,6 @@
 	// Global keyboard shortcuts
 	onMount(() => {
 		function handleKeydown(e: KeyboardEvent) {
-			// Cmd+K or Ctrl+K to open command palette
 			if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
 				e.preventDefault();
 				if (commandPaletteOpen) {
@@ -127,7 +134,6 @@
 					openCommandPalette();
 				}
 			}
-			// Escape to close overlays
 			if (e.key === 'Escape') {
 				if (commandPaletteOpen) {
 					e.preventDefault();
@@ -145,11 +151,32 @@
 
 	function handleStartReview() {
 		closeCommandPalette();
-		startFocusMode({ type: 'all' });
+		// Command palette triggers global scheduled review -- need to fetch cards
+		fetchAndStartReview('scheduled');
+	}
+
+	async function fetchAndStartReview(mode: ReviewMode, notebookId?: string) {
+		const params = new URLSearchParams({ limit: '50' });
+		if (notebookId) params.set('notebook_id', notebookId);
+
+		const endpoint = mode === 'scheduled' ? '/api/reviews/study' : '/api/reviews/practice';
+		try {
+			const res = await fetch(`${endpoint}?${params}`);
+			if (!res.ok) return;
+			const data = await res.json();
+			const cards = mode === 'scheduled' ? data : data.data;
+
+			const { toStudyCards } = await import('$lib/services/reviews');
+			const studyCards = toStudyCards(cards);
+
+			const scope: ReviewScope = { type: 'all', mode };
+			startFocusMode(scope, studyCards);
+		} catch {
+			// silently fail
+		}
 	}
 
 	function handleCreateNotebook() {
-		// TODO: Wire up create notebook modal
 		console.log('TODO: Create notebook');
 	}
 </script>
@@ -179,11 +206,20 @@
 {/if}
 
 <!-- Focus Mode (rendered based on shallow routing state) -->
-{#if focusModeScope}
+{#if focusModeScope && focusModeCards.length > 0}
 	<FocusMode
+		cards={focusModeCards}
+		mode={focusModeMode}
 		scope={focusModeScope}
 		initialIndex={page.state.focusMode?.currentIndex ?? 0}
 		onProgressChange={handleProgressChange}
+		onClose={exitFocusMode}
+	/>
+{:else if focusModeScope && focusModeCards.length === 0}
+	<FocusMode
+		cards={[]}
+		mode={focusModeMode}
+		scope={focusModeScope}
 		onClose={exitFocusMode}
 	/>
 {/if}

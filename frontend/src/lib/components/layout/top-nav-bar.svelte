@@ -7,14 +7,14 @@
 	import SearchTrigger from '$lib/components/navigation/search-trigger.svelte';
 	import ReviewLauncher from '$lib/components/navigation/review-launcher.svelte';
 	import { HomeIcon, BrainIcon, SettingsIcon, LogOutIcon } from '@lucide/svelte';
-	import type { Notebook, ReviewScope } from '$lib/types';
+	import type { Notebook, ReviewScope, StudyCard } from '$lib/types';
 	import type { User } from '$lib/api/types';
 
 	interface Props {
 		user: User;
 		notebooks: Notebook[];
 		currentNotebook?: Notebook;
-		onStartFocusMode?: (scope: ReviewScope) => void;
+		onStartFocusMode?: (scope: ReviewScope, cards: StudyCard[]) => void;
 		onOpenSearch?: () => void;
 		onCreateNotebook?: () => void;
 	}
@@ -35,8 +35,8 @@
 		onOpenSearch?.();
 	}
 
-	function handleStartReview(scope: ReviewScope) {
-		onStartFocusMode?.(scope);
+	function handleStartReview(scope: ReviewScope, cards: StudyCard[]) {
+		onStartFocusMode?.(scope, cards);
 	}
 
 	function getInitials(u: User): string {

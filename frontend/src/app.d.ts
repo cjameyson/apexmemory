@@ -16,6 +16,7 @@ declare global {
 		interface PageState {
 			focusMode?: {
 				type: 'all' | 'notebook' | 'source';
+				mode: 'scheduled' | 'practice';
 				notebookId?: string;
 				notebookName?: string;
 				notebookEmoji?: string;

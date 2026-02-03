@@ -1,6 +1,7 @@
 // Stats and review scope types
 
 import type { Notebook, Source } from './notebook';
+import type { ReviewMode } from './review';
 
 export interface GlobalStats {
 	totalCards: number;
@@ -17,6 +18,6 @@ export interface GlobalStats {
 }
 
 export type ReviewScope =
-	| { type: 'all' }
-	| { type: 'notebook'; notebook: Notebook }
-	| { type: 'source'; notebook: Notebook; source: Source };
+	| { type: 'all'; mode: ReviewMode }
+	| { type: 'notebook'; notebook: Notebook; mode: ReviewMode }
+	| { type: 'source'; notebook: Notebook; source: Source; mode: ReviewMode };

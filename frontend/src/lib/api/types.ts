@@ -143,6 +143,36 @@ export interface ApiFactsListWithStats extends PaginatedResponse<ApiFact> {
 	stats: ApiFactStats;
 }
 
+// ============================================================================
+// Review API Types
+// ============================================================================
+
+// Study card returned by GET /v1/reviews/study and /v1/reviews/practice
+export interface ApiStudyCard extends ApiCard {
+	fact_type: 'basic' | 'cloze' | 'image_occlusion';
+	fact_content: Record<string, unknown>;
+	intervals: { again: string; hard: string; good: string; easy: string };
+}
+
+export interface ApiReviewRequest {
+	id: string;
+	card_id: string;
+	rating: 'again' | 'hard' | 'good' | 'easy';
+	duration_ms?: number;
+	mode: 'scheduled' | 'practice';
+}
+
+export interface ApiReviewResponse {
+	review: {
+		id: string;
+		card_id: string;
+		rating: string;
+		mode: string;
+		reviewed_at: string;
+	};
+	card: ApiCard;
+}
+
 // Discriminated union for API results
 export type ApiResult<T> =
 	| { ok: true; data: T }

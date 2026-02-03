@@ -2,3 +2,4 @@
 export * from './notebook';
 export * from './fact';
 export * from './stats';
+export * from './review';
