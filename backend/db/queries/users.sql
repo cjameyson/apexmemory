@@ -69,3 +69,18 @@ JOIN app.users u ON u.id = ai.user_id
 WHERE ai.provider = $1
   AND ai.provider_user_id = $2
   AND u.deleted_at IS NULL;
+
+-- name: UpsertTestUser :one
+-- Idempotent test user creation for agent testing.
+-- Uses fixed UUID to ensure consistent user_id across reseeds.
+INSERT INTO app.users (id, email, username, display_name, created_at, updated_at)
+VALUES (@id, @email, @username, @display_name, now(), now())
+ON CONFLICT (email) DO UPDATE SET updated_at = now()
+RETURNING *;
+
+-- name: UpsertTestAuthIdentity :exec
+-- Idempotent auth identity creation for test users.
+-- Creates or updates the password auth identity.
+INSERT INTO app.auth_identities (id, user_id, provider, provider_user_id, email, password_hash, created_at, updated_at)
+VALUES (gen_random_uuid(), @user_id, 'password', @provider_user_id, @email, @password_hash, now(), now())
+ON CONFLICT (user_id, provider) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = now();

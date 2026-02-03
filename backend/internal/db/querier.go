@@ -67,7 +67,11 @@ type Querier interface {
 	ListFactsByNotebookFiltered(ctx context.Context, arg ListFactsByNotebookFilteredParams) ([]ListFactsByNotebookFilteredRow, error)
 	ListNotebooks(ctx context.Context, userID uuid.UUID) ([]Notebook, error)
 	// Restore card state from review's before columns + undo_snapshot.
-	// undo_snapshot contains: step, due, last_review, reps, lapses
+	// The review record stores state_before/stability_before/difficulty_before directly.
+	// The undo_snapshot JSONB captures remaining card fields that aren't stored as columns:
+	//   step, due, last_review: scheduling position in learning/relearning steps
+	//   reps, lapses: lifetime counters incremented by reviews
+	//   elapsed_days, scheduled_days: FSRS interval tracking for retrievability calc
 	RestoreCardAfterUndo(ctx context.Context, arg RestoreCardAfterUndoParams) error
 	SoftDeleteUser(ctx context.Context, id uuid.UUID) error
 	UnarchiveNotebook(ctx context.Context, arg UnarchiveNotebookParams) error
@@ -76,6 +80,12 @@ type Querier interface {
 	UpdateNotebook(ctx context.Context, arg UpdateNotebookParams) (Notebook, error)
 	UpdateSessionLastUsed(ctx context.Context, tokenHash []byte) error
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	// Idempotent auth identity creation for test users.
+	// Creates or updates the password auth identity.
+	UpsertTestAuthIdentity(ctx context.Context, arg UpsertTestAuthIdentityParams) error
+	// Idempotent test user creation for agent testing.
+	// Uses fixed UUID to ensure consistent user_id across reseeds.
+	UpsertTestUser(ctx context.Context, arg UpsertTestUserParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)

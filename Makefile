@@ -78,12 +78,17 @@ help:
 	@echo "  tern.status        - show migration status"
 	@echo "  tern.rollback      - roll back one migration"
 	@echo "  tern.reset         - migrate down to 0 then up (dev only)"
+	@echo "  db.truncate        - truncate all data (keeps schema)"
 	@echo "  db.psql.app        - psql as app role"
 	@echo "  db.psql.migrator   - psql as migrator role"
 	@echo "  db.psql.super      - psql as superuser"
 	@echo "  db.schema          - dump schema snapshot for sqlc"
 	@echo "  db.dump            - dump full app schema+data to timestamped SQL"
 	@echo "  db.sqlc            - run sqlc generate (uses schema snapshot)"
+	@echo ""
+	@echo "  seed.user          - create test agent account"
+	@echo "  seed.notebooks     - seed notebooks (EMAIL=... required)"
+	@echo "  seed.all           - full test agent setup (user + notebooks)"
 
 # ---------- Build ----------
 .PHONY: build.api build.frontend build.clean
@@ -330,6 +335,31 @@ tern.reset:
 	$(ENV_SH); TERN_CONFIG=$(TERN_CONF) TERN_MIGRATIONS=$(MIGR_DIR) tern migrate --destination 0
 	$(ENV_SH); TERN_CONFIG=$(TERN_CONF) TERN_MIGRATIONS=$(MIGR_DIR) tern migrate
 
+# Truncate all data (keeps schema, fast reset for dev)
+.PHONY: db.truncate
+db.truncate:
+	@echo ""
+	@echo "╔══════════════════════════════════════════════════════════════════╗"
+	@echo "║                                                                  ║"
+	@echo "║   WARNING: This will DELETE ALL DATA in the database!            ║"
+	@echo "║                                                                  ║"
+	@echo "║   Tables affected:                                               ║"
+	@echo "║     - app.users (and all dependent data)                         ║"
+	@echo "║     - app.notebooks, app.facts, app.cards, app.reviews           ║"
+	@echo "║     - app.auth_identities, app.user_sessions                     ║"
+	@echo "║                                                                  ║"
+	@echo "║   Schema and migrations will be preserved.                       ║"
+	@echo "║                                                                  ║"
+	@echo "╚══════════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@read -p "Type 'DELETE ALL DATA' to confirm: " confirm && \
+	if [ "$$confirm" = "DELETE ALL DATA" ]; then \
+		$(ENV_SH); docker exec $(PG_CONTAINER) psql -U "$$PG_SUPER_USER" -d "$$PG_DATABASE" -c "TRUNCATE app.users RESTART IDENTITY CASCADE"; \
+		echo "All data truncated successfully."; \
+	else \
+		echo "Aborted. No data was deleted."; \
+	fi
+
 # ---------- psql helpers (using docker exec) ----------
 .PHONY: db.psql.app db.psql.migrator db.psql.super db.psql.claude
 db.psql.app:
@@ -390,23 +420,34 @@ db.sqlc:
 
 
 # ---------- Seed Data ----------
-.PHONY: seed.notebooks seed.reviews
+.PHONY: seed.user seed.notebooks seed.reviews seed.all
 
-# Seed notebooks for a user: make seed.notebooks EMAIL=user@example.com [CLEAR=1]
-# CLEAR=1: Wipe existing notebooks before seeding
+# Create/verify test agent account
+seed.user:
+	@echo "Creating/verifying test agent account..."
+	@$(ENV_SH); cd $(BACKEND); go run ./cmd/seed user
+
+# Seed notebooks: make seed.notebooks EMAIL=user@example.com [NOTEBOOKS=10] [FACTS=15] [CLEAR=1]
 seed.notebooks:
 ifndef EMAIL
-	$(error EMAIL is required. Usage: make seed.notebooks EMAIL=user@example.com [CLEAR=1])
+	$(error EMAIL is required. Usage: make seed.notebooks EMAIL=user@example.com)
 endif
-	@echo "🌱 Seeding notebooks for $(EMAIL)..."
-	@$(ENV_SH); cd $(BACKEND); go run ./scripts/seed-notebooks -email $(EMAIL) $(if $(CLEAR),-clear,)
+	@echo "Seeding notebooks for $(EMAIL)..."
+	@$(ENV_SH); cd $(BACKEND); go run ./cmd/seed notebooks \
+		-email $(EMAIL) \
+		$(if $(NOTEBOOKS),-notebooks $(NOTEBOOKS),) \
+		$(if $(FACTS),-facts $(FACTS),) \
+		$(if $(CLEAR),-clear,)
 
-# Generate review history: make seed.reviews EMAIL=user@example.com [DAYS=30] [CONSISTENCY=high]
-# DAYS: number of days of history (default: 30)
-# CONSISTENCY: high (no misses), medium (1-2/week misses), low (4-5/week misses)
+# Generate review history (placeholder)
 seed.reviews:
 ifndef EMAIL
-	$(error EMAIL is required. Usage: make seed.reviews EMAIL=user@example.com DAYS=30 CONSISTENCY=high)
+	$(error EMAIL is required. Usage: make seed.reviews EMAIL=user@example.com)
 endif
-	@echo "📊 Generating reviews for $(EMAIL)..."
-	@$(ENV_SH); cd $(BACKEND); go run ./scripts/generate-reviews -email $(EMAIL) -days $(or $(DAYS),30) -consistency $(or $(CONSISTENCY),high)
+	@echo "Generating reviews for $(EMAIL)..."
+	@$(ENV_SH); cd $(BACKEND); go run ./cmd/seed reviews -email $(EMAIL)
+
+# Seed everything for test agent (user + notebooks)
+seed.all:
+	@echo "Seeding all data for test agent..."
+	@$(ENV_SH); cd $(BACKEND); go run ./cmd/seed all

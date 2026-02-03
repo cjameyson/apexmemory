@@ -354,3 +354,67 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 	)
 	return i, err
 }
+
+const upsertTestAuthIdentity = `-- name: UpsertTestAuthIdentity :exec
+INSERT INTO app.auth_identities (id, user_id, provider, provider_user_id, email, password_hash, created_at, updated_at)
+VALUES (gen_random_uuid(), $1, 'password', $2, $3, $4, now(), now())
+ON CONFLICT (user_id, provider) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = now()
+`
+
+type UpsertTestAuthIdentityParams struct {
+	UserID         uuid.UUID   `json:"user_id"`
+	ProviderUserID string      `json:"provider_user_id"`
+	Email          pgtype.Text `json:"email"`
+	PasswordHash   pgtype.Text `json:"password_hash"`
+}
+
+// Idempotent auth identity creation for test users.
+// Creates or updates the password auth identity.
+func (q *Queries) UpsertTestAuthIdentity(ctx context.Context, arg UpsertTestAuthIdentityParams) error {
+	_, err := q.db.Exec(ctx, upsertTestAuthIdentity,
+		arg.UserID,
+		arg.ProviderUserID,
+		arg.Email,
+		arg.PasswordHash,
+	)
+	return err
+}
+
+const upsertTestUser = `-- name: UpsertTestUser :one
+INSERT INTO app.users (id, email, username, display_name, created_at, updated_at)
+VALUES ($1, $2, $3, $4, now(), now())
+ON CONFLICT (email) DO UPDATE SET updated_at = now()
+RETURNING id, email, email_verified_at, username, display_name, avatar_url, locale, created_at, updated_at, deleted_at
+`
+
+type UpsertTestUserParams struct {
+	ID          uuid.UUID   `json:"id"`
+	Email       string      `json:"email"`
+	Username    string      `json:"username"`
+	DisplayName pgtype.Text `json:"display_name"`
+}
+
+// Idempotent test user creation for agent testing.
+// Uses fixed UUID to ensure consistent user_id across reseeds.
+func (q *Queries) UpsertTestUser(ctx context.Context, arg UpsertTestUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, upsertTestUser,
+		arg.ID,
+		arg.Email,
+		arg.Username,
+		arg.DisplayName,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.EmailVerifiedAt,
+		&i.Username,
+		&i.DisplayName,
+		&i.AvatarUrl,
+		&i.Locale,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}

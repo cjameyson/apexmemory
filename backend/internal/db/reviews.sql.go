@@ -525,7 +525,12 @@ type RestoreCardAfterUndoParams struct {
 }
 
 // Restore card state from review's before columns + undo_snapshot.
-// undo_snapshot contains: step, due, last_review, reps, lapses
+// The review record stores state_before/stability_before/difficulty_before directly.
+// The undo_snapshot JSONB captures remaining card fields that aren't stored as columns:
+//
+//	step, due, last_review: scheduling position in learning/relearning steps
+//	reps, lapses: lifetime counters incremented by reviews
+//	elapsed_days, scheduled_days: FSRS interval tracking for retrievability calc
 func (q *Queries) RestoreCardAfterUndo(ctx context.Context, arg RestoreCardAfterUndoParams) error {
 	_, err := q.db.Exec(ctx, restoreCardAfterUndo,
 		arg.State,

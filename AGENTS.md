@@ -234,6 +234,61 @@ slog.Info("notebook created", "user_id", userID, "notebook_id", id, "duration_ms
 #### Never Log
 Passwords, tokens, full request bodies, unmasked PII.
 
+## Agent Testing
+
+### Test Account
+A dedicated test account for AI agents to perform interactive testing:
+
+| Field | Value |
+|-------|-------|
+| **Email** | `test-agent@apexmemory.ai` |
+| **Password** | `Always$InTheBananaStand!123` |
+| **Username** | `test-agent` |
+| **User ID** | `019501a0-0000-7000-8000-000000000001` |
+
+### Setup
+```bash
+make seed.user      # Create test account only
+make seed.all       # Create test account + sample notebooks
+```
+
+Run after: `docker.up && tern.migrate`, `db.truncate`, or `tern.reset`.
+
+### Seed CLI Reference
+```bash
+# Direct CLI usage
+cd backend && go run ./cmd/seed <command> [flags]
+
+# Commands:
+#   user       Create/verify test agent account
+#   notebooks  Seed notebooks for a user
+#   reviews    Generate review history (placeholder)
+#   all        Run user + notebooks for test agent
+#   help       Show help
+```
+
+### UI Testing (Browser)
+
+**Clear any auto filled credentials**
+
+1. Navigate to `/login`
+2. Email: `test-agent@apexmemory.ai`
+3. Password: `Always$InTheBananaStand!123`
+4. Submit - session cookie set automatically
+
+### API Testing (Go backend, port 4000)
+```bash
+# Login
+curl -X POST http://localhost:4000/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test-agent@apexmemory.ai","password":"Always$InTheBananaStand!123"}'
+
+# Use token from response
+curl http://localhost:4000/v1/notebooks \
+  -H "Authorization: Bearer <session_token>"
+```
+
+
 ## Agent Behavior & Persona
 
 **Default Role:** Senior Engineering Architect

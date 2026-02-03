@@ -7,20 +7,13 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"time"
 
 	"apexmemory.ai/internal/app"
 	"github.com/google/uuid"
 )
 
-func main() {
-	if err := run(); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-}
-
-func run() error {
+func runNotebooksCmd(args []string) {
+	fs := flag.NewFlagSet("notebooks", flag.ExitOnError)
 	var (
 		dsn       string
 		email     string
@@ -28,36 +21,52 @@ func run() error {
 		facts     int
 		clear     bool
 	)
+	fs.StringVar(&dsn, "dsn", "", "PostgreSQL DSN (or set DATABASE_URL env var)")
+	fs.StringVar(&email, "email", "", "User email to seed data for (required)")
+	fs.IntVar(&notebooks, "notebooks", 2, "Number of notebooks to create")
+	fs.IntVar(&facts, "facts", 15, "Number of facts per notebook")
+	fs.BoolVar(&clear, "clear", false, "Delete all existing notebooks for the user before seeding")
+	fs.Usage = func() {
+		fmt.Println(`seed notebooks - Seed notebooks and facts for a user
 
-	flag.StringVar(&dsn, "dsn", "", "PostgreSQL DSN (or set DATABASE_URL env var)")
-	flag.StringVar(&email, "email", "chrisjameyson@gmail.com", "User email to seed data for")
-	flag.IntVar(&notebooks, "notebooks", 10, "Number of notebooks to create")
-	flag.IntVar(&facts, "facts", 15, "Number of facts per notebook")
-	flag.BoolVar(&clear, "clear", false, "Delete all existing notebooks for the user before seeding")
-	flag.Parse()
+Usage:
+  seed notebooks -email <email> [flags]
 
-	if dsn == "" {
-		dsn = os.Getenv("DATABASE_URL")
+Flags:`)
+		fs.PrintDefaults()
+		fmt.Println(`
+Examples:
+  seed notebooks -email test-agent@apexmemory.ai
+  seed notebooks -email user@example.com -notebooks 5 -facts 20
+  seed notebooks -email user@example.com -clear`)
 	}
-	if dsn == "" {
-		dsn = os.Getenv("PG_APP_DSN")
-	}
-	if dsn == "" {
-		return fmt.Errorf("missing database DSN: use -dsn flag or DATABASE_URL/PG_APP_DSN env var")
+	if err := fs.Parse(args); err != nil {
+		os.Exit(1)
 	}
 
-	cfg := app.Config{Env: "development"}
-	cfg.DB.DSN = dsn
-	cfg.DB.MaxOpenConns = 5
+	if email == "" {
+		fmt.Fprintln(os.Stderr, "error: -email flag is required")
+		fs.Usage()
+		os.Exit(1)
+	}
 
-	application := app.New(cfg)
+	if err := seedNotebooks(dsn, email, notebooks, facts, clear); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+func seedNotebooks(flagDSN, email string, numNotebooks, factsPerNotebook int, clear bool) error {
+	dsn, err := resolveDSN(flagDSN)
+	if err != nil {
+		return err
+	}
+
+	application, ctx, cancel, err := connectApp(dsn)
+	if err != nil {
+		return err
+	}
 	defer cancel()
-
-	if err := application.ConnectDB(ctx); err != nil {
-		return fmt.Errorf("connect db: %w", err)
-	}
 	defer application.CloseDB()
 
 	user, err := application.Queries.GetUserByEmail(ctx, email)
@@ -76,11 +85,11 @@ func run() error {
 	slog.Info("seeding data",
 		"user_id", user.ID,
 		"email", email,
-		"notebooks", notebooks,
-		"facts_per_notebook", facts,
+		"notebooks", numNotebooks,
+		"facts_per_notebook", factsPerNotebook,
 	)
 
-	if err := seedData(ctx, application, user.ID, notebooks, facts); err != nil {
+	if err := seedData(ctx, application, user.ID, numNotebooks, factsPerNotebook); err != nil {
 		return fmt.Errorf("seed: %w", err)
 	}
 
@@ -136,21 +145,21 @@ type notebookTemplate struct {
 
 func notebookPool() []notebookTemplate {
 	return []notebookTemplate{
-		{"🧬", "Biology 202", "Cell biology, genetics, and evolution"},
-		{"🇪🇸", "Spanish B2", "Intermediate Spanish vocabulary and grammar"},
-		{"♾️", "Calculus", "Derivatives, integrals, and limits"},
-		{"🇺🇸", "US History", "American history from colonial era to present"},
-		{"🌍", "World History", "Global civilizations and major events"},
-		{"🌡️", "Thermodynamics", "Heat transfer and energy systems"},
-		{"🚀", "Quantum Mechanics", "Quantum mechanics and quantum field theory"},
-		{"⚡", "Electrodynamics", "Electrodynamics and electromagnetism"},
-		{"🧠", "Psychology", "Cognitive and behavioral psychology"},
-		{"💻", "Computer Science", "Algorithms, data structures, and systems"},
-		{"📐", "Linear Algebra", "Vectors, matrices, and transformations"},
-		{"🧪", "Chemistry", "Organic and inorganic chemistry fundamentals"},
-		{"📊", "Statistics", "Probability and statistical inference"},
-		{"🏛️", "Philosophy", "Logic, ethics, and epistemology"},
-		{"🎵", "Music Theory", "Harmony, rhythm, and composition"},
+		{"", "Biology 202", "Cell biology, genetics, and evolution"},
+		{"", "Spanish B2", "Intermediate Spanish vocabulary and grammar"},
+		{"", "Calculus", "Derivatives, integrals, and limits"},
+		{"", "US History", "American history from colonial era to present"},
+		{"", "World History", "Global civilizations and major events"},
+		{"", "Thermodynamics", "Heat transfer and energy systems"},
+		{"", "Quantum Mechanics", "Quantum mechanics and quantum field theory"},
+		{"", "Electrodynamics", "Electrodynamics and electromagnetism"},
+		{"", "Psychology", "Cognitive and behavioral psychology"},
+		{"", "Computer Science", "Algorithms, data structures, and systems"},
+		{"", "Linear Algebra", "Vectors, matrices, and transformations"},
+		{"", "Chemistry", "Organic and inorganic chemistry fundamentals"},
+		{"", "Statistics", "Probability and statistical inference"},
+		{"", "Philosophy", "Logic, ethics, and epistemology"},
+		{"", "Music Theory", "Harmony, rhythm, and composition"},
 	}
 }
 
@@ -160,8 +169,8 @@ type factTemplate struct {
 }
 
 type factContent struct {
-	Version int            `json:"version"`
-	Fields  []factField    `json:"fields"`
+	Version int         `json:"version"`
+	Fields  []factField `json:"fields"`
 }
 
 type factField struct {
@@ -233,5 +242,101 @@ func factTemplatePool() []factTemplate {
 		})
 	}
 
+	// Image occlusion templates - region IDs must match ^m_[a-zA-Z0-9_-]{6,24}$
+	imageOcclusions := []imageOcclusionTemplate{
+		{
+			title:  "Cell Diagram",
+			url:    "https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Nucleus_ER.png/800px-Nucleus_ER.png",
+			width:  800,
+			height: 600,
+			regions: []regionDef{
+				{id: "m_nucleus_01", x: 200, y: 150, w: 120, h: 120},
+				{id: "m_er_rough_2", x: 350, y: 200, w: 150, h: 80},
+				{id: "m_er_smooth3", x: 520, y: 180, w: 140, h: 100},
+			},
+		},
+		{
+			title:  "Periodic Table Section",
+			url:    "https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Colour_18-col_PT.svg/800px-Colour_18-col_PT.svg.png",
+			width:  800,
+			height: 500,
+			regions: []regionDef{
+				{id: "m_hydrogen01", x: 20, y: 30, w: 40, h: 40},
+				{id: "m_helium_02", x: 740, y: 30, w: 40, h: 40},
+			},
+		},
+		{
+			title:  "Human Heart Anatomy",
+			url:    "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/Diagram_of_the_human_heart.svg/600px-Diagram_of_the_human_heart.svg.png",
+			width:  600,
+			height: 600,
+			regions: []regionDef{
+				{id: "m_leftvent_1", x: 320, y: 350, w: 100, h: 120},
+				{id: "m_rightven_2", x: 180, y: 350, w: 100, h: 120},
+				{id: "m_aorta_003", x: 260, y: 100, w: 80, h: 60},
+				{id: "m_pulmon_04", x: 200, y: 120, w: 60, h: 50},
+			},
+		},
+	}
+
+	for _, img := range imageOcclusions {
+		imgCopy := img
+		templates = append(templates, factTemplate{
+			factType: "image_occlusion",
+			content: func(_ int) json.RawMessage {
+				return imgCopy.toContent()
+			},
+		})
+	}
+
 	return templates
+}
+
+// imageOcclusionTemplate defines seed data for an image occlusion fact.
+type imageOcclusionTemplate struct {
+	title   string
+	url     string
+	width   int
+	height  int
+	regions []regionDef
+}
+
+type regionDef struct {
+	id   string
+	x, y int
+	w, h int
+}
+
+func (t imageOcclusionTemplate) toContent() json.RawMessage {
+	regions := make([]map[string]any, len(t.regions))
+	for i, r := range t.regions {
+		regions[i] = map[string]any{
+			"id": r.id,
+			"shape": map[string]any{
+				"type":   "rect",
+				"x":      r.x,
+				"y":      r.y,
+				"width":  r.w,
+				"height": r.h,
+			},
+		}
+	}
+
+	content := map[string]any{
+		"version": 1,
+		"fields": []map[string]any{
+			{"name": "title", "type": "plain_text", "value": t.title},
+			{
+				"name": "image",
+				"type": "image_occlusion",
+				"image": map[string]any{
+					"url":    t.url,
+					"width":  t.width,
+					"height": t.height,
+				},
+				"regions": regions,
+			},
+		},
+	}
+	return mustMarshal(content)
 }
