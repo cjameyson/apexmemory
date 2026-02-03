@@ -213,12 +213,13 @@ CREATE TABLE app.reviews (
 
     PRIMARY KEY (user_id, id),
 
-    -- SET NULL preserves review history when card is deleted
+    -- SET NULL (card_id only) preserves review history when card is deleted.
+    -- user_id must remain NOT NULL; only the nullable card_id column is cleared.
     FOREIGN KEY (user_id, card_id)
-        REFERENCES app.cards(user_id, id) ON DELETE SET NULL,
-    -- SET NULL preserves review history when fact is deleted
+        REFERENCES app.cards(user_id, id) ON DELETE SET NULL (card_id),
+    -- SET NULL (fact_id only) preserves review history when fact is deleted.
     FOREIGN KEY (user_id, fact_id)
-        REFERENCES app.facts(user_id, id) ON DELETE SET NULL,
+        REFERENCES app.facts(user_id, id) ON DELETE SET NULL (fact_id),
 
     CONSTRAINT reviews_valid_mode CHECK (
         mode IN ('scheduled', 'practice')

@@ -521,7 +521,7 @@ ALTER TABLE ONLY app.notes
 --
 
 ALTER TABLE ONLY app.reviews
-    ADD CONSTRAINT reviews_user_id_card_id_fkey FOREIGN KEY (user_id, card_id) REFERENCES app.cards(user_id, id) ON DELETE SET NULL;
+    ADD CONSTRAINT reviews_user_id_card_id_fkey FOREIGN KEY (user_id, card_id) REFERENCES app.cards(user_id, id) ON DELETE SET NULL (card_id);
 
 
 --
@@ -529,7 +529,7 @@ ALTER TABLE ONLY app.reviews
 --
 
 ALTER TABLE ONLY app.reviews
-    ADD CONSTRAINT reviews_user_id_fact_id_fkey FOREIGN KEY (user_id, fact_id) REFERENCES app.facts(user_id, id) ON DELETE SET NULL;
+    ADD CONSTRAINT reviews_user_id_fact_id_fkey FOREIGN KEY (user_id, fact_id) REFERENCES app.facts(user_id, id) ON DELETE SET NULL (fact_id);
 
 
 --
