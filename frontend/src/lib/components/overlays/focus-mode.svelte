@@ -7,6 +7,7 @@
 	import type { ReviewMode } from '$lib/types/review';
 	import { extractCardDisplay, ratingToString } from '$lib/services/reviews';
 	import type { ApiReviewResponse } from '$lib/api/types';
+	import { toast } from 'svelte-sonner';
 
 	interface Props {
 		cards: StudyCard[];
@@ -26,12 +27,13 @@
 	let isRevealed = $state(false);
 	let sessionComplete = $state(initialCards.length === 0);
 	let reviewedCount = $state(0);
+	let totalCards = $state(initialCards.length);
 	let reviewStartTime = $state(Date.now());
 	let isSubmitting = $state(false);
 
 	let currentCard = $derived(cardQueue[currentIndex] as StudyCard | undefined);
 	let display = $derived(currentCard ? extractCardDisplay(currentCard) : null);
-	let progress = $derived(cardQueue.length > 0 ? (currentIndex / cardQueue.length) * 100 : 0);
+	let progress = $derived(totalCards > 0 ? (reviewedCount / totalCards) * 100 : 0);
 
 	let scopeTitle = $derived.by(() => {
 		if (scope.type === 'all') return 'All Due Cards';
@@ -81,12 +83,22 @@
 		// Fire-and-forget with retry
 		const responsePromise = submitReview(card, rating, durationMs);
 
+		// Toast on failure for non-scheduled (practice) mode where we don't .then() for re-queue
+		if (mode !== 'scheduled') {
+			responsePromise.then((resp) => {
+				if (!resp) toast.error('Review failed to save. Please try again.');
+			});
+		}
+
 		reviewedCount++;
 
 		// In scheduled mode, check if learning card should be re-queued
 		if (mode === 'scheduled') {
 			responsePromise.then((resp) => {
-				if (!resp) return;
+				if (!resp) {
+					toast.error('Review failed to save. Please try again.');
+					return;
+				}
 				const updatedDue = resp.card.due;
 				if (updatedDue) {
 					const dueTime = new Date(updatedDue).getTime();
@@ -104,6 +116,7 @@
 							lapses: resp.card.lapses
 						};
 						cardQueue = [...cardQueue, requeued];
+						totalCards++;
 					}
 				}
 			});

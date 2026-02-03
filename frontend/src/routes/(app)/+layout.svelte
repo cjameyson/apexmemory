@@ -8,6 +8,7 @@
 	import type { Notebook, ReviewScope, StudyCard } from '$lib/types';
 	import type { ReviewMode } from '$lib/types/review';
 	import { toNotebooks } from '$lib/services/notebooks';
+	import { fetchStudyCards, fetchPracticeCards } from '$lib/services/reviews';
 
 	let { data, children } = $props();
 
@@ -156,24 +157,12 @@
 	}
 
 	async function fetchAndStartReview(mode: ReviewMode, notebookId?: string) {
-		const params = new URLSearchParams({ limit: '50' });
-		if (notebookId) params.set('notebook_id', notebookId);
+		const cards = mode === 'scheduled'
+			? await fetchStudyCards(notebookId)
+			: await fetchPracticeCards(notebookId);
 
-		const endpoint = mode === 'scheduled' ? '/api/reviews/study' : '/api/reviews/practice';
-		try {
-			const res = await fetch(`${endpoint}?${params}`);
-			if (!res.ok) return;
-			const data = await res.json();
-			const cards = mode === 'scheduled' ? data : data.data;
-
-			const { toStudyCards } = await import('$lib/services/reviews');
-			const studyCards = toStudyCards(cards);
-
-			const scope: ReviewScope = { type: 'all', mode };
-			startFocusMode(scope, studyCards);
-		} catch {
-			// silently fail
-		}
+		const scope: ReviewScope = { type: 'all', mode };
+		startFocusMode(scope, cards);
 	}
 
 	function handleCreateNotebook() {

@@ -5,8 +5,7 @@
 	import { ZapIcon, ChevronDownIcon, RepeatIcon, LoaderCircleIcon } from '@lucide/svelte';
 	import type { Notebook, ReviewScope, StudyCard } from '$lib/types';
 	import type { ReviewMode } from '$lib/types/review';
-	import type { ApiStudyCard, PaginatedResponse } from '$lib/api/types';
-	import { toStudyCards } from '$lib/services/reviews';
+	import { fetchStudyCards, fetchPracticeCards } from '$lib/services/reviews';
 
 	interface Props {
 		notebooks: Notebook[];
@@ -22,26 +21,6 @@
 
 	let totalDue = $derived(notebooks.reduce((sum, nb) => sum + nb.dueCount, 0));
 	let notebooksWithDue = $derived(notebooks.filter((nb) => nb.dueCount > 0));
-
-	async function fetchStudyCards(notebookId?: string): Promise<StudyCard[]> {
-		const params = new URLSearchParams({ limit: '50' });
-		if (notebookId) params.set('notebook_id', notebookId);
-
-		const res = await fetch(`/api/reviews/study?${params}`);
-		if (!res.ok) return [];
-		const data: ApiStudyCard[] = await res.json();
-		return toStudyCards(data);
-	}
-
-	async function fetchPracticeCards(notebookId?: string): Promise<StudyCard[]> {
-		const params = new URLSearchParams({ limit: '50', offset: '0' });
-		if (notebookId) params.set('notebook_id', notebookId);
-
-		const res = await fetch(`/api/reviews/practice?${params}`);
-		if (!res.ok) return [];
-		const data: PaginatedResponse<ApiStudyCard> = await res.json();
-		return toStudyCards(data.data);
-	}
 
 	async function startReview(mode: ReviewMode, notebook?: Notebook) {
 		open = false;

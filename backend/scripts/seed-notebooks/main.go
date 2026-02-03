@@ -159,6 +159,25 @@ type factTemplate struct {
 	content  func(index int) json.RawMessage
 }
 
+type factContent struct {
+	Version int            `json:"version"`
+	Fields  []factField    `json:"fields"`
+}
+
+type factField struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Value string `json:"value"`
+}
+
+func mustMarshal(v any) json.RawMessage {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic(fmt.Sprintf("marshal fact content: %v", err))
+	}
+	return data
+}
+
 func factTemplatePool() []factTemplate {
 	basics := []struct{ front, back string }{
 		{"What is the powerhouse of the cell?", "The mitochondria. It generates most of the cell's supply of ATP through oxidative phosphorylation."},
@@ -188,10 +207,13 @@ func factTemplatePool() []factTemplate {
 		templates = append(templates, factTemplate{
 			factType: "basic",
 			content: func(idx int) json.RawMessage {
-				return json.RawMessage(fmt.Sprintf(
-					`{"version":1,"fields":[{"name":"front","type":"plain_text","value":"%s (#%d)"},{"name":"back","type":"plain_text","value":"%s"}]}`,
-					front, idx+1, back,
-				))
+				return mustMarshal(factContent{
+					Version: 1,
+					Fields: []factField{
+						{Name: "front", Type: "plain_text", Value: fmt.Sprintf("%s (#%d)", front, idx+1)},
+						{Name: "back", Type: "plain_text", Value: back},
+					},
+				})
 			},
 		})
 	}
@@ -201,10 +223,12 @@ func factTemplatePool() []factTemplate {
 		templates = append(templates, factTemplate{
 			factType: "cloze",
 			content: func(_ int) json.RawMessage {
-				return json.RawMessage(fmt.Sprintf(
-					`{"version":1,"fields":[{"name":"text","type":"cloze_text","value":"%s"}]}`,
-					sentence,
-				))
+				return mustMarshal(factContent{
+					Version: 1,
+					Fields: []factField{
+						{Name: "text", Type: "cloze_text", Value: sentence},
+					},
+				})
 			},
 		})
 	}

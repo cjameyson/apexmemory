@@ -1,5 +1,6 @@
 import type { ApiStudyCard } from '$lib/api/types';
 import type { StudyCard, CardDisplay } from '$lib/types/review';
+import { toast } from 'svelte-sonner';
 
 const RATING_MAP: Record<number, 'again' | 'hard' | 'good' | 'easy'> = {
 	1: 'again',
@@ -32,6 +33,32 @@ export function toStudyCard(api: ApiStudyCard): StudyCard {
 
 export function toStudyCards(apiList: ApiStudyCard[]): StudyCard[] {
 	return apiList.map(toStudyCard);
+}
+
+export async function fetchStudyCards(notebookId?: string): Promise<StudyCard[]> {
+	const params = new URLSearchParams({ limit: '50' });
+	if (notebookId) params.set('notebook_id', notebookId);
+
+	const res = await fetch(`/api/reviews/study?${params}`);
+	if (!res.ok) {
+		toast.error('Failed to load study cards. Please try again.');
+		return [];
+	}
+	const data: ApiStudyCard[] = await res.json();
+	return toStudyCards(data);
+}
+
+export async function fetchPracticeCards(notebookId?: string): Promise<StudyCard[]> {
+	const params = new URLSearchParams({ limit: '50' });
+	if (notebookId) params.set('notebook_id', notebookId);
+
+	const res = await fetch(`/api/reviews/practice?${params}`);
+	if (!res.ok) {
+		toast.error('Failed to load practice cards. Please try again.');
+		return [];
+	}
+	const data: ApiStudyCard[] = await res.json();
+	return toStudyCards(data);
 }
 
 /**

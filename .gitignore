@@ -74,4 +74,8 @@ frontend/e2e/.cache/
 # Husky (if initialized at frontend level)
 frontend/.husky/
 
+# Compiled seed binaries
+backend/seed
+backend/seed-notebooks
+
 # Prompts
