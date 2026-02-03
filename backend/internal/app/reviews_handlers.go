@@ -3,6 +3,7 @@ package app
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 )
@@ -17,8 +18,8 @@ func (app *Application) GetStudyCardsHandler(w http.ResponseWriter, r *http.Requ
 
 	limit := int32(20)
 	if v := r.URL.Query().Get("limit"); v != "" {
-		if n, err := parseInt32(v); err == nil && n > 0 && n <= 100 {
-			limit = n
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 100 {
+			limit = int32(n)
 		}
 	}
 
@@ -103,7 +104,7 @@ func (app *Application) SubmitReviewHandler(w http.ResponseWriter, r *http.Reque
 			app.RespondError(w, r, http.StatusNotFound, "Card not found")
 			return
 		}
-		if err.Error() == "invalid rating: "+`"`+req.Rating+`"` || err.Error() == "invalid mode: "+`"`+req.Mode+`"` {
+		if errors.Is(err, errInvalidRating) || errors.Is(err, errInvalidMode) {
 			app.RespondError(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -114,14 +115,3 @@ func (app *Application) SubmitReviewHandler(w http.ResponseWriter, r *http.Reque
 	app.RespondJSON(w, r, http.StatusOK, resp)
 }
 
-// parseInt32 parses a string to int32.
-func parseInt32(s string) (int32, error) {
-	var n int32
-	for _, c := range s {
-		if c < '0' || c > '9' {
-			return 0, errors.New("not a number")
-		}
-		n = n*10 + int32(c-'0')
-	}
-	return n, nil
-}

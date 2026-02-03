@@ -270,7 +270,7 @@ WHERE c.user_id = $1
     -- New cards, subject to daily cap
     (c.state = 'new' AND (
       SELECT count(*) FROM app.reviews r
-      WHERE r.user_id = c.user_id
+      WHERE r.user_id = $1
         AND r.state_before = 'new'
         AND r.mode = 'scheduled'
         AND r.reviewed_at >= date_trunc('day', now())

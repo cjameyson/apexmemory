@@ -15,7 +15,11 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-var errCardNotReviewable = errors.New("card not found or not reviewable")
+var (
+	errCardNotReviewable = errors.New("card not found or not reviewable")
+	errInvalidRating     = errors.New("invalid rating")
+	errInvalidMode       = errors.New("invalid mode")
+)
 
 const defaultNewCardCap int64 = 20
 
@@ -70,7 +74,7 @@ func (app *Application) submitReview(ctx context.Context, userID uuid.UUID, req 
 		req.Mode = "scheduled"
 	}
 	if req.Mode != "scheduled" && req.Mode != "practice" {
-		return ReviewResponse{}, fmt.Errorf("invalid mode: %q", req.Mode)
+		return ReviewResponse{}, fmt.Errorf("invalid mode %q: %w", req.Mode, errInvalidMode)
 	}
 
 	now := time.Now().UTC()
@@ -264,6 +268,11 @@ func (app *Application) getStudyCards(ctx context.Context, userID uuid.UUID, not
 		return nil, err
 	}
 
+	scheduler, err := fsrs.NewScheduler(fsrs.WithEnableFuzzing(false))
+	if err != nil {
+		return nil, err
+	}
+
 	result := make([]StudyCard, len(rows))
 	for i, row := range rows {
 		card := studyRowToCard(row)
@@ -271,7 +280,7 @@ func (app *Application) getStudyCards(ctx context.Context, userID uuid.UUID, not
 			CardResponse: toCardResponse(card),
 			FactType:     row.FactType,
 			FactContent:  json.RawMessage(row.FactContent),
-			Intervals:    computeIntervals(card),
+			Intervals:    computeIntervalsWithScheduler(card, scheduler),
 		}
 	}
 	return result, nil
@@ -302,6 +311,11 @@ func (app *Application) getPracticeCards(ctx context.Context, userID uuid.UUID, 
 		return nil, 0, err
 	}
 
+	scheduler, err := fsrs.NewScheduler(fsrs.WithEnableFuzzing(false))
+	if err != nil {
+		return nil, 0, err
+	}
+
 	result := make([]StudyCard, len(rows))
 	for i, row := range rows {
 		card := practiceRowToCard(row)
@@ -309,21 +323,15 @@ func (app *Application) getPracticeCards(ctx context.Context, userID uuid.UUID, 
 			CardResponse: toCardResponse(card),
 			FactType:     row.FactType,
 			FactContent:  json.RawMessage(row.FactContent),
-			Intervals:    computeIntervals(card),
+			Intervals:    computeIntervalsWithScheduler(card, scheduler),
 		}
 	}
 	return result, total, nil
 }
 
-// computeIntervals runs the FSRS scheduler for all 4 ratings without fuzzing.
-func computeIntervals(card db.Card) IntervalPreview {
+// computeIntervalsWithScheduler computes interval previews using a provided scheduler.
+func computeIntervalsWithScheduler(card db.Card, scheduler *fsrs.Scheduler) IntervalPreview {
 	fsrsCard := dbCardToFSRS(card)
-	scheduler, err := fsrs.NewScheduler(fsrs.WithEnableFuzzing(false))
-	if err != nil {
-		// Default params should never fail validation
-		return IntervalPreview{}
-	}
-
 	now := time.Now().UTC()
 	return IntervalPreview{
 		Again: formatInterval(scheduler.ReviewCard(fsrsCard, fsrs.Again, now).Card.Due.Sub(now)),
@@ -434,7 +442,7 @@ func ratingFromString(s string) (fsrs.Rating, error) {
 	case "easy":
 		return fsrs.Easy, nil
 	default:
-		return 0, fmt.Errorf("invalid rating: %q", s)
+		return 0, fmt.Errorf("invalid rating %q: %w", s, errInvalidRating)
 	}
 }
 
