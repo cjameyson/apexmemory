@@ -4,7 +4,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { ChevronDownIcon, BookOpenIcon, PlusIcon, SearchIcon, CheckIcon } from '@lucide/svelte';
+	import { ChevronDownIcon, BookOpenIcon, PlusIcon, SearchIcon } from '@lucide/svelte';
 	import type { Notebook } from '$lib/types';
 
 	interface Props {
@@ -64,8 +64,6 @@
 	</DropdownMenu.Trigger>
 
 	<DropdownMenu.Content class="w-64" align="start">
-		<DropdownMenu.Label>Your Notebooks</DropdownMenu.Label>
-
 		{#if showSearch}
 			<div class="px-2 py-1.5">
 				<div class="relative">
@@ -108,8 +106,6 @@
 						<span class="text-primary text-xs font-medium">
 							{notebook.dueCount} due
 						</span>
-					{:else if notebook.dueCount === 0}
-						<CheckIcon class="size-4" />
 					{/if}
 				</DropdownMenu.Item>
 			{/each}
@@ -129,10 +125,13 @@
 			{/if}
 		</div>
 
-		<DropdownMenu.Separator />
-		<DropdownMenu.Item class="cursor-pointer gap-2" onclick={handleCreateClick}>
-			<PlusIcon class="size-4" />
-			<span>Create notebook</span>
-		</DropdownMenu.Item>
+		<!-- Only show footer "Create notebook" when there are notebooks (avoid duplicate CTA in empty state) -->
+		{#if notebooks.length > 0 || searchQuery}
+			<DropdownMenu.Separator />
+			<DropdownMenu.Item class="cursor-pointer gap-2" onclick={handleCreateClick}>
+				<PlusIcon class="size-4" />
+				<span>Create notebook</span>
+			</DropdownMenu.Item>
+		{/if}
 	</DropdownMenu.Content>
 </DropdownMenu.Root>

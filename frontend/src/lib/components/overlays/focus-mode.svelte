@@ -3,12 +3,20 @@
 	import { cn } from '$lib/utils';
 	import { generateUUID } from '$lib/utils/uuid';
 	import RatingButtons from '$lib/components/cards/rating-buttons.svelte';
-	import { XIcon, EyeIcon } from '@lucide/svelte';
+	import * as Popover from '$lib/components/ui/popover';
+	import { XIcon, EyeIcon, HelpCircleIcon } from '@lucide/svelte';
 	import type { ReviewScope, StudyCard } from '$lib/types';
 	import type { ReviewMode } from '$lib/types/review';
 	import { extractCardDisplay, ratingToString } from '$lib/services/reviews';
 	import type { ApiReviewResponse, ApiUndoReviewResponse } from '$lib/api/types';
 	import { toast } from 'svelte-sonner';
+
+	const ratingExplanations = [
+		{ label: 'Again', color: 'text-again', description: 'Forgot or got it wrong. Resets the card and you\'ll see it again very soon.' },
+		{ label: 'Hard', color: 'text-hard', description: 'Got it, but struggled or hesitated. Shorter interval than normal.' },
+		{ label: 'Good', color: 'text-good', description: 'Remembered correctly. Standard interval increase.' },
+		{ label: 'Easy', color: 'text-easy', description: 'Instant recall, no effort. Pushes the card further out - you\'ve got this one down.' }
+	];
 
 	interface Props {
 		cards: StudyCard[];
@@ -267,19 +275,13 @@
 					wasRequeued
 				};
 
-				// Show undo toast
+				// Set up undo timeout
 				undoTimeoutId = setTimeout(() => {
 					lastReview = null;
 					undoTimeoutId = null;
 				}, UNDO_WINDOW_MS);
 
-				toast('Review saved', {
-					duration: UNDO_WINDOW_MS,
-					action: {
-						label: 'Undo',
-						onClick: handleUndo
-					}
-				});
+				console.log('Review saved', { reviewId: result.reviewId, cardId: card.id });
 			}
 			return;
 		}
@@ -295,19 +297,13 @@
 					wasRequeued: false
 				};
 
-				// Show undo toast
+				// Set up undo timeout
 				undoTimeoutId = setTimeout(() => {
 					lastReview = null;
 					undoTimeoutId = null;
 				}, UNDO_WINDOW_MS);
 
-				toast('Review saved', {
-					duration: UNDO_WINDOW_MS,
-					action: {
-						label: 'Undo',
-						onClick: handleUndo
-					}
-				});
+				console.log('Review saved', { reviewId: result.reviewId, cardId: card.id });
 			}
 		});
 	}
@@ -418,27 +414,43 @@
 				<div
 					class="bg-white/10 backdrop-blur-sm rounded-3xl p-8 mb-8 min-h-64 flex flex-col justify-center"
 				>
-					<div class={cn('text-center', isRevealed && 'opacity-60')}>
-						<p class="text-2xl font-medium text-white">
-							{display.front}
-						</p>
-					</div>
-
-					{#if isRevealed}
-						<div class="my-6 border-t border-white/20"></div>
+					{#if display.isCloze}
+						<!-- Cloze card: in-place transform -->
 						<div class="text-center">
-							<p class="text-xl text-white/90">
-								{display.back}
+							<p class="text-2xl font-medium text-white">
+								{#if isRevealed}
+									{@html display.front.replace('[...]', `<span class="bg-emerald-500/30 px-2 py-0.5 rounded text-emerald-300 font-semibold">${display.clozeAnswer}</span>`)}
+								{:else}
+									{@html display.front.replace('[...]', '<span class="bg-white/20 px-2 py-0.5 rounded text-white/60 font-mono">[...]</span>')}
+								{/if}
 							</p>
 						</div>
 					{:else}
+						<!-- Basic card: front/back display -->
+						<div class={cn('text-center', isRevealed && 'opacity-60')}>
+							<p class="text-2xl font-medium text-white">
+								{display.front}
+							</p>
+						</div>
+
+						{#if isRevealed}
+							<div class="my-6 border-t border-white/20"></div>
+							<div class="text-center">
+								<p class="text-xl text-white/90">
+									{display.back}
+								</p>
+							</div>
+						{/if}
+					{/if}
+
+					{#if !isRevealed}
 						<button
 							type="button"
 							onclick={reveal}
 							class="mt-8 flex items-center justify-center gap-2 text-white/50 hover:text-white/70 transition-colors"
 						>
 							<EyeIcon class="size-5" />
-							<span>Tap to reveal</span>
+							<span>Tap or press space to reveal</span>
 						</button>
 					{/if}
 				</div>
@@ -470,8 +482,37 @@
 	</div>
 
 	{#if !sessionComplete && currentCard}
-		<div class="text-center py-4 text-white/40 text-sm">
-			Space to flip &bull; 1-4 to rate &bull; Z to undo &bull; Esc to exit
+		<div class="flex items-center justify-center gap-2 py-4 text-white/40 text-sm">
+			<span>Space to flip</span>
+			<span>&bull;</span>
+			<span>1-4 to rate</span>
+			<span>&bull;</span>
+			<span>Z to undo</span>
+			<span>&bull;</span>
+			<span>Esc to exit</span>
+			<span>&bull;</span>
+			<Popover.Root>
+				<Popover.Trigger class="inline-flex items-center gap-1 hover:text-white/60 transition-colors">
+					<HelpCircleIcon class="size-3.5" />
+					<span>Explain ratings</span>
+				</Popover.Trigger>
+				<Popover.Content
+					side="top"
+					class="w-96 bg-slate-800 border-slate-700 text-white p-4"
+				>
+					<div class="space-y-3">
+						<h4 class="font-medium text-white/90">Rating Guide</h4>
+						<div class="space-y-2.5 text-sm">
+							{#each ratingExplanations as exp}
+								<div class="flex gap-3">
+									<span class={cn('font-medium w-12 shrink-0', exp.color)}>{exp.label}</span>
+									<span class="text-white/70">{exp.description}</span>
+								</div>
+							{/each}
+						</div>
+					</div>
+				</Popover.Content>
+			</Popover.Root>
 		</div>
 	{/if}
 </div>

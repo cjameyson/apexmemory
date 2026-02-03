@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { page } from '$app/state';
-	import { pushState, replaceState } from '$app/navigation';
+	import { goto, invalidateAll, pushState, replaceState } from '$app/navigation';
 	import TopNavBar from '$lib/components/layout/top-nav-bar.svelte';
 	import CommandPalette from '$lib/components/overlays/command-palette.svelte';
 	import FocusMode from '$lib/components/overlays/focus-mode.svelte';
+	import CreateNotebookModal from '$lib/components/notebooks/create-notebook-modal.svelte';
 	import type { Notebook, ReviewScope, StudyCard } from '$lib/types';
 	import type { ReviewMode } from '$lib/types/review';
 	import { toNotebooksWithCounts } from '$lib/services/notebooks';
@@ -31,8 +32,18 @@
 	});
 
 	// Focus mode cards stored in component state (too large for URL state)
+	// Can also be passed via page state for direct pushState calls
 	let focusModeCards = $state<StudyCard[]>([]);
 	let focusModeMode = $state<ReviewMode>('scheduled');
+
+	// Sync focusModeCards from page state when it contains cards
+	$effect(() => {
+		const fm = page.state.focusMode;
+		if (fm?.cards && fm.cards.length > 0) {
+			focusModeCards = fm.cards;
+			focusModeMode = fm.mode ?? 'scheduled';
+		}
+	});
 
 	// Reconstruct ReviewScope from page state for focus mode
 	let focusModeScope = $derived.by((): ReviewScope | null => {
@@ -165,8 +176,18 @@
 		startFocusMode(scope, cards);
 	}
 
+	// Create notebook modal state
+	let createNotebookOpen = $state(false);
+
 	function handleCreateNotebook() {
-		console.log('TODO: Create notebook');
+		createNotebookOpen = true;
+	}
+
+	async function handleNotebookCreated(notebook: Notebook) {
+		// Refresh notebooks list
+		await invalidateAll();
+		// Navigate to the new notebook
+		goto(`/notebooks/${notebook.id}`);
 	}
 </script>
 
@@ -212,3 +233,10 @@
 		onClose={exitFocusMode}
 	/>
 {/if}
+
+<!-- Create Notebook Modal -->
+<CreateNotebookModal
+	bind:open={createNotebookOpen}
+	onOpenChange={(open) => (createNotebookOpen = open)}
+	onSuccess={handleNotebookCreated}
+/>

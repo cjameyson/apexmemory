@@ -4,8 +4,7 @@
 		SquareIcon,
 		SquareCheckBigIcon,
 		PencilIcon,
-		Trash2Icon,
-		EyeIcon
+		Trash2Icon
 	} from '@lucide/svelte';
 	import type { Fact } from '$lib/types/fact';
 	import { getFactDisplayText } from '$lib/utils/fact-display';
@@ -109,13 +108,6 @@
 		<div
 			class="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100"
 		>
-			<button
-				class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1"
-				title="Preview fact"
-				aria-label="Preview fact"
-			>
-				<EyeIcon class="h-4 w-4" />
-			</button>
 			<button
 				class="text-muted-foreground hover:bg-accent hover:text-foreground rounded p-1"
 				title="Edit fact"

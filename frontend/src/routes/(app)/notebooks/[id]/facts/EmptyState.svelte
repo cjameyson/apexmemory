@@ -7,9 +7,10 @@
 		totalFacts: number;
 		searchQuery: string;
 		typeFilter: string;
+		onCreate?: () => void;
 	}
 
-	let { totalFacts, searchQuery, typeFilter }: Props = $props();
+	let { totalFacts, searchQuery, typeFilter, onCreate }: Props = $props();
 
 	let hasFilters = $derived(!!searchQuery || !!typeFilter);
 	let showNoFacts = $derived(totalFacts === 0 && !hasFilters);
@@ -35,8 +36,8 @@
 			</p>
 		</div>
 		<button
-			disabled
-			class="mt-2 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground opacity-50"
+			onclick={onCreate}
+			class="mt-2 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
 		>
 			<PlusIcon class="h-4 w-4" />
 			Create your first fact

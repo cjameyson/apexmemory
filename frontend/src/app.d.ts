@@ -2,6 +2,7 @@
 // for information about these interfaces
 
 import type { User } from '$lib/api/types';
+import type { StudyCard } from '$lib/types/review';
 
 declare global {
 	namespace App {
@@ -23,6 +24,7 @@ declare global {
 				sourceId?: string;
 				sourceName?: string;
 				currentIndex?: number;
+				cards?: StudyCard[];
 			};
 			commandPalette?: boolean;
 		}

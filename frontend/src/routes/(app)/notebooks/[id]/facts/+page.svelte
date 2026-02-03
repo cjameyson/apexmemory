@@ -43,7 +43,7 @@
 </script>
 
 <div id="notebook-main" class="flex flex-1 flex-col overflow-auto">
-	<FactsHeader bind:this={factsHeader} stats={data.stats} notebookId={data.notebookId} />
+	<FactsHeader bind:this={factsHeader} stats={data.stats} notebookId={data.notebookId} notebook={data.notebook} />
 	<FactsToolbar />
 
 	{#if selectedIds.size > 0}
@@ -66,6 +66,6 @@
 			pageSize={data.pagination.pageSize}
 		/>
 	{:else}
-		<EmptyState totalFacts={data.stats.totalFacts} {searchQuery} {typeFilter} />
+		<EmptyState totalFacts={data.stats.totalFacts} {searchQuery} {typeFilter} onCreate={() => factsHeader.openCreate()} />
 	{/if}
 </div>

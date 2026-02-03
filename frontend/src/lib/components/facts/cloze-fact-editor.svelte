@@ -27,6 +27,18 @@
 	let text = $state(initialData?.text ?? '');
 	let backExtra = $state(initialData?.backExtra ?? '');
 
+	// Example cloze facts for placeholder inspiration
+	const exampleClozes = [
+		'The {{c1::mitochondria}} is the {{c2::powerhouse}} of the cell.',
+		'{{c1::Water}} boils at {{c2::100}} degrees Celsius.',
+		'The {{c1::Pythagorean}} theorem states that a² + b² = {{c2::c²}}.',
+		'{{c1::Einstein}} developed the theory of {{c2::relativity}}.',
+		'The {{c1::Great Wall of China}} is visible from {{c2::space}}... or is it?',
+		'{{c1::Shakespeare}} wrote {{c2::Hamlet}} in approximately {{c3::1600}}.',
+		'The chemical symbol for {{c1::gold}} is {{c2::Au}}.'
+	];
+	const placeholderExample = exampleClozes[Math.floor(Math.random() * exampleClozes.length)];
+
 	const textareaBase = 'border-input bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full resize-y rounded-md border p-3 text-sm focus:ring-2 focus:outline-none';
 
 	let textareaRef: HTMLTextAreaElement | undefined = $state();
@@ -136,7 +148,7 @@
 			bind:this={textareaRef}
 			rows={2}
 			class={cn(textareaBase, 'font-mono', errors?.text && 'border-destructive focus:ring-destructive')}
-			placeholder={'The {{c1::answer}} is hidden...'}
+			placeholder={placeholderExample}
 			bind:value={text}
 			oninput={notify}
 			onkeydown={handleKeydown}

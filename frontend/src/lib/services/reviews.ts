@@ -82,6 +82,13 @@ export function extractCardDisplay(card: StudyCard): CardDisplay {
 		const text = textField?.value ?? '';
 		const elementId = card.elementId; // e.g. "c1"
 
+		// Extract the answer for the target cloze
+		let clozeAnswer = '';
+		text.replace(/\{\{(c\d+)::([^}]+)\}\}/g, (_, id, content) => {
+			if (id === elementId) clozeAnswer = content;
+			return '';
+		});
+
 		// Front: replace the target cloze with [...], show others filled
 		const front = text.replace(/\{\{(c\d+)::([^}]+)\}\}/g, (_, id, content) => {
 			return id === elementId ? '[...]' : content;
@@ -90,7 +97,7 @@ export function extractCardDisplay(card: StudyCard): CardDisplay {
 		// Back: show all cloze content filled
 		const back = text.replace(/\{\{c\d+::([^}]+)\}\}/g, (_, content) => content);
 
-		return { front, back };
+		return { front, back, isCloze: true, clozeAnswer };
 	}
 
 	// image_occlusion: placeholder for now

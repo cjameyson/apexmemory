@@ -242,7 +242,7 @@ A dedicated test account for AI agents to perform interactive testing:
 | Field | Value |
 |-------|-------|
 | **Email** | `test-agent@apexmemory.ai` |
-| **Password** | `Always$InTheBananaStand!123` |
+| **Password** | `--DozensOfUs123!` |
 | **Username** | `test-agent` |
 | **User ID** | `019501a0-0000-7000-8000-000000000001` |
 
@@ -273,7 +273,7 @@ cd backend && go run ./cmd/seed <command> [flags]
 
 1. Navigate to `/login`
 2. Email: `test-agent@apexmemory.ai`
-3. Password: `Always$InTheBananaStand!123`
+3. Password: `--DozensOfUs123!`
 4. Submit - session cookie set automatically
 
 ### API Testing (Go backend, port 4000)
@@ -281,7 +281,7 @@ cd backend && go run ./cmd/seed <command> [flags]
 # Login
 curl -X POST http://localhost:4000/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"test-agent@apexmemory.ai","password":"Always$InTheBananaStand!123"}'
+  -d '{"email":"test-agent@apexmemory.ai","password":"--DozensOfUs123!"}'
 
 # Use token from response
 curl http://localhost:4000/v1/notebooks \

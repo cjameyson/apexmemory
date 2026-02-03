@@ -2,10 +2,9 @@
 	import { cn } from '$lib/utils';
 	import { Button } from '$lib/components/ui/button';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { ZapIcon, ChevronDownIcon, RepeatIcon, LoaderCircleIcon } from '@lucide/svelte';
+	import { ZapIcon, ChevronDownIcon, LoaderCircleIcon } from '@lucide/svelte';
 	import type { Notebook, ReviewScope, StudyCard } from '$lib/types';
-	import type { ReviewMode } from '$lib/types/review';
-	import { fetchStudyCards, fetchPracticeCards } from '$lib/services/reviews';
+	import { fetchStudyCards } from '$lib/services/reviews';
 
 	interface Props {
 		notebooks: Notebook[];
@@ -22,18 +21,16 @@
 	let totalDue = $derived(notebooks.reduce((sum, nb) => sum + nb.dueCount, 0));
 	let notebooksWithDue = $derived(notebooks.filter((nb) => nb.dueCount > 0));
 
-	async function startReview(mode: ReviewMode, notebook?: Notebook) {
+	async function startReview(notebook?: Notebook) {
 		open = false;
 		loading = true;
 
 		try {
-			const cards = mode === 'scheduled'
-				? await fetchStudyCards(notebook?.id)
-				: await fetchPracticeCards(notebook?.id);
+			const cards = await fetchStudyCards(notebook?.id);
 
 			const scope: ReviewScope = notebook
-				? { type: 'notebook', notebook, mode }
-				: { type: 'all', mode };
+				? { type: 'notebook', notebook, mode: 'scheduled' }
+				: { type: 'all', mode: 'scheduled' };
 
 			onStartReview?.(scope, cards);
 		} finally {
@@ -71,7 +68,7 @@
 			<!-- Scheduled Review -->
 			<DropdownMenu.Item
 				class="gap-3 cursor-pointer"
-				onclick={() => startReview('scheduled')}
+				onclick={() => startReview()}
 			>
 				<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
 					<ZapIcon class="size-4 text-primary-foreground" />
@@ -94,7 +91,7 @@
 							'gap-3 cursor-pointer',
 							currentNotebook?.id === notebook.id && 'bg-primary/10 dark:bg-primary/20'
 						)}
-						onclick={() => startReview('scheduled', notebook)}
+						onclick={() => startReview(notebook)}
 					>
 						<span class="text-lg">{notebook.emoji}</span>
 						<div class="flex-1 min-w-0">
@@ -107,41 +104,7 @@
 				{/each}
 			{/if}
 
-			<!-- Practice Section -->
-			<DropdownMenu.Separator />
-			<DropdownMenu.Label>Practice</DropdownMenu.Label>
-
-			<DropdownMenu.Item
-				class="gap-3 cursor-pointer"
-				onclick={() => startReview('practice')}
-			>
-				<div class="w-8 h-8 bg-amber-500/20 rounded-lg flex items-center justify-center">
-					<RepeatIcon class="size-4 text-amber-500" />
-				</div>
-				<div class="flex-1">
-					<div class="font-medium">Practice All</div>
-					<div class="text-xs text-muted-foreground">
-						Review without affecting schedule
-					</div>
-				</div>
-			</DropdownMenu.Item>
-
-			{#each notebooks as notebook (notebook.id)}
-				{#if notebook.totalCards > 0}
-					<DropdownMenu.Item
-						class="gap-3 cursor-pointer"
-						onclick={() => startReview('practice', notebook)}
-					>
-						<span class="text-lg">{notebook.emoji}</span>
-						<div class="flex-1 min-w-0">
-							<div class="font-medium truncate">{notebook.name}</div>
-						</div>
-						<span class="text-xs text-muted-foreground">Practice</span>
-					</DropdownMenu.Item>
-				{/if}
-			{/each}
-
-			{#if totalDue === 0 && notebooks.every((nb) => nb.totalCards === 0)}
+			{#if totalDue === 0}
 				<div class="px-3 py-4 text-center text-sm text-muted-foreground">
 					No cards available
 				</div>

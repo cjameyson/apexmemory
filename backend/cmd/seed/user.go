@@ -14,7 +14,7 @@ import (
 // Test agent credentials - fixed values for consistent testing
 var (
 	testAgentEmail    = "test-agent@apexmemory.ai"
-	testAgentPassword = "Always$InTheBananaStand!123"
+	testAgentPassword = "--DozensOfUs123!"
 	testAgentUsername = "test-agent"
 	testAgentDisplay  = "Test Agent"
 	testAgentUUID     = uuid.MustParse("019501a0-0000-7000-8000-000000000001")
@@ -35,7 +35,7 @@ Flags:`)
 		fmt.Println(`
 Test agent account credentials:
   Email:    test-agent@apexmemory.ai
-  Password: Always$InTheBananaStand!123
+  Password: --DozensOfUs123!
   Username: test-agent
   User ID:  019501a0-0000-7000-8000-000000000001`)
 	}

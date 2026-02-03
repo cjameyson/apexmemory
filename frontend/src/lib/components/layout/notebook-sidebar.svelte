@@ -10,8 +10,7 @@
 		PlusIcon,
 		PanelLeftCloseIcon,
 		PanelLeftOpenIcon,
-		SettingsIcon,
-		SearchIcon
+		SettingsIcon
 	} from '@lucide/svelte';
 	import type { Notebook, Source, Card } from '$lib/types';
 
@@ -149,8 +148,8 @@
 						href="/notebooks/{notebook.id}/facts"
 						class="text-muted-foreground hover:bg-accent flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors"
 					>
-						<SearchIcon class="size-4" />
-						<span>Browse</span>
+						<LayersIcon class="size-4" />
+						<span>Manage</span>
 					</a>
 				</div>
 			</SidebarSection>

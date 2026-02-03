@@ -2,18 +2,60 @@
 	import type { FactStats, FactDetail } from '$lib/types/fact';
 	import type { ApiFactDetail } from '$lib/api/types';
 	import type { FactFormData } from '$lib/components/facts/create-fact-modal.svelte';
+	import type { Notebook } from '$lib/types';
 	import { toFactDetail } from '$lib/services/facts';
-	import { PlusIcon } from '@lucide/svelte';
-	import { invalidateAll } from '$app/navigation';
+	import { fetchStudyCards, fetchPracticeCards } from '$lib/services/reviews';
+	import { PlusIcon, ZapIcon, RepeatIcon, LoaderCircleIcon } from '@lucide/svelte';
+	import { invalidateAll, pushState } from '$app/navigation';
 	import QuickStats from './QuickStats.svelte';
 	import CreateFactModal from '$lib/components/facts/create-fact-modal.svelte';
 
-	let { stats, notebookId }: { stats: FactStats; notebookId: string } = $props();
+	let { stats, notebookId, notebook }: { stats: FactStats; notebookId: string; notebook: Notebook } = $props();
 
 	let modalOpen = $state(false);
 	let editingFact = $state<FactDetail | null>(null);
 	let fetchError = $state<string | null>(null);
 	let editRequestId = 0;
+	let isLoadingReview = $state(false);
+	let isLoadingPractice = $state(false);
+
+	async function startReview() {
+		isLoadingReview = true;
+		try {
+			const cards = await fetchStudyCards(notebookId);
+			pushState('', {
+				focusMode: {
+					type: 'notebook',
+					mode: 'scheduled',
+					notebookId,
+					notebookName: notebook.name,
+					notebookEmoji: notebook.emoji,
+					cards
+				}
+			});
+		} finally {
+			isLoadingReview = false;
+		}
+	}
+
+	async function startPractice() {
+		isLoadingPractice = true;
+		try {
+			const cards = await fetchPracticeCards(notebookId);
+			pushState('', {
+				focusMode: {
+					type: 'notebook',
+					mode: 'practice',
+					notebookId,
+					notebookName: notebook.name,
+					notebookEmoji: notebook.emoji,
+					cards
+				}
+			});
+		} finally {
+			isLoadingPractice = false;
+		}
+	}
 
 	export async function openEdit(factId: string) {
 		fetchError = null;
@@ -41,7 +83,7 @@
 		return () => clearTimeout(timer);
 	});
 
-	function openCreate() {
+	export function openCreate() {
 		editingFact = null;
 		modalOpen = true;
 	}
@@ -90,12 +132,30 @@
 			</p>
 		</div>
 		<div class="flex items-center gap-2">
-			<a
-				href="/notebooks/{notebookId}/review"
-				class="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium"
+			<button
+				onclick={startPractice}
+				disabled={isLoadingPractice || stats.totalCards === 0}
+				class="border-border text-foreground hover:bg-accent disabled:opacity-50 inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors"
 			>
+				{#if isLoadingPractice}
+					<LoaderCircleIcon class="h-4 w-4 animate-spin" />
+				{:else}
+					<RepeatIcon class="h-4 w-4" />
+				{/if}
+				Practice
+			</button>
+			<button
+				onclick={startReview}
+				disabled={isLoadingReview || stats.totalDue === 0}
+				class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+			>
+				{#if isLoadingReview}
+					<LoaderCircleIcon class="h-4 w-4 animate-spin" />
+				{:else}
+					<ZapIcon class="h-4 w-4" />
+				{/if}
 				Review ({stats.totalDue})
-			</a>
+			</button>
 			<button
 				class="bg-foreground text-background hover:bg-foreground/90 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium"
 				onclick={openCreate}

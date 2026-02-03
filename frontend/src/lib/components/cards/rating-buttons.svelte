@@ -47,27 +47,21 @@
 
 <div class={cn('flex items-center gap-3', className)}>
 	{#each buttons as btn (btn.rating)}
-		<button
-			type="button"
-			onclick={() => handleRate(btn.rating)}
-			{disabled}
-			class={cn(
-				'flex-1 flex flex-col items-center gap-1 px-4 py-3 rounded-xl text-white font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900',
-				btn.color,
-				disabled && 'opacity-50 cursor-not-allowed'
-			)}
-		>
-			<span class="text-sm">{btn.label}</span>
-			<span class="text-xs opacity-80">{getInterval(btn.rating)}</span>
-		</button>
-	{/each}
-</div>
-
-<div class="flex items-center justify-center gap-4 mt-3 text-xs text-white/50">
-	{#each buttons as btn (btn.rating)}
-		<span>
-			<kbd class="px-1.5 py-0.5 bg-white/10 rounded">{btn.key}</kbd>
-			{btn.label}
-		</span>
+		<div class="flex-1 flex flex-col items-center gap-2">
+			<button
+				type="button"
+				onclick={() => handleRate(btn.rating)}
+				{disabled}
+				class={cn(
+					'w-full flex flex-col items-center gap-1 px-4 py-3 rounded-xl text-white font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900',
+					btn.color,
+					disabled && 'opacity-50 cursor-not-allowed'
+				)}
+			>
+				<span class="text-sm">{btn.label}</span>
+				<span class="text-xs opacity-80">{getInterval(btn.rating)}</span>
+			</button>
+			<kbd class="px-1.5 py-0.5 bg-white/10 rounded text-xs text-white/50">{btn.key}</kbd>
+		</div>
 	{/each}
 </div>

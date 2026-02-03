@@ -72,8 +72,8 @@
 
 		<!-- Right group -->
 		<div class="flex items-center gap-2">
-			<!-- Search trigger -->
-			<SearchTrigger onclick={handleOpenSearch} />
+			<!-- Search trigger (hidden for now) -->
+			<!-- <SearchTrigger onclick={handleOpenSearch} /> -->
 
 			<!-- Review launcher -->
 			<ReviewLauncher {notebooks} {currentNotebook} onStartReview={handleStartReview} />

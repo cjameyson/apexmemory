@@ -21,4 +21,6 @@ export interface StudyCard {
 export interface CardDisplay {
 	front: string;
 	back: string;
+	isCloze?: boolean;
+	clozeAnswer?: string;
 }
