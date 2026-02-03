@@ -207,7 +207,6 @@
 		</div>
 
 		<div class="flex items-center gap-3 text-white/70">
-			<span class="text-sm">{currentIndex + 1}/{cardQueue.length}</span>
 			<div class="w-24 h-2 bg-white/20 rounded-full overflow-hidden">
 				<div
 					class="h-full bg-white transition-all duration-300"

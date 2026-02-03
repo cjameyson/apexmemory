@@ -14,7 +14,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const search = url.searchParams.get('q') || '';
 	const sort = url.searchParams.get('sort') || '';
 	const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10));
-	const pageSize = 5;
+	const pageSize = 20;
 	const offset = (page - 1) * pageSize;
 
 	// Build API query string
