@@ -1,8 +1,7 @@
 # TODO
 
-# TODO
-
 ## Ideas
+Quick descriptions of bigger ideas or not fully formed thoughts that may be useful features.
 
 ### Source Decomposition
 Large PDFs (up to 1GB, 500 pages) should be broken into logical chunks (chapters, sections) for easier processing and chat navigation. Detection via PDF inspection, OCR, and LLM. Requires a sophisticated source processing pipeline.
@@ -35,26 +34,28 @@ Add a special source type for practice tests or previous exams. This allows the 
 
 ---
 
+## Bugs
 
-## Active
-
-### Bugs
-
-### Frontend
+Add known bugs here.
+- [ ] **`stripHtml` is naive** - `fact-display.ts` uses `/<[^>]*>/g` which breaks on edge cases like `<img alt="a>b">` or malformed HTML. Acceptable for display-only truncation but consider a proper sanitizer if user-authored HTML is allowed in fields.
 
 
+## Frontend
 
+**Minor tweaks**
+- [ ] Improve rendered cloze cards style, and hint capability
+- [ ] Handle the back extra fields on card rendering
+
+**Major features**
 - [ ] Generic 'select text' -> take action capability (create cards, add to notes, summarize, explain)
 - [ ] Screen grab capability for image occlusion cards (or support paste from native screenshot tool)
-- [ ] **image_occlusion region counting may be incorrect** - `fact-display.ts` line 61 filters fields by `f.type === 'image_occlusion'` to count regions. Verify against actual image_occlusion content shape from backend (the regions are nested inside the field, not separate fields). The current logic likely returns 1 (the image field itself) rather than the actual region count.
-- [ ] **`stripHtml` is naive** - `fact-display.ts` uses `/<[^>]*>/g` which breaks on edge cases like `<img alt="a>b">` or malformed HTML. Acceptable for display-only truncation but consider a proper sanitizer if user-authored HTML is allowed in fields.
-- [ ] **Expanded row `<tr>` has no keyed association** - In `FactTableRow.svelte`, the `{#if expanded}` block renders a second `<tr>` outside the `{#each}` key scope. If Svelte reorders rows during keyed updates, the expanded row could theoretically detach. Not a practical issue with current structure but worth noting.
 
-
-### Backend
+## Backend
+- [ ] Verify notebook fsrs settings are utilized in the relevant places
+- [ ] Assets for image occlusion cards, are these sources? or use separate assets table?
 - [ ] Slugify notebook and sources on creation/edit - append nanoid to end if collision.  Use slugs for URLs
-- [ ] Determine best way to automatically apply migrations to the test database during unit tests
-- [ ] Add pagination to ListNotebooks endpoint (deferred: max notebooks per user is sub-100)
+- [x] Determine best way to automatically apply migrations to the test database during unit tests
+- [x] Add pagination to ListNotebooks endpoint (deferred: max notebooks per user is sub-100)
 - [ ] Consider storing desired_retention as separate column for performance optimization on high-volume lists
 - [ ] Add PUT /v1/notebooks/{id}/unarchive endpoint (query exists but not exposed)
 
