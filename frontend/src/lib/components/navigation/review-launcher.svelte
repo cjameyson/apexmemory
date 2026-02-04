@@ -5,6 +5,7 @@
 	import { ZapIcon, ChevronDownIcon, LoaderCircleIcon } from '@lucide/svelte';
 	import type { Notebook, ReviewScope, StudyCard } from '$lib/types';
 	import { fetchStudyCards } from '$lib/services/reviews';
+	import { studyCounts } from '$lib/stores/study-counts.svelte';
 
 	interface Props {
 		notebooks: Notebook[];
@@ -18,8 +19,12 @@
 	let open = $state(false);
 	let loading = $state(false);
 
-	let totalDue = $derived(notebooks.reduce((sum, nb) => sum + nb.dueCount, 0));
-	let notebooksWithDue = $derived(notebooks.filter((nb) => nb.dueCount > 0));
+	// Use store for totalDue (stays in sync after reviews)
+	let totalDue = $derived(studyCounts.getTotalDue());
+	// Filter notebooks with due cards using store
+	let notebooksWithDue = $derived(
+		notebooks.filter((nb) => studyCounts.getDueCount(nb.id) > 0)
+	);
 
 	async function startReview(notebook?: Notebook) {
 		open = false;
@@ -98,7 +103,7 @@
 							<div class="font-medium truncate">{notebook.name}</div>
 						</div>
 						<span class="text-sm font-medium text-primary">
-							{notebook.dueCount}
+							{studyCounts.getDueCount(notebook.id)}
 						</span>
 					</DropdownMenu.Item>
 				{/each}

@@ -9,8 +9,12 @@
 	import { invalidateAll, pushState } from '$app/navigation';
 	import QuickStats from './QuickStats.svelte';
 	import CreateFactModal from '$lib/components/facts/create-fact-modal.svelte';
+	import { studyCounts } from '$lib/stores/study-counts.svelte';
 
 	let { stats, notebookId, notebook }: { stats: FactStats; notebookId: string; notebook: Notebook } = $props();
+
+	// Use store for live due count (stays in sync after reviews)
+	let dueCount = $derived(studyCounts.getDueCount(notebookId));
 
 	let modalOpen = $state(false);
 	let editingFact = $state<FactDetail | null>(null);
@@ -114,6 +118,8 @@
 			}
 		}
 
+		// Refresh study counts (new cards may be due)
+		await studyCounts.refresh();
 		await invalidateAll();
 	}
 </script>
@@ -128,7 +134,7 @@
 		<div>
 			<h2 class="text-xl font-bold">Facts & Cards</h2>
 			<p class="text-muted-foreground text-sm">
-				{stats.totalFacts} facts &middot; {stats.totalCards} cards &middot; {stats.totalDue} due for review
+				{stats.totalFacts} facts &middot; {stats.totalCards} cards &middot; {dueCount} due for review
 			</p>
 		</div>
 		<div class="flex items-center gap-2">
@@ -146,7 +152,7 @@
 			</button>
 			<button
 				onclick={startReview}
-				disabled={isLoadingReview || stats.totalDue === 0}
+				disabled={isLoadingReview || dueCount === 0}
 				class="bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
 			>
 				{#if isLoadingReview}
@@ -154,7 +160,7 @@
 				{:else}
 					<ZapIcon class="h-4 w-4" />
 				{/if}
-				Review ({stats.totalDue})
+				Review ({dueCount})
 			</button>
 			<button
 				class="bg-foreground text-background hover:bg-foreground/90 inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium"

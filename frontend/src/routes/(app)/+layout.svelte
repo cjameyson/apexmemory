@@ -10,8 +10,19 @@
 	import type { ReviewMode } from '$lib/types/review';
 	import { toNotebooksWithCounts } from '$lib/services/notebooks';
 	import { fetchStudyCards, fetchPracticeCards } from '$lib/services/reviews';
+	import { studyCounts } from '$lib/stores/study-counts.svelte';
 
 	let { data, children } = $props();
+
+	// Initialize study counts store from SSR data and start polling
+	onMount(() => {
+		studyCounts.initialize(data.studyCounts);
+		studyCounts.startPolling();
+
+		return () => {
+			studyCounts.stopPolling();
+		};
+	});
 
 	// Transform API data to frontend types with study counts
 	let notebooks = $derived(toNotebooksWithCounts(data.notebooks, data.studyCounts));
@@ -116,7 +127,9 @@
 		}
 	}
 
-	function exitFocusMode() {
+	async function exitFocusMode() {
+		// Refresh study counts after session ends
+		await studyCounts.refresh();
 		history.back();
 	}
 
