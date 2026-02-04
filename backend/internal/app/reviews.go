@@ -189,11 +189,21 @@ func (app *Application) submitReview(ctx context.Context, userID uuid.UUID, req 
 			undoSnapshot.LastReview = &lr
 		}
 
+		// Fetch notebook to get FSRS settings
+		notebook, txErr := q.GetNotebook(ctx, db.GetNotebookParams{
+			UserID: userID,
+			ID:     card.NotebookID,
+		})
+		if txErr != nil {
+			return fmt.Errorf("get notebook for FSRS settings: %w", txErr)
+		}
+		fsrsSettings := parseFSRSSettings(notebook.FsrsSettings)
+
 		// Map DB card to FSRS card
 		fsrsCard := dbCardToFSRS(card)
 
-		// Build scheduler with fuzzing enabled for natural interval variation
-		scheduler, txErr := fsrs.NewScheduler(fsrs.WithEnableFuzzing(true))
+		// Build scheduler from notebook settings (fuzzing enabled for natural variation)
+		scheduler, txErr := buildSchedulerFromSettings(fsrsSettings, false)
 		if txErr != nil {
 			return txErr
 		}
@@ -369,7 +379,23 @@ func (app *Application) getStudyCards(ctx context.Context, userID uuid.UUID, not
 		return nil, err
 	}
 
-	scheduler, err := fsrs.NewScheduler(fsrs.WithEnableFuzzing(false))
+	// Get FSRS settings from the specific notebook, or use defaults for global queries
+	var fsrsSettings FSRSSettings
+	if notebookID != nil {
+		notebook, err := app.Queries.GetNotebook(ctx, db.GetNotebookParams{
+			UserID: userID,
+			ID:     *notebookID,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("get notebook for FSRS settings: %w", err)
+		}
+		fsrsSettings = parseFSRSSettings(notebook.FsrsSettings)
+	} else {
+		fsrsSettings = DefaultFSRSSettings()
+	}
+
+	// Build scheduler with fuzzing disabled for deterministic interval previews
+	scheduler, err := buildSchedulerFromSettings(fsrsSettings, true)
 	if err != nil {
 		return nil, err
 	}
@@ -412,7 +438,23 @@ func (app *Application) getPracticeCards(ctx context.Context, userID uuid.UUID, 
 		return nil, 0, err
 	}
 
-	scheduler, err := fsrs.NewScheduler(fsrs.WithEnableFuzzing(false))
+	// Get FSRS settings from the specific notebook, or use defaults for global queries
+	var fsrsSettings FSRSSettings
+	if notebookID != nil {
+		notebook, err := app.Queries.GetNotebook(ctx, db.GetNotebookParams{
+			UserID: userID,
+			ID:     *notebookID,
+		})
+		if err != nil {
+			return nil, 0, fmt.Errorf("get notebook for FSRS settings: %w", err)
+		}
+		fsrsSettings = parseFSRSSettings(notebook.FsrsSettings)
+	} else {
+		fsrsSettings = DefaultFSRSSettings()
+	}
+
+	// Build scheduler with fuzzing disabled for deterministic interval previews
+	scheduler, err := buildSchedulerFromSettings(fsrsSettings, true)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -529,6 +571,43 @@ func fsrsStateToDBState(state fsrs.State) db.AppCardState {
 	default:
 		return db.AppCardStateLearning
 	}
+}
+
+// buildSchedulerFromSettings creates a scheduler from notebook FSRS settings.
+// The disableFuzzing parameter allows interval previews to be deterministic.
+func buildSchedulerFromSettings(settings FSRSSettings, disableFuzzing bool) (*fsrs.Scheduler, error) {
+	opts := []fsrs.Option{
+		fsrs.WithDesiredRetention(settings.DesiredRetention),
+		fsrs.WithMaximumInterval(settings.MaximumInterval),
+		fsrs.WithEnableFuzzing(settings.EnableFuzzing && !disableFuzzing),
+	}
+
+	// Convert learning steps from seconds (int) to time.Duration
+	if len(settings.LearningSteps) > 0 {
+		steps := make([]time.Duration, len(settings.LearningSteps))
+		for i, s := range settings.LearningSteps {
+			steps[i] = time.Duration(s) * time.Second
+		}
+		opts = append(opts, fsrs.WithLearningSteps(steps))
+	}
+
+	// Convert relearning steps from seconds (int) to time.Duration
+	if len(settings.RelearningSteps) > 0 {
+		steps := make([]time.Duration, len(settings.RelearningSteps))
+		for i, s := range settings.RelearningSteps {
+			steps[i] = time.Duration(s) * time.Second
+		}
+		opts = append(opts, fsrs.WithRelearningSteps(steps))
+	}
+
+	// Use custom params if provided and valid length
+	if len(settings.Params) == fsrs.NumParams {
+		var params [fsrs.NumParams]float64
+		copy(params[:], settings.Params)
+		opts = append(opts, fsrs.WithParams(params))
+	}
+
+	return fsrs.NewScheduler(opts...)
 }
 
 // ratingFromString converts a string rating to FSRS Rating.

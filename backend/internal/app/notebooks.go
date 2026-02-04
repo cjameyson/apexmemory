@@ -24,6 +24,15 @@ type FSRSSettings struct {
 	EnableFuzzing    bool      `json:"enable_fuzzing"`
 }
 
+// parseFSRSSettings extracts FSRS settings from a notebook's JSON, falling back to defaults.
+func parseFSRSSettings(data []byte) FSRSSettings {
+	var settings FSRSSettings
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return DefaultFSRSSettings()
+	}
+	return settings
+}
+
 // DefaultFSRSSettings returns the default FSRS v6 settings.
 // This is the canonical source of truth for FSRS defaults.
 func DefaultFSRSSettings() FSRSSettings {
