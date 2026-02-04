@@ -114,6 +114,24 @@ func (q *Queries) GetNotebook(ctx context.Context, arg GetNotebookParams) (Noteb
 	return i, err
 }
 
+const getNotebookFSRSSettings = `-- name: GetNotebookFSRSSettings :one
+SELECT fsrs_settings FROM app.notebooks
+WHERE user_id = $1 AND id = $2
+`
+
+type GetNotebookFSRSSettingsParams struct {
+	UserID uuid.UUID `json:"user_id"`
+	ID     uuid.UUID `json:"id"`
+}
+
+// Lightweight query to fetch only FSRS settings for scheduling.
+func (q *Queries) GetNotebookFSRSSettings(ctx context.Context, arg GetNotebookFSRSSettingsParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, getNotebookFSRSSettings, arg.UserID, arg.ID)
+	var fsrs_settings []byte
+	err := row.Scan(&fsrs_settings)
+	return fsrs_settings, err
+}
+
 const isNotebookArchived = `-- name: IsNotebookArchived :one
 SELECT EXISTS(SELECT 1 FROM app.notebooks n WHERE n.user_id = $1 AND n.id = $2) as exists,
        EXISTS(SELECT 1 FROM app.notebooks n WHERE n.user_id = $1 AND n.id = $2 AND n.archived_at IS NOT NULL) as is_archived

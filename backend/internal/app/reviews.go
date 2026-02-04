@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"time"
 
@@ -192,8 +193,11 @@ func (app *Application) submitReview(ctx context.Context, userID uuid.UUID, req 
 		// Map DB card to FSRS card
 		fsrsCard := dbCardToFSRS(card)
 
-		// Build scheduler with fuzzing enabled for natural interval variation
-		scheduler, txErr := fsrs.NewScheduler(fsrs.WithEnableFuzzing(true))
+		// Fetch notebook FSRS settings (falls back to defaults on error)
+		settings := getFSRSSettingsWithFallback(ctx, q, userID, card.NotebookID)
+
+		// Build scheduler with notebook settings; use setting's fuzzing preference for actual reviews
+		scheduler, txErr := newSchedulerFromSettings(settings, settings.EnableFuzzing)
 		if txErr != nil {
 			return txErr
 		}
@@ -369,14 +373,16 @@ func (app *Application) getStudyCards(ctx context.Context, userID uuid.UUID, not
 		return nil, err
 	}
 
-	scheduler, err := fsrs.NewScheduler(fsrs.WithEnableFuzzing(false))
-	if err != nil {
-		return nil, err
-	}
+	// Lazily cache schedulers per notebook (cards can span multiple notebooks when notebookID is nil)
+	cache := newSchedulerCache(ctx, app.Queries, userID, false) // fuzzing OFF for previews
 
 	result := make([]StudyCard, len(rows))
 	for i, row := range rows {
 		card := studyRowToCard(row)
+		scheduler, err := cache.Get(row.NotebookID)
+		if err != nil {
+			return nil, err
+		}
 		result[i] = StudyCard{
 			CardResponse: toCardResponse(card),
 			FactType:     row.FactType,
@@ -412,14 +418,16 @@ func (app *Application) getPracticeCards(ctx context.Context, userID uuid.UUID, 
 		return nil, 0, err
 	}
 
-	scheduler, err := fsrs.NewScheduler(fsrs.WithEnableFuzzing(false))
-	if err != nil {
-		return nil, 0, err
-	}
+	// Lazily cache schedulers per notebook (cards can span multiple notebooks when notebookID is nil)
+	cache := newSchedulerCache(ctx, app.Queries, userID, false) // fuzzing OFF for previews
 
 	result := make([]StudyCard, len(rows))
 	for i, row := range rows {
 		card := practiceRowToCard(row)
+		scheduler, err := cache.Get(row.NotebookID)
+		if err != nil {
+			return nil, 0, err
+		}
 		result[i] = StudyCard{
 			CardResponse: toCardResponse(card),
 			FactType:     row.FactType,
@@ -471,6 +479,102 @@ func formatInterval(d time.Duration) string {
 		months = 1
 	}
 	return fmt.Sprintf("%dmo", months)
+}
+
+// newSchedulerFromSettings creates a scheduler from notebook FSRS settings.
+// enableFuzzing override allows disabling fuzzing for interval previews while
+// respecting the setting for actual reviews.
+func newSchedulerFromSettings(settings FSRSSettings, enableFuzzing bool) (*fsrs.Scheduler, error) {
+	// Convert []float64 params to [fsrs.NumParams]float64
+	var params [fsrs.NumParams]float64
+	copy(params[:], settings.Params)
+
+	// Convert []int (seconds) to []time.Duration
+	learningSteps := make([]time.Duration, len(settings.LearningSteps))
+	for i, s := range settings.LearningSteps {
+		learningSteps[i] = time.Duration(s) * time.Second
+	}
+
+	relearningSteps := make([]time.Duration, len(settings.RelearningSteps))
+	for i, s := range settings.RelearningSteps {
+		relearningSteps[i] = time.Duration(s) * time.Second
+	}
+
+	return fsrs.NewScheduler(
+		fsrs.WithParams(params),
+		fsrs.WithDesiredRetention(settings.DesiredRetention),
+		fsrs.WithLearningSteps(learningSteps),
+		fsrs.WithRelearningSteps(relearningSteps),
+		fsrs.WithMaximumInterval(settings.MaximumInterval),
+		fsrs.WithEnableFuzzing(enableFuzzing),
+	)
+}
+
+// schedulerCache lazily creates and caches FSRS schedulers per notebook.
+// This avoids redundant settings fetches and scheduler initialization when
+// processing cards from multiple notebooks in a single request.
+type schedulerCache struct {
+	schedulers map[uuid.UUID]*fsrs.Scheduler
+	ctx        context.Context
+	q          *db.Queries
+	userID     uuid.UUID
+	fuzzing    bool
+}
+
+// newSchedulerCache creates a new scheduler cache.
+func newSchedulerCache(ctx context.Context, q *db.Queries, userID uuid.UUID, fuzzing bool) *schedulerCache {
+	return &schedulerCache{
+		schedulers: make(map[uuid.UUID]*fsrs.Scheduler),
+		ctx:        ctx,
+		q:          q,
+		userID:     userID,
+		fuzzing:    fuzzing,
+	}
+}
+
+// Get returns the scheduler for a notebook, creating it if necessary.
+func (c *schedulerCache) Get(notebookID uuid.UUID) (*fsrs.Scheduler, error) {
+	if s, ok := c.schedulers[notebookID]; ok {
+		return s, nil
+	}
+
+	settings := getFSRSSettingsWithFallback(c.ctx, c.q, c.userID, notebookID)
+	s, err := newSchedulerFromSettings(settings, c.fuzzing)
+	if err != nil {
+		return nil, err
+	}
+
+	c.schedulers[notebookID] = s
+	return s, nil
+}
+
+// getFSRSSettingsWithFallback fetches FSRS settings for a notebook, falling back
+// to defaults on any error. Logs warnings when fallback is used.
+func getFSRSSettingsWithFallback(ctx context.Context, q *db.Queries, userID, notebookID uuid.UUID) FSRSSettings {
+	settingsJSON, err := q.GetNotebookFSRSSettings(ctx, db.GetNotebookFSRSSettingsParams{
+		UserID: userID,
+		ID:     notebookID,
+	})
+	if err != nil {
+		slog.Warn("failed to fetch FSRS settings, using defaults",
+			"notebook_id", notebookID,
+			"user_id", userID,
+			"error", err,
+		)
+		return DefaultFSRSSettings()
+	}
+
+	var settings FSRSSettings
+	if err := json.Unmarshal(settingsJSON, &settings); err != nil {
+		slog.Warn("failed to parse FSRS settings, using defaults",
+			"notebook_id", notebookID,
+			"user_id", userID,
+			"error", err,
+		)
+		return DefaultFSRSSettings()
+	}
+
+	return settings
 }
 
 // dbCardToFSRS converts a database Card to an FSRS Card.

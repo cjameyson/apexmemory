@@ -51,7 +51,7 @@ Add known bugs here.
 - [ ] Screen grab capability for image occlusion cards (or support paste from native screenshot tool)
 
 ## Backend
-- [ ] Verify notebook fsrs settings are utilized in the relevant places
+- [x] Verify notebook fsrs settings are utilized in the relevant places, fixed
 - [ ] Assets for image occlusion cards, are these sources? or use separate assets table?
 - [ ] Slugify notebook and sources on creation/edit - append nanoid to end if collision.  Use slugs for URLs
 - [x] Determine best way to automatically apply migrations to the test database during unit tests

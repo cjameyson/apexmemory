@@ -1088,3 +1088,237 @@ func TestParseDateInvalid(t *testing.T) {
 		})
 	}
 }
+
+// -----------------------------------------------------------------------------
+// FSRS Settings Tests
+// -----------------------------------------------------------------------------
+
+func TestSubmitReview_UsesNotebookFSRSSettings(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	// Create notebook with default settings (retention=0.9)
+	nbDefault := createTestNotebook(t, app, user.ID)
+	_, cardsDefault, err := app.CreateFact(t.Context(), user.ID, nbDefault, "basic", basicContent())
+	if err != nil {
+		t.Fatalf("failed to create fact: %v", err)
+	}
+	cardDefault := cardsDefault[0].ID
+
+	// Create notebook with custom retention (0.8 = easier retention = longer intervals)
+	nbCustom := createTestNotebook(t, app, user.ID)
+	customRetention := 0.8
+	_, err = app.UpdateNotebook(t.Context(), user.ID, nbCustom, UpdateNotebookParams{
+		DesiredRetention: &customRetention,
+	})
+	if err != nil {
+		t.Fatalf("failed to update notebook retention: %v", err)
+	}
+	_, cardsCustom, err := app.CreateFact(t.Context(), user.ID, nbCustom, "basic", basicContent())
+	if err != nil {
+		t.Fatalf("failed to create fact: %v", err)
+	}
+	cardCustom := cardsCustom[0].ID
+
+	// Review both cards with "good" rating
+	reviewDefault := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      uuid.New().String(),
+		"card_id": cardDefault.String(),
+		"rating":  "good",
+		"mode":    "scheduled",
+	})
+	reviewDefault = app.WithUser(reviewDefault, user)
+	rrDefault := httptest.NewRecorder()
+	app.SubmitReviewHandler(rrDefault, reviewDefault)
+	if rrDefault.Code != http.StatusOK {
+		t.Fatalf("default review failed: %d. Body: %s", rrDefault.Code, rrDefault.Body.String())
+	}
+
+	reviewCustom := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      uuid.New().String(),
+		"card_id": cardCustom.String(),
+		"rating":  "good",
+		"mode":    "scheduled",
+	})
+	reviewCustom = app.WithUser(reviewCustom, user)
+	rrCustom := httptest.NewRecorder()
+	app.SubmitReviewHandler(rrCustom, reviewCustom)
+	if rrCustom.Code != http.StatusOK {
+		t.Fatalf("custom review failed: %d. Body: %s", rrCustom.Code, rrCustom.Body.String())
+	}
+
+	// Parse responses and compare due dates
+	var respDefault, respCustom map[string]any
+	decodeResponse(t, rrDefault, &respDefault)
+	decodeResponse(t, rrCustom, &respCustom)
+
+	cardRespDefault := respDefault["card"].(map[string]any)
+	cardRespCustom := respCustom["card"].(map[string]any)
+
+	dueDefaultStr := cardRespDefault["due"].(string)
+	dueCustomStr := cardRespCustom["due"].(string)
+
+	dueDefault, _ := time.Parse(time.RFC3339, dueDefaultStr)
+	dueCustom, _ := time.Parse(time.RFC3339, dueCustomStr)
+
+	// Lower retention (0.8) means the user accepts more forgetting,
+	// so the interval should be LONGER than default (0.9)
+	if !dueCustom.After(dueDefault) {
+		t.Errorf("expected custom retention (0.8) to produce longer interval than default (0.9). Default due: %v, Custom due: %v",
+			dueDefault, dueCustom)
+	}
+}
+
+func TestGetStudyCards_UsesNotebookFSRSSettings(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	// Create notebook with custom retention
+	nbID := createTestNotebook(t, app, user.ID)
+	customRetention := 0.8
+	_, err := app.UpdateNotebook(t.Context(), user.ID, nbID, UpdateNotebookParams{
+		DesiredRetention: &customRetention,
+	})
+	if err != nil {
+		t.Fatalf("failed to update notebook retention: %v", err)
+	}
+
+	// Create a card
+	_, _, err = app.CreateFact(t.Context(), user.ID, nbID, "basic", basicContent())
+	if err != nil {
+		t.Fatalf("failed to create fact: %v", err)
+	}
+
+	// Get study cards - should include interval previews based on custom settings
+	req := httptest.NewRequest("GET", "/v1/reviews/study?notebook_id="+nbID.String(), nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetStudyCardsHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp []map[string]any
+	decodeResponse(t, rr, &resp)
+
+	if len(resp) != 1 {
+		t.Fatalf("expected 1 study card, got %d", len(resp))
+	}
+
+	// Verify intervals are present
+	intervals, ok := resp[0]["intervals"].(map[string]any)
+	if !ok {
+		t.Fatal("expected intervals object")
+	}
+
+	// Intervals should be non-empty (basic sanity check)
+	for _, key := range []string{"again", "hard", "good", "easy"} {
+		if intervals[key] == nil || intervals[key] == "" {
+			t.Errorf("expected non-empty interval for %s", key)
+		}
+	}
+}
+
+func TestGetStudyCards_MultiNotebook_UsesDifferentSettings(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	// Create two notebooks with different retention settings
+	nb1 := createTestNotebook(t, app, user.ID)
+	retention1 := 0.9 // higher retention = shorter intervals
+	_, err := app.UpdateNotebook(t.Context(), user.ID, nb1, UpdateNotebookParams{
+		DesiredRetention: &retention1,
+	})
+	if err != nil {
+		t.Fatalf("failed to update notebook 1: %v", err)
+	}
+
+	nb2 := createTestNotebook(t, app, user.ID)
+	retention2 := 0.7 // lower retention = longer intervals
+	_, err = app.UpdateNotebook(t.Context(), user.ID, nb2, UpdateNotebookParams{
+		DesiredRetention: &retention2,
+	})
+	if err != nil {
+		t.Fatalf("failed to update notebook 2: %v", err)
+	}
+
+	// Create cards in both notebooks
+	_, _, err = app.CreateFact(t.Context(), user.ID, nb1, "basic", basicContent())
+	if err != nil {
+		t.Fatalf("failed to create fact in nb1: %v", err)
+	}
+	_, _, err = app.CreateFact(t.Context(), user.ID, nb2, "basic", basicContent())
+	if err != nil {
+		t.Fatalf("failed to create fact in nb2: %v", err)
+	}
+
+	// Get study cards across all notebooks (global query)
+	req := httptest.NewRequest("GET", "/v1/reviews/study", nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetStudyCardsHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp []map[string]any
+	decodeResponse(t, rr, &resp)
+
+	if len(resp) != 2 {
+		t.Fatalf("expected 2 study cards, got %d", len(resp))
+	}
+
+	// Map cards by notebook ID to compare their intervals
+	cardsByNotebook := make(map[string]map[string]any)
+	for _, card := range resp {
+		nbID := card["notebook_id"].(string)
+		cardsByNotebook[nbID] = card
+	}
+
+	card1 := cardsByNotebook[nb1.String()]
+	card2 := cardsByNotebook[nb2.String()]
+
+	if card1 == nil || card2 == nil {
+		t.Fatalf("expected cards from both notebooks")
+	}
+
+	intervals1, ok := card1["intervals"].(map[string]any)
+	if !ok {
+		t.Fatal("expected intervals object for card 1")
+	}
+	intervals2, ok := card2["intervals"].(map[string]any)
+	if !ok {
+		t.Fatal("expected intervals object for card 2")
+	}
+
+	// Verify all intervals are present
+	for _, key := range []string{"again", "hard", "good", "easy"} {
+		if intervals1[key] == nil || intervals1[key] == "" {
+			t.Errorf("card 1: expected non-empty interval for %s", key)
+		}
+		if intervals2[key] == nil || intervals2[key] == "" {
+			t.Errorf("card 2: expected non-empty interval for %s", key)
+		}
+	}
+
+	// Lower retention (0.7) should produce LONGER intervals than higher retention (0.9)
+	// for at least one rating. We check "good" as it's the most common rating.
+	good1 := intervals1["good"].(string)
+	good2 := intervals2["good"].(string)
+
+	// For new cards in learning, the intervals might be the same (both use learning steps).
+	// But the "easy" rating graduates immediately to review, so it should differ.
+	easy1 := intervals1["easy"].(string)
+	easy2 := intervals2["easy"].(string)
+
+	// At least one of good/easy should differ between the two retention levels
+	if good1 == good2 && easy1 == easy2 {
+		t.Errorf("expected different intervals for different retention settings. "+
+			"nb1 (0.9): good=%s easy=%s, nb2 (0.7): good=%s easy=%s",
+			good1, easy1, good2, easy2)
+	}
+}

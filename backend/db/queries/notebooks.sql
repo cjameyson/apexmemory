@@ -60,3 +60,8 @@ WHERE user_id = @user_id AND id = @id AND archived_at IS NOT NULL;
 -- Used for idempotent archive operations.
 SELECT EXISTS(SELECT 1 FROM app.notebooks n WHERE n.user_id = @user_id AND n.id = @id) as exists,
        EXISTS(SELECT 1 FROM app.notebooks n WHERE n.user_id = @user_id AND n.id = @id AND n.archived_at IS NOT NULL) as is_archived;
+
+-- name: GetNotebookFSRSSettings :one
+-- Lightweight query to fetch only FSRS settings for scheduling.
+SELECT fsrs_settings FROM app.notebooks
+WHERE user_id = @user_id AND id = @id;

@@ -44,6 +44,8 @@ type Querier interface {
 	// Get the most recent review for a card to verify undo is for latest.
 	GetLatestReviewForCard(ctx context.Context, arg GetLatestReviewForCardParams) (uuid.UUID, error)
 	GetNotebook(ctx context.Context, arg GetNotebookParams) (Notebook, error)
+	// Lightweight query to fetch only FSRS settings for scheduling.
+	GetNotebookFSRSSettings(ctx context.Context, arg GetNotebookFSRSSettingsParams) ([]byte, error)
 	// Returns all non-suspended cards for practice mode (no due filter).
 	GetPracticeCards(ctx context.Context, arg GetPracticeCardsParams) ([]GetPracticeCardsRow, error)
 	// Fetch a review for undo validation.
