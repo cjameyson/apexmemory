@@ -694,3 +694,397 @@ func TestUndoReviewHandler_PracticeMode(t *testing.T) {
 		t.Fatalf("expected 1 study card after practice undo, got %d", len(studyCards))
 	}
 }
+
+// -----------------------------------------------------------------------------
+// Review Summary Tests
+// -----------------------------------------------------------------------------
+
+func TestGetReviewSummaryHandler_Empty(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	req := httptest.NewRequest("GET", "/v1/reviews/summary", nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetReviewSummaryHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp ReviewSummaryResponse
+	decodeResponse(t, rr, &resp)
+
+	if resp.TotalReviews != 0 {
+		t.Errorf("expected total_reviews 0, got %d", resp.TotalReviews)
+	}
+	if resp.RatingBreakdown.Again != 0 || resp.RatingBreakdown.Good != 0 {
+		t.Errorf("expected zero rating counts, got %+v", resp.RatingBreakdown)
+	}
+	if resp.TotalDurationMs != 0 {
+		t.Errorf("expected total_duration_ms 0, got %d", resp.TotalDurationMs)
+	}
+}
+
+func TestGetReviewSummaryHandler_WithReviews(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	_, cardID := createTestCard(t, app, user.ID)
+
+	// Submit multiple reviews with different ratings
+	ratings := []string{"again", "hard", "good", "easy"}
+	for i, rating := range ratings {
+		reviewReq := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+			"id":          uuid.New().String(),
+			"card_id":     cardID.String(),
+			"rating":      rating,
+			"duration_ms": 1000 + i*100,
+			"mode":        "scheduled",
+		})
+		reviewReq = app.WithUser(reviewReq, user)
+		rr := httptest.NewRecorder()
+		app.SubmitReviewHandler(rr, reviewReq)
+		if rr.Code != http.StatusOK {
+			t.Fatalf("review %d failed: %d. Body: %s", i, rr.Code, rr.Body.String())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	req := httptest.NewRequest("GET", "/v1/reviews/summary", nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetReviewSummaryHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp ReviewSummaryResponse
+	decodeResponse(t, rr, &resp)
+
+	if resp.TotalReviews != 4 {
+		t.Errorf("expected total_reviews 4, got %d", resp.TotalReviews)
+	}
+	if resp.RatingBreakdown.Again != 1 {
+		t.Errorf("expected again_count 1, got %d", resp.RatingBreakdown.Again)
+	}
+	if resp.RatingBreakdown.Hard != 1 {
+		t.Errorf("expected hard_count 1, got %d", resp.RatingBreakdown.Hard)
+	}
+	if resp.RatingBreakdown.Good != 1 {
+		t.Errorf("expected good_count 1, got %d", resp.RatingBreakdown.Good)
+	}
+	if resp.RatingBreakdown.Easy != 1 {
+		t.Errorf("expected easy_count 1, got %d", resp.RatingBreakdown.Easy)
+	}
+	if resp.ModeBreakdown.Scheduled != 4 {
+		t.Errorf("expected scheduled_count 4, got %d", resp.ModeBreakdown.Scheduled)
+	}
+	// Duration: 1000 + 1100 + 1200 + 1300 = 4600
+	if resp.TotalDurationMs != 4600 {
+		t.Errorf("expected total_duration_ms 4600, got %d", resp.TotalDurationMs)
+	}
+	// First review was on a new card
+	if resp.NewCardsSeen != 1 {
+		t.Errorf("expected new_cards_seen 1, got %d", resp.NewCardsSeen)
+	}
+}
+
+func TestGetReviewSummaryHandler_WithDateFilter(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	_, cardID := createTestCard(t, app, user.ID)
+
+	// Submit a review today
+	reviewReq := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      uuid.New().String(),
+		"card_id": cardID.String(),
+		"rating":  "good",
+		"mode":    "scheduled",
+	})
+	reviewReq = app.WithUser(reviewReq, user)
+	rr := httptest.NewRecorder()
+	app.SubmitReviewHandler(rr, reviewReq)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("review failed: %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	// Query for yesterday - should return zero
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+	req := httptest.NewRequest("GET", "/v1/reviews/summary?date="+yesterday, nil)
+	req = app.WithUser(req, user)
+	rr = httptest.NewRecorder()
+
+	app.GetReviewSummaryHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp ReviewSummaryResponse
+	decodeResponse(t, rr, &resp)
+
+	if resp.TotalReviews != 0 {
+		t.Errorf("expected total_reviews 0 for yesterday, got %d", resp.TotalReviews)
+	}
+}
+
+func TestGetReviewSummaryHandler_NotebookFilter(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	// Create cards in two notebooks
+	nbID1, cardID1 := createTestCard(t, app, user.ID)
+	_, cardID2 := createTestCard(t, app, user.ID)
+
+	// Submit review in notebook 1
+	reviewReq := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      uuid.New().String(),
+		"card_id": cardID1.String(),
+		"rating":  "good",
+		"mode":    "scheduled",
+	})
+	reviewReq = app.WithUser(reviewReq, user)
+	rr := httptest.NewRecorder()
+	app.SubmitReviewHandler(rr, reviewReq)
+
+	// Submit review in notebook 2
+	reviewReq = jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      uuid.New().String(),
+		"card_id": cardID2.String(),
+		"rating":  "good",
+		"mode":    "scheduled",
+	})
+	reviewReq = app.WithUser(reviewReq, user)
+	rr = httptest.NewRecorder()
+	app.SubmitReviewHandler(rr, reviewReq)
+
+	// Query with notebook filter
+	req := httptest.NewRequest("GET", "/v1/reviews/summary?notebook_id="+nbID1.String(), nil)
+	req = app.WithUser(req, user)
+	rr = httptest.NewRecorder()
+
+	app.GetReviewSummaryHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp ReviewSummaryResponse
+	decodeResponse(t, rr, &resp)
+
+	if resp.TotalReviews != 1 {
+		t.Errorf("expected total_reviews 1 for notebook filter, got %d", resp.TotalReviews)
+	}
+}
+
+func TestGetReviewSummaryHandler_InvalidDate(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	req := httptest.NewRequest("GET", "/v1/reviews/summary?date=invalid", nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetReviewSummaryHandler(rr, req)
+
+	if rr.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Review History Tests
+// -----------------------------------------------------------------------------
+
+func TestGetReviewHistoryHandler(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	nbID, cardID := createTestCard(t, app, user.ID)
+
+	// Submit multiple reviews
+	for i := 0; i < 3; i++ {
+		reviewReq := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+			"id":      uuid.New().String(),
+			"card_id": cardID.String(),
+			"rating":  "good",
+			"mode":    "scheduled",
+		})
+		reviewReq = app.WithUser(reviewReq, user)
+		rr := httptest.NewRecorder()
+		app.SubmitReviewHandler(rr, reviewReq)
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	req := httptest.NewRequest("GET", "/v1/notebooks/"+nbID.String()+"/reviews", nil)
+	req.SetPathValue("notebook_id", nbID.String())
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetReviewHistoryHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp PageResponse[ReviewHistoryItem]
+	decodeResponse(t, rr, &resp)
+
+	if resp.Total != 3 {
+		t.Errorf("expected total 3, got %d", resp.Total)
+	}
+	if len(resp.Data) != 3 {
+		t.Errorf("expected 3 items, got %d", len(resp.Data))
+	}
+
+	// Verify descending order
+	for i := 1; i < len(resp.Data); i++ {
+		if resp.Data[i].ReviewedAt.After(resp.Data[i-1].ReviewedAt) {
+			t.Error("expected reviews in descending order")
+		}
+	}
+}
+
+func TestGetReviewHistoryHandler_Pagination(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	nbID, cardID := createTestCard(t, app, user.ID)
+
+	// Submit 5 reviews
+	for i := 0; i < 5; i++ {
+		reviewReq := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+			"id":      uuid.New().String(),
+			"card_id": cardID.String(),
+			"rating":  "good",
+			"mode":    "scheduled",
+		})
+		reviewReq = app.WithUser(reviewReq, user)
+		rr := httptest.NewRecorder()
+		app.SubmitReviewHandler(rr, reviewReq)
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	// Get first page
+	req := httptest.NewRequest("GET", "/v1/notebooks/"+nbID.String()+"/reviews?limit=2&offset=0", nil)
+	req.SetPathValue("notebook_id", nbID.String())
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetReviewHistoryHandler(rr, req)
+
+	var resp PageResponse[ReviewHistoryItem]
+	decodeResponse(t, rr, &resp)
+
+	if resp.Total != 5 {
+		t.Errorf("expected total 5, got %d", resp.Total)
+	}
+	if len(resp.Data) != 2 {
+		t.Errorf("expected 2 items, got %d", len(resp.Data))
+	}
+	if !resp.HasMore {
+		t.Error("expected has_more true")
+	}
+
+	// Get second page
+	req = httptest.NewRequest("GET", "/v1/notebooks/"+nbID.String()+"/reviews?limit=2&offset=2", nil)
+	req.SetPathValue("notebook_id", nbID.String())
+	req = app.WithUser(req, user)
+	rr = httptest.NewRecorder()
+
+	app.GetReviewHistoryHandler(rr, req)
+
+	decodeResponse(t, rr, &resp)
+
+	if len(resp.Data) != 2 {
+		t.Errorf("expected 2 items on page 2, got %d", len(resp.Data))
+	}
+}
+
+func TestGetReviewHistoryHandler_DateFilter(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	nbID, cardID := createTestCard(t, app, user.ID)
+
+	// Submit a review today
+	reviewReq := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      uuid.New().String(),
+		"card_id": cardID.String(),
+		"rating":  "good",
+		"mode":    "scheduled",
+	})
+	reviewReq = app.WithUser(reviewReq, user)
+	rr := httptest.NewRecorder()
+	app.SubmitReviewHandler(rr, reviewReq)
+
+	// Query for yesterday
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+	req := httptest.NewRequest("GET", "/v1/notebooks/"+nbID.String()+"/reviews?date="+yesterday, nil)
+	req.SetPathValue("notebook_id", nbID.String())
+	req = app.WithUser(req, user)
+	rr = httptest.NewRecorder()
+
+	app.GetReviewHistoryHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp PageResponse[ReviewHistoryItem]
+	decodeResponse(t, rr, &resp)
+
+	if resp.Total != 0 {
+		t.Errorf("expected 0 reviews for yesterday, got %d", resp.Total)
+	}
+}
+
+func TestParseDateValid(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{"standard", "2026-02-03", "2026-02-03"},
+		{"start of year", "2026-01-01", "2026-01-01"},
+		{"end of year", "2026-12-31", "2026-12-31"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/test?date="+tt.input, nil)
+			got, err := parseDate(req, "date")
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got == nil {
+				t.Fatal("expected non-nil date")
+			}
+			if got.Format("2006-01-02") != tt.want {
+				t.Errorf("got %s, want %s", got.Format("2006-01-02"), tt.want)
+			}
+		})
+	}
+}
+
+func TestParseDateInvalid(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{"invalid format", "02-03-2026"},
+		{"not a date", "invalid"},
+		{"partial date", "2026-02"},
+		{"wrong separator", "2026/02/03"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("GET", "/test?date="+tt.input, nil)
+			_, err := parseDate(req, "date")
+			if err == nil {
+				t.Error("expected error for invalid date format")
+			}
+		})
+	}
+}

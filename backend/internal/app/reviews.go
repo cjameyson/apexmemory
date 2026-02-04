@@ -83,6 +83,45 @@ type UndoReviewResponse struct {
 	Card *CardResponse `json:"card"` // nil for practice mode
 }
 
+// ReviewSummaryResponse is the API response for GET /v1/reviews/summary.
+type ReviewSummaryResponse struct {
+	TotalReviews    int64           `json:"total_reviews"`
+	RatingBreakdown RatingBreakdown `json:"rating_breakdown"`
+	ModeBreakdown   ModeBreakdown   `json:"mode_breakdown"`
+	TotalDurationMs int64           `json:"total_duration_ms"`
+	NewCardsSeen    int64           `json:"new_cards_seen"`
+	Date            string          `json:"date"`
+}
+
+// RatingBreakdown contains counts for each rating.
+type RatingBreakdown struct {
+	Again int64 `json:"again"`
+	Hard  int64 `json:"hard"`
+	Good  int64 `json:"good"`
+	Easy  int64 `json:"easy"`
+}
+
+// ModeBreakdown contains counts for each review mode.
+type ModeBreakdown struct {
+	Scheduled int64 `json:"scheduled"`
+	Practice  int64 `json:"practice"`
+}
+
+// ReviewHistoryItem is a single review in the history list.
+type ReviewHistoryItem struct {
+	ID               uuid.UUID  `json:"id"`
+	CardID           *uuid.UUID `json:"card_id"`
+	NotebookID       uuid.UUID  `json:"notebook_id"`
+	FactID           *uuid.UUID `json:"fact_id"`
+	ElementID        *string    `json:"element_id"`
+	ReviewedAt       time.Time  `json:"reviewed_at"`
+	Rating           string     `json:"rating"`
+	ReviewDurationMs *int32     `json:"review_duration_ms"`
+	Mode             string     `json:"mode"`
+	StateBefore      string     `json:"state_before"`
+	StateAfter       string     `json:"state_after"`
+}
+
 // StudyCard is a card with precomputed intervals for all 4 ratings.
 type StudyCard struct {
 	CardResponse
@@ -738,4 +777,103 @@ func (app *Application) undoReview(ctx context.Context, userID uuid.UUID, review
 	})
 
 	return result, err
+}
+
+// getReviewSummary returns a summary of reviews for a date.
+func (app *Application) getReviewSummary(ctx context.Context, userID uuid.UUID, notebookID *uuid.UUID, date *time.Time) (ReviewSummaryResponse, error) {
+	params := db.GetReviewSummaryByDateParams{
+		UserID: userID,
+	}
+
+	if notebookID != nil {
+		params.NotebookID = pgtype.UUID{Bytes: *notebookID, Valid: true}
+	}
+
+	// Format the date for response
+	dateStr := time.Now().UTC().Format("2006-01-02")
+	if date != nil {
+		params.Date = pgtype.Date{Time: *date, Valid: true}
+		dateStr = date.Format("2006-01-02")
+	}
+
+	row, err := app.Queries.GetReviewSummaryByDate(ctx, params)
+	if err != nil {
+		return ReviewSummaryResponse{}, err
+	}
+
+	return ReviewSummaryResponse{
+		TotalReviews: row.TotalReviews,
+		RatingBreakdown: RatingBreakdown{
+			Again: row.AgainCount,
+			Hard:  row.HardCount,
+			Good:  row.GoodCount,
+			Easy:  row.EasyCount,
+		},
+		ModeBreakdown: ModeBreakdown{
+			Scheduled: row.ScheduledCount,
+			Practice:  row.PracticeCount,
+		},
+		TotalDurationMs: row.TotalDurationMs,
+		NewCardsSeen:    row.NewCardsSeen,
+		Date:            dateStr,
+	}, nil
+}
+
+// getReviewHistory returns paginated review history for a notebook.
+func (app *Application) getReviewHistory(ctx context.Context, userID, notebookID uuid.UUID, date *time.Time, limit, offset int32) ([]ReviewHistoryItem, int64, error) {
+	params := db.GetReviewHistoryParams{
+		UserID:     userID,
+		NotebookID: notebookID,
+		RowLimit:   limit,
+		RowOffset:  offset,
+	}
+	countParams := db.CountReviewHistoryParams{
+		UserID:     userID,
+		NotebookID: notebookID,
+	}
+
+	if date != nil {
+		params.Date = pgtype.Date{Time: *date, Valid: true}
+		countParams.Date = pgtype.Date{Time: *date, Valid: true}
+	}
+
+	rows, err := app.Queries.GetReviewHistory(ctx, params)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total, err := app.Queries.CountReviewHistory(ctx, countParams)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	items := make([]ReviewHistoryItem, len(rows))
+	for i, row := range rows {
+		item := ReviewHistoryItem{
+			ID:          row.ID,
+			NotebookID:  row.NotebookID,
+			ReviewedAt:  row.ReviewedAt,
+			Rating:      string(row.Rating),
+			Mode:        row.Mode,
+			StateBefore: string(row.StateBefore),
+			StateAfter:  string(row.StateAfter),
+		}
+		if row.CardID.Valid {
+			cardID := uuid.UUID(row.CardID.Bytes)
+			item.CardID = &cardID
+		}
+		if row.FactID.Valid {
+			factID := uuid.UUID(row.FactID.Bytes)
+			item.FactID = &factID
+		}
+		if row.ElementID.Valid {
+			item.ElementID = &row.ElementID.String
+		}
+		if row.ReviewDurationMs.Valid {
+			item.ReviewDurationMs = &row.ReviewDurationMs.Int32
+		}
+		items[i] = item
+	}
+
+	return items, total, nil
 }

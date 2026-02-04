@@ -58,6 +58,7 @@
 			onToggleSelect={toggleSelect}
 			onToggleAll={toggleSelectAll}
 			onedit={(factId) => factsHeader.openEdit(factId)}
+			ondelete={(factId, displayText) => factsHeader.openDelete(factId, displayText)}
 		/>
 		<Pagination
 			page={data.pagination.page}

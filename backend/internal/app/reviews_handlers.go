@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -165,4 +166,81 @@ func (app *Application) UndoReviewHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	app.RespondJSON(w, r, http.StatusOK, resp)
+}
+
+// parseDate parses a YYYY-MM-DD date from a query parameter.
+func parseDate(r *http.Request, param string) (*time.Time, error) {
+	v := r.URL.Query().Get(param)
+	if v == "" {
+		return nil, nil
+	}
+	t, err := time.Parse("2006-01-02", v)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// GetReviewSummaryHandler handles GET /v1/reviews/summary
+func (app *Application) GetReviewSummaryHandler(w http.ResponseWriter, r *http.Request) {
+	user := app.GetUser(r.Context())
+	if user.IsAnonymous() {
+		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	var notebookID *uuid.UUID
+	if v := r.URL.Query().Get("notebook_id"); v != "" {
+		id, err := uuid.Parse(v)
+		if err != nil {
+			app.RespondError(w, r, http.StatusBadRequest, "invalid notebook_id")
+			return
+		}
+		notebookID = &id
+	}
+
+	date, err := parseDate(r, "date")
+	if err != nil {
+		app.RespondError(w, r, http.StatusBadRequest, "invalid date format, expected YYYY-MM-DD")
+		return
+	}
+
+	resp, err := app.getReviewSummary(r.Context(), user.ID, notebookID, date)
+	if err != nil {
+		app.RespondServerError(w, r, ErrDBQuery("get review summary", err))
+		return
+	}
+
+	app.RespondJSON(w, r, http.StatusOK, resp)
+}
+
+// GetReviewHistoryHandler handles GET /v1/notebooks/{notebook_id}/reviews
+func (app *Application) GetReviewHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	user := app.GetUser(r.Context())
+	if user.IsAnonymous() {
+		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
+		return
+	}
+
+	notebookID, err := uuid.Parse(r.PathValue("notebook_id"))
+	if err != nil {
+		app.RespondError(w, r, http.StatusBadRequest, "invalid notebook_id")
+		return
+	}
+
+	date, err := parseDate(r, "date")
+	if err != nil {
+		app.RespondError(w, r, http.StatusBadRequest, "invalid date format, expected YYYY-MM-DD")
+		return
+	}
+
+	limit, offset := parsePagination(r)
+
+	items, total, err := app.getReviewHistory(r.Context(), user.ID, notebookID, date, limit, offset)
+	if err != nil {
+		app.RespondServerError(w, r, ErrDBQuery("get review history", err))
+		return
+	}
+
+	app.RespondJSON(w, r, http.StatusOK, NewPageResponse(items, total, limit, offset))
 }

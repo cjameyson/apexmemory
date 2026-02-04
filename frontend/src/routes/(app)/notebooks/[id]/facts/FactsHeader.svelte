@@ -9,6 +9,7 @@
 	import { invalidateAll, pushState } from '$app/navigation';
 	import QuickStats from './QuickStats.svelte';
 	import CreateFactModal from '$lib/components/facts/create-fact-modal.svelte';
+	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 	import { studyCounts } from '$lib/stores/study-counts.svelte';
 
 	let { stats, notebookId, notebook }: { stats: FactStats; notebookId: string; notebook: Notebook } = $props();
@@ -22,6 +23,12 @@
 	let editRequestId = 0;
 	let isLoadingReview = $state(false);
 	let isLoadingPractice = $state(false);
+
+	// Delete modal state
+	let deleteModalOpen = $state(false);
+	let deletingFactId = $state<string | null>(null);
+	let deletingFactDisplay = $state<string>('');
+	let isDeleting = $state(false);
 
 	async function startReview() {
 		isLoadingReview = true;
@@ -90,6 +97,39 @@
 	export function openCreate() {
 		editingFact = null;
 		modalOpen = true;
+	}
+
+	export function openDelete(factId: string, displayText: string) {
+		deletingFactId = factId;
+		deletingFactDisplay = displayText;
+		deleteModalOpen = true;
+	}
+
+	async function handleDeleteConfirm() {
+		if (!deletingFactId) return;
+		isDeleting = true;
+		try {
+			const res = await fetch(`/api/notebooks/${notebookId}/facts/${deletingFactId}`, {
+				method: 'DELETE'
+			});
+			if (!res.ok) {
+				const err = await res.json().catch(() => ({ message: 'Failed to delete fact' }));
+				throw new Error(err.message ?? 'Failed to delete fact');
+			}
+			deleteModalOpen = false;
+			deletingFactId = null;
+			await studyCounts.refresh();
+			await invalidateAll();
+		} catch (err) {
+			fetchError = err instanceof Error ? err.message : 'Failed to delete fact';
+		} finally {
+			isDeleting = false;
+		}
+	}
+
+	function handleDeleteCancel() {
+		deleteModalOpen = false;
+		deletingFactId = null;
 	}
 
 	async function handleSubmit(data: FactFormData) {
@@ -180,4 +220,13 @@
 	editFact={editingFact}
 	onclose={() => { modalOpen = false; }}
 	onsubmit={handleSubmit}
+/>
+
+<ConfirmDialog
+	bind:open={deleteModalOpen}
+	title="Delete Fact"
+	description="Are you sure you want to delete this fact? All associated cards will be permanently deleted. Review history will be preserved but unlinked."
+	loading={isDeleting}
+	onconfirm={handleDeleteConfirm}
+	oncancel={handleDeleteCancel}
 />

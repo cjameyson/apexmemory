@@ -9,7 +9,8 @@
 		notebookId,
 		onToggleSelect,
 		onToggleAll,
-		onedit
+		onedit,
+		ondelete
 	}: {
 		facts: Fact[];
 		selectedIds: Set<string>;
@@ -17,6 +18,7 @@
 		onToggleSelect: (id: string) => void;
 		onToggleAll: () => void;
 		onedit: (factId: string) => void;
+		ondelete: (factId: string, displayText: string) => void;
 	} = $props();
 
 	const allSelected = $derived(facts.length > 0 && selectedIds.size === facts.length);
@@ -62,7 +64,7 @@
 		</thead>
 		<tbody>
 			{#each facts as fact (fact.id)}
-				<FactTableRow {fact} selected={selectedIds.has(fact.id)} {notebookId} {onToggleSelect} {onedit} />
+				<FactTableRow {fact} selected={selectedIds.has(fact.id)} {notebookId} {onToggleSelect} {onedit} {ondelete} />
 			{/each}
 		</tbody>
 	</table>

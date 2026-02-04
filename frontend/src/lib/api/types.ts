@@ -185,6 +185,31 @@ export interface ApiUndoReviewResponse {
 	card: ApiCard | null; // null for practice mode
 }
 
+// Review summary response from GET /v1/reviews/summary
+export interface ApiReviewSummaryResponse {
+	total_reviews: number;
+	rating_breakdown: { again: number; hard: number; good: number; easy: number };
+	mode_breakdown: { scheduled: number; practice: number };
+	total_duration_ms: number;
+	new_cards_seen: number;
+	date: string;
+}
+
+// Review history item from GET /v1/notebooks/{notebook_id}/reviews
+export interface ApiReviewHistoryItem {
+	id: string;
+	card_id: string | null;
+	notebook_id: string;
+	fact_id: string | null;
+	element_id: string | null;
+	reviewed_at: string;
+	rating: 'again' | 'hard' | 'good' | 'easy';
+	review_duration_ms: number | null;
+	mode: 'scheduled' | 'practice';
+	state_before: 'new' | 'learning' | 'review' | 'relearning';
+	state_after: 'new' | 'learning' | 'review' | 'relearning';
+}
+
 // Discriminated union for API results
 export type ApiResult<T> =
 	| { ok: true; data: T }

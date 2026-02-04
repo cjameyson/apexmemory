@@ -54,6 +54,32 @@
 
 	const UNDO_WINDOW_MS = 8000;
 
+	// Session stats (tracked locally, no API call needed)
+	interface SessionStats {
+		cardsReviewed: number;
+		totalDurationMs: number;
+		ratingCounts: { again: number; hard: number; good: number; easy: number };
+		newCardsSeen: number;
+	}
+
+	let sessionStats = $state<SessionStats>({
+		cardsReviewed: 0,
+		totalDurationMs: 0,
+		ratingCounts: { again: 0, hard: 0, good: 0, easy: 0 },
+		newCardsSeen: 0
+	});
+
+	function formatDuration(ms: number): string {
+		const seconds = Math.floor(ms / 1000);
+		if (seconds < 60) return `${seconds}s`;
+		const minutes = Math.floor(seconds / 60);
+		const remainingSeconds = seconds % 60;
+		if (minutes < 60) return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
+		const hours = Math.floor(minutes / 60);
+		const remainingMinutes = minutes % 60;
+		return `${hours}h ${remainingMinutes}m`;
+	}
+
 	let currentCard = $derived(cardQueue[currentIndex] as StudyCard | undefined);
 	let display = $derived(currentCard ? extractCardDisplay(currentCard) : null);
 	let progress = $derived(totalCards > 0 ? (reviewedCount / totalCards) * 100 : 0);
@@ -200,6 +226,13 @@
 		}
 
 		reviewedCount++;
+
+		// Accumulate session stats
+		sessionStats.cardsReviewed++;
+		sessionStats.totalDurationMs += durationMs;
+		const ratingKey = (['again', 'hard', 'good', 'easy'] as const)[rating - 1];
+		sessionStats.ratingCounts[ratingKey]++;
+		if (card.state === 'new') sessionStats.newCardsSeen++;
 
 		// Track if card was requeued for undo.
 		// Note: For non-final cards, undo state is set before we know if requeue happened.
@@ -399,10 +432,47 @@
 		{#if sessionComplete}
 			<div class="text-center text-white">
 				<div class="text-6xl mb-6">&#127881;</div>
-				<h2 class="text-3xl font-bold mb-2">All done!</h2>
-				<p class="text-white/70 mb-8">
-					You reviewed {reviewedCount} card{reviewedCount === 1 ? '' : 's'}.
-				</p>
+				<h2 class="text-3xl font-bold mb-2">Session Complete</h2>
+
+				<div class="mt-6 mb-8 space-y-4">
+					<!-- Cards + Time -->
+					<div class="flex justify-center gap-8 text-lg">
+						<div>
+							<span class="text-white/60">Cards</span>
+							<span class="ml-2 font-semibold">{sessionStats.cardsReviewed}</span>
+						</div>
+						<div>
+							<span class="text-white/60">Time</span>
+							<span class="ml-2 font-semibold">{formatDuration(sessionStats.totalDurationMs)}</span>
+						</div>
+					</div>
+
+					<!-- Rating breakdown -->
+					<div class="flex justify-center gap-4 text-sm">
+						<div class="px-3 py-1.5 rounded-lg bg-again/20 text-again">
+							Again: {sessionStats.ratingCounts.again}
+						</div>
+						<div class="px-3 py-1.5 rounded-lg bg-hard/20 text-hard">
+							Hard: {sessionStats.ratingCounts.hard}
+						</div>
+						<div class="px-3 py-1.5 rounded-lg bg-good/20 text-good">
+							Good: {sessionStats.ratingCounts.good}
+						</div>
+						<div class="px-3 py-1.5 rounded-lg bg-easy/20 text-easy">
+							Easy: {sessionStats.ratingCounts.easy}
+						</div>
+					</div>
+
+					<!-- Mode indicator -->
+					{#if mode === 'practice'}
+						<p class="text-white/50 text-sm">Practice mode - card states unchanged</p>
+					{:else if sessionStats.newCardsSeen > 0}
+						<p class="text-white/50 text-sm">
+							{sessionStats.newCardsSeen} new card{sessionStats.newCardsSeen === 1 ? '' : 's'} introduced
+						</p>
+					{/if}
+				</div>
+
 				<button
 					type="button"
 					onclick={handleClose}

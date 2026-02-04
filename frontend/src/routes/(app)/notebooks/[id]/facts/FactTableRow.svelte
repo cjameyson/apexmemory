@@ -16,13 +16,15 @@
 		selected,
 		notebookId,
 		onToggleSelect,
-		onedit
+		onedit,
+		ondelete
 	}: {
 		fact: Fact;
 		selected: boolean;
 		notebookId: string;
 		onToggleSelect: (id: string) => void;
 		onedit: (factId: string) => void;
+		ondelete: (factId: string, displayText: string) => void;
 	} = $props();
 
 	let expanded = $state(false);
@@ -120,6 +122,7 @@
 				class="text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded p-1"
 				title="Delete fact"
 				aria-label="Delete fact"
+				onclick={() => ondelete(fact.id, display.primary)}
 			>
 				<Trash2Icon class="h-4 w-4" />
 			</button>

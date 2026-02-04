@@ -33,6 +33,27 @@ func (q *Queries) CountPracticeCards(ctx context.Context, arg CountPracticeCards
 	return count, err
 }
 
+const countReviewHistory = `-- name: CountReviewHistory :one
+SELECT count(*)
+FROM app.reviews
+WHERE user_id = $1
+  AND notebook_id = $2
+  AND ($3::date IS NULL OR reviewed_at::date = $3)
+`
+
+type CountReviewHistoryParams struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	NotebookID uuid.UUID   `json:"notebook_id"`
+	Date       pgtype.Date `json:"date"`
+}
+
+func (q *Queries) CountReviewHistory(ctx context.Context, arg CountReviewHistoryParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countReviewHistory, arg.UserID, arg.NotebookID, arg.Date)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createReview = `-- name: CreateReview :one
 INSERT INTO app.reviews (
     user_id, id, card_id, notebook_id, fact_id, element_id,
@@ -334,6 +355,133 @@ func (q *Queries) GetReviewByID(ctx context.Context, arg GetReviewByIDParams) (A
 		&i.Retrievability,
 		&i.UndoSnapshot,
 		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getReviewHistory = `-- name: GetReviewHistory :many
+SELECT
+    r.id, r.card_id, r.notebook_id, r.fact_id, r.element_id,
+    r.reviewed_at, r.rating, r.review_duration_ms, r.mode,
+    r.state_before, r.state_after
+FROM app.reviews r
+WHERE r.user_id = $1
+  AND r.notebook_id = $2
+  AND ($3::date IS NULL OR r.reviewed_at::date = $3)
+ORDER BY r.reviewed_at DESC
+LIMIT $5 OFFSET $4
+`
+
+type GetReviewHistoryParams struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	NotebookID uuid.UUID   `json:"notebook_id"`
+	Date       pgtype.Date `json:"date"`
+	RowOffset  int32       `json:"row_offset"`
+	RowLimit   int32       `json:"row_limit"`
+}
+
+type GetReviewHistoryRow struct {
+	ID               uuid.UUID    `json:"id"`
+	CardID           pgtype.UUID  `json:"card_id"`
+	NotebookID       uuid.UUID    `json:"notebook_id"`
+	FactID           pgtype.UUID  `json:"fact_id"`
+	ElementID        pgtype.Text  `json:"element_id"`
+	ReviewedAt       time.Time    `json:"reviewed_at"`
+	Rating           AppRating    `json:"rating"`
+	ReviewDurationMs pgtype.Int4  `json:"review_duration_ms"`
+	Mode             string       `json:"mode"`
+	StateBefore      AppCardState `json:"state_before"`
+	StateAfter       AppCardState `json:"state_after"`
+}
+
+// Paginated review history for a notebook, optionally filtered by date.
+func (q *Queries) GetReviewHistory(ctx context.Context, arg GetReviewHistoryParams) ([]GetReviewHistoryRow, error) {
+	rows, err := q.db.Query(ctx, getReviewHistory,
+		arg.UserID,
+		arg.NotebookID,
+		arg.Date,
+		arg.RowOffset,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetReviewHistoryRow{}
+	for rows.Next() {
+		var i GetReviewHistoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.CardID,
+			&i.NotebookID,
+			&i.FactID,
+			&i.ElementID,
+			&i.ReviewedAt,
+			&i.Rating,
+			&i.ReviewDurationMs,
+			&i.Mode,
+			&i.StateBefore,
+			&i.StateAfter,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getReviewSummaryByDate = `-- name: GetReviewSummaryByDate :one
+SELECT
+    count(*) AS total_reviews,
+    count(*) FILTER (WHERE rating = 'again') AS again_count,
+    count(*) FILTER (WHERE rating = 'hard') AS hard_count,
+    count(*) FILTER (WHERE rating = 'good') AS good_count,
+    count(*) FILTER (WHERE rating = 'easy') AS easy_count,
+    count(*) FILTER (WHERE mode = 'scheduled') AS scheduled_count,
+    count(*) FILTER (WHERE mode = 'practice') AS practice_count,
+    COALESCE(sum(review_duration_ms), 0)::bigint AS total_duration_ms,
+    count(*) FILTER (WHERE state_before = 'new' AND mode = 'scheduled') AS new_cards_seen
+FROM app.reviews
+WHERE user_id = $1
+  AND ($2::uuid IS NULL OR notebook_id = $2)
+  AND reviewed_at::date = COALESCE($3::date, CURRENT_DATE)
+`
+
+type GetReviewSummaryByDateParams struct {
+	UserID     uuid.UUID   `json:"user_id"`
+	NotebookID pgtype.UUID `json:"notebook_id"`
+	Date       pgtype.Date `json:"date"`
+}
+
+type GetReviewSummaryByDateRow struct {
+	TotalReviews    int64 `json:"total_reviews"`
+	AgainCount      int64 `json:"again_count"`
+	HardCount       int64 `json:"hard_count"`
+	GoodCount       int64 `json:"good_count"`
+	EasyCount       int64 `json:"easy_count"`
+	ScheduledCount  int64 `json:"scheduled_count"`
+	PracticeCount   int64 `json:"practice_count"`
+	TotalDurationMs int64 `json:"total_duration_ms"`
+	NewCardsSeen    int64 `json:"new_cards_seen"`
+}
+
+// Daily review summary with breakdown by rating, mode, and new cards.
+func (q *Queries) GetReviewSummaryByDate(ctx context.Context, arg GetReviewSummaryByDateParams) (GetReviewSummaryByDateRow, error) {
+	row := q.db.QueryRow(ctx, getReviewSummaryByDate, arg.UserID, arg.NotebookID, arg.Date)
+	var i GetReviewSummaryByDateRow
+	err := row.Scan(
+		&i.TotalReviews,
+		&i.AgainCount,
+		&i.HardCount,
+		&i.GoodCount,
+		&i.EasyCount,
+		&i.ScheduledCount,
+		&i.PracticeCount,
+		&i.TotalDurationMs,
+		&i.NewCardsSeen,
 	)
 	return i, err
 }

@@ -40,3 +40,21 @@ export const PATCH: RequestHandler = async ({ params, locals, request }) => {
 
 	return json(result.data);
 };
+
+export const DELETE: RequestHandler = async ({ params, locals }) => {
+	const token = locals.sessionToken;
+	if (!token) {
+		error(401, { message: 'Unauthorized' });
+	}
+
+	const result = await apiRequest<void>(
+		`/v1/notebooks/${params.notebookId}/facts/${params.factId}`,
+		{ method: 'DELETE', token }
+	);
+
+	if (!result.ok) {
+		error(result.status, { message: result.error.error });
+	}
+
+	return new Response(null, { status: 204 });
+};

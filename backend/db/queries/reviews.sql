@@ -141,3 +141,40 @@ UPDATE app.cards SET
     reps = @reps,
     lapses = @lapses
 WHERE user_id = @user_id AND id = @id;
+
+-- name: GetReviewSummaryByDate :one
+-- Daily review summary with breakdown by rating, mode, and new cards.
+SELECT
+    count(*) AS total_reviews,
+    count(*) FILTER (WHERE rating = 'again') AS again_count,
+    count(*) FILTER (WHERE rating = 'hard') AS hard_count,
+    count(*) FILTER (WHERE rating = 'good') AS good_count,
+    count(*) FILTER (WHERE rating = 'easy') AS easy_count,
+    count(*) FILTER (WHERE mode = 'scheduled') AS scheduled_count,
+    count(*) FILTER (WHERE mode = 'practice') AS practice_count,
+    COALESCE(sum(review_duration_ms), 0)::bigint AS total_duration_ms,
+    count(*) FILTER (WHERE state_before = 'new' AND mode = 'scheduled') AS new_cards_seen
+FROM app.reviews
+WHERE user_id = @user_id
+  AND (sqlc.narg('notebook_id')::uuid IS NULL OR notebook_id = sqlc.narg('notebook_id'))
+  AND reviewed_at::date = COALESCE(sqlc.narg('date')::date, CURRENT_DATE);
+
+-- name: GetReviewHistory :many
+-- Paginated review history for a notebook, optionally filtered by date.
+SELECT
+    r.id, r.card_id, r.notebook_id, r.fact_id, r.element_id,
+    r.reviewed_at, r.rating, r.review_duration_ms, r.mode,
+    r.state_before, r.state_after
+FROM app.reviews r
+WHERE r.user_id = @user_id
+  AND r.notebook_id = @notebook_id
+  AND (sqlc.narg('date')::date IS NULL OR r.reviewed_at::date = sqlc.narg('date'))
+ORDER BY r.reviewed_at DESC
+LIMIT @row_limit OFFSET @row_offset;
+
+-- name: CountReviewHistory :one
+SELECT count(*)
+FROM app.reviews
+WHERE user_id = @user_id
+  AND notebook_id = @notebook_id
+  AND (sqlc.narg('date')::date IS NULL OR reviewed_at::date = sqlc.narg('date'));

@@ -17,6 +17,7 @@ type Querier interface {
 	CountFactsByNotebook(ctx context.Context, arg CountFactsByNotebookParams) (int64, error)
 	CountFactsByNotebookFiltered(ctx context.Context, arg CountFactsByNotebookFilteredParams) (int64, error)
 	CountPracticeCards(ctx context.Context, arg CountPracticeCardsParams) (int64, error)
+	CountReviewHistory(ctx context.Context, arg CountReviewHistoryParams) (int64, error)
 	CreateAuthIdentity(ctx context.Context, arg CreateAuthIdentityParams) (AuthIdentity, error)
 	CreateCard(ctx context.Context, arg CreateCardParams) (Card, error)
 	CreateFact(ctx context.Context, arg CreateFactParams) (AppFact, error)
@@ -47,6 +48,10 @@ type Querier interface {
 	GetPracticeCards(ctx context.Context, arg GetPracticeCardsParams) ([]GetPracticeCardsRow, error)
 	// Fetch a review for undo validation.
 	GetReviewByID(ctx context.Context, arg GetReviewByIDParams) (AppReview, error)
+	// Paginated review history for a notebook, optionally filtered by date.
+	GetReviewHistory(ctx context.Context, arg GetReviewHistoryParams) ([]GetReviewHistoryRow, error)
+	// Daily review summary with breakdown by rating, mode, and new cards.
+	GetReviewSummaryByDate(ctx context.Context, arg GetReviewSummaryByDateParams) (GetReviewSummaryByDateRow, error)
 	GetSessionByToken(ctx context.Context, tokenHash []byte) (GetSessionByTokenRow, error)
 	// Returns due cards for review: overdue first, then learning, then new.
 	// New card cap limits how many new cards are introduced per day.
