@@ -18,9 +18,19 @@ import (
 )
 
 var (
-	errFactNotFound     = errors.New("fact not found")
+	errFactNotFound      = errors.New("fact not found")
 	errFactTypeImmutable = errors.New("fact type cannot be changed")
 )
+
+// FactValidationError represents a validation error for fact content.
+// Used to distinguish user input errors from database/system errors.
+type FactValidationError struct {
+	Message string
+}
+
+func (e *FactValidationError) Error() string {
+	return e.Message
+}
 
 const maxElementsPerFact = 128
 
@@ -178,13 +188,13 @@ func validateFactContent(factType string, content json.RawMessage) ([]string, er
 		Fields  json.RawMessage `json:"fields"`
 	}
 	if err := json.Unmarshal(content, &parsed); err != nil {
-		return nil, fmt.Errorf("invalid content JSON: %w", err)
+		return nil, &FactValidationError{Message: fmt.Sprintf("invalid content JSON: %v", err)}
 	}
 	if parsed.Version == 0 {
-		return nil, errors.New("content must have a version")
+		return nil, &FactValidationError{Message: "content must have a version"}
 	}
 	if parsed.Fields == nil {
-		return nil, errors.New("content must have fields")
+		return nil, &FactValidationError{Message: "content must have fields"}
 	}
 
 	elementIDs, err := extractElementIDs(factType, content)
@@ -193,10 +203,10 @@ func validateFactContent(factType string, content json.RawMessage) ([]string, er
 	}
 
 	if len(elementIDs) == 0 {
-		return nil, errors.New("fact must generate at least one card")
+		return nil, &FactValidationError{Message: "fact must generate at least one card"}
 	}
 	if len(elementIDs) > maxElementsPerFact {
-		return nil, fmt.Errorf("fact exceeds maximum of %d cards", maxElementsPerFact)
+		return nil, &FactValidationError{Message: fmt.Sprintf("fact exceeds maximum of %d cards", maxElementsPerFact)}
 	}
 
 	if err := validateElementIDs(factType, elementIDs); err != nil {
@@ -216,7 +226,7 @@ func extractElementIDs(factType string, content json.RawMessage) ([]string, erro
 	case "image_occlusion":
 		return extractImageOcclusionElementIDs(content)
 	default:
-		return nil, fmt.Errorf("unsupported fact type: %s", factType)
+		return nil, &FactValidationError{Message: fmt.Sprintf("unsupported fact type: %s", factType)}
 	}
 }
 
@@ -227,7 +237,7 @@ func extractClozeElementIDs(content json.RawMessage) ([]string, error) {
 		} `json:"fields"`
 	}
 	if err := json.Unmarshal(content, &parsed); err != nil {
-		return nil, fmt.Errorf("failed to parse cloze fields: %w", err)
+		return nil, &FactValidationError{Message: fmt.Sprintf("failed to parse cloze fields: %v", err)}
 	}
 
 	seen := make(map[string]bool)
@@ -244,7 +254,7 @@ func extractClozeElementIDs(content json.RawMessage) ([]string, error) {
 	}
 
 	if len(seen) == 0 {
-		return nil, errors.New("cloze fact must contain at least one {{cN::...}} deletion")
+		return nil, &FactValidationError{Message: "cloze fact must contain at least one {{cN::...}} deletion"}
 	}
 
 	ids := make([]string, 0, len(seen))
@@ -267,7 +277,7 @@ func extractImageOcclusionElementIDs(content json.RawMessage) ([]string, error) 
 		} `json:"fields"`
 	}
 	if err := json.Unmarshal(content, &parsed); err != nil {
-		return nil, fmt.Errorf("failed to parse image occlusion fields: %w", err)
+		return nil, &FactValidationError{Message: fmt.Sprintf("failed to parse image occlusion fields: %v", err)}
 	}
 
 	// Validate required title field
@@ -275,14 +285,14 @@ func extractImageOcclusionElementIDs(content json.RawMessage) ([]string, error) 
 	for _, field := range parsed.Fields {
 		if field.Name == "title" && field.Type == "plain_text" {
 			if strings.TrimSpace(field.Value) == "" {
-				return nil, errors.New("image occlusion title must not be empty")
+				return nil, &FactValidationError{Message: "image occlusion title must not be empty"}
 			}
 			hasTitle = true
 			break
 		}
 	}
 	if !hasTitle {
-		return nil, errors.New("image occlusion fact must have a title field")
+		return nil, &FactValidationError{Message: "image occlusion fact must have a title field"}
 	}
 
 	seen := make(map[string]bool)
@@ -293,10 +303,10 @@ func extractImageOcclusionElementIDs(content json.RawMessage) ([]string, error) 
 		}
 		for _, region := range field.Regions {
 			if region.ID == "" {
-				return nil, errors.New("image occlusion region missing id")
+				return nil, &FactValidationError{Message: "image occlusion region missing id"}
 			}
 			if seen[region.ID] {
-				return nil, fmt.Errorf("duplicate region id: %s", region.ID)
+				return nil, &FactValidationError{Message: fmt.Sprintf("duplicate region id: %s", region.ID)}
 			}
 			seen[region.ID] = true
 			ids = append(ids, region.ID)
@@ -304,7 +314,7 @@ func extractImageOcclusionElementIDs(content json.RawMessage) ([]string, error) 
 	}
 
 	if len(ids) == 0 {
-		return nil, errors.New("image occlusion fact must contain at least one region")
+		return nil, &FactValidationError{Message: "image occlusion fact must contain at least one region"}
 	}
 	return ids, nil
 }
@@ -314,15 +324,15 @@ func validateElementIDs(factType string, ids []string) error {
 		switch factType {
 		case "basic":
 			if id != "" {
-				return fmt.Errorf("basic fact element_id must be empty, got %q", id)
+				return &FactValidationError{Message: fmt.Sprintf("basic fact element_id must be empty, got %q", id)}
 			}
 		case "cloze":
 			if !clozeIDPattern.MatchString(id) {
-				return fmt.Errorf("invalid cloze element_id: %q", id)
+				return &FactValidationError{Message: fmt.Sprintf("invalid cloze element_id: %q", id)}
 			}
 		case "image_occlusion":
 			if !imageOcclusionIDPattern.MatchString(id) {
-				return fmt.Errorf("invalid image occlusion element_id: %q", id)
+				return &FactValidationError{Message: fmt.Sprintf("invalid image occlusion element_id: %q", id)}
 			}
 		}
 	}

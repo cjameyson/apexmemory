@@ -52,8 +52,8 @@ func (app *Application) CreateFactHandler(w http.ResponseWriter, r *http.Request
 
 	fact, cards, err := app.CreateFact(r.Context(), user.ID, notebookID, input.FactType, input.Content)
 	if err != nil {
-		// Validation errors from content parsing
-		if isValidationError(err) {
+		var validationErr *FactValidationError
+		if errors.As(err, &validationErr) {
 			app.RespondError(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -230,7 +230,8 @@ func (app *Application) UpdateFactHandler(w http.ResponseWriter, r *http.Request
 			app.RespondError(w, r, http.StatusNotFound, "Fact not found")
 			return
 		}
-		if isValidationError(err) {
+		var validationErr *FactValidationError
+		if errors.As(err, &validationErr) {
 			app.RespondError(w, r, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -275,30 +276,4 @@ func (app *Application) DeleteFactHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// isValidationError checks if an error is a content validation error (not a DB error).
-func isValidationError(err error) bool {
-	msg := err.Error()
-	// These prefixes cover all validation errors from validateFactContent and extractElementIDs
-	for _, prefix := range []string{
-		"invalid content JSON",
-		"content must have",
-		"fact must generate",
-		"fact exceeds maximum",
-		"unsupported fact type",
-		"cloze fact must contain",
-		"image occlusion fact must contain",
-		"image occlusion region missing",
-		"duplicate region id",
-		"invalid cloze element_id",
-		"invalid image occlusion element_id",
-		"basic fact element_id",
-		"failed to parse",
-	} {
-		if len(msg) >= len(prefix) && msg[:len(prefix)] == prefix {
-			return true
-		}
-	}
-	return false
 }

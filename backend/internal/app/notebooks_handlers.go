@@ -3,13 +3,18 @@ package app
 import (
 	"errors"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
 const (
 	notebookNameMaxLen        = 255
 	notebookDescriptionMaxLen = 10000
+	notebookEmojiMaxLen       = 32 // ~4 compound emoji (8 bytes each worst case)
+	notebookColorPattern      = `^#[0-9A-Fa-f]{6}$`
 )
+
+var colorRegex = regexp.MustCompile(notebookColorPattern)
 
 // CreateNotebookHandler handles POST /v1/notebooks
 func (app *Application) CreateNotebookHandler(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +48,14 @@ func (app *Application) CreateNotebookHandler(w http.ResponseWriter, r *http.Req
 
 	if input.Description != nil && len(*input.Description) > notebookDescriptionMaxLen {
 		fieldErrors["description"] = "Description must not exceed 10,000 characters"
+	}
+
+	if input.Emoji != nil && len(*input.Emoji) > notebookEmojiMaxLen {
+		fieldErrors["emoji"] = "Emoji must not exceed 32 bytes"
+	}
+
+	if input.Color != nil && !colorRegex.MatchString(*input.Color) {
+		fieldErrors["color"] = "Color must be a valid hex color (e.g., #FF5733)"
 	}
 
 	if len(fieldErrors) > 0 {
@@ -162,6 +175,14 @@ func (app *Application) UpdateNotebookHandler(w http.ResponseWriter, r *http.Req
 
 	if input.Description.Set && input.Description.Value != nil && len(*input.Description.Value) > notebookDescriptionMaxLen {
 		fieldErrors["description"] = "Description must not exceed 10,000 characters"
+	}
+
+	if input.Emoji.Set && input.Emoji.Value != nil && len(*input.Emoji.Value) > notebookEmojiMaxLen {
+		fieldErrors["emoji"] = "Emoji must not exceed 32 bytes"
+	}
+
+	if input.Color.Set && input.Color.Value != nil && !colorRegex.MatchString(*input.Color.Value) {
+		fieldErrors["color"] = "Color must be a valid hex color (e.g., #FF5733)"
 	}
 
 	if len(fieldErrors) > 0 {
