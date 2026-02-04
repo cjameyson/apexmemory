@@ -3,11 +3,11 @@
 	import { Button } from '$lib/components/ui/button';
 	import SourceViewer from './source-viewer.svelte';
 	import { ZapIcon, Maximize2Icon, Minimize2Icon } from '@lucide/svelte';
-	import type { Source, Card } from '$lib/types';
+	import type { Source, DisplayCard } from '$lib/types';
 
 	interface Props {
 		source: Source;
-		cards: Card[];
+		cards: DisplayCard[];
 		isExpanded?: boolean;
 		onClose?: () => void;
 		onStartReview?: () => void;

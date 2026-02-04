@@ -12,7 +12,7 @@
 		FileTextIcon,
 		ArrowRightIcon
 	} from '@lucide/svelte';
-	import type { Notebook, Source, Card } from '$lib/types';
+	import type { Notebook, Source, DisplayCard } from '$lib/types';
 	import { getAllNotebooks, getAllSources, getAllDueCards } from '$lib/mocks';
 
 	interface Props {
@@ -54,7 +54,7 @@
 		if (!searchQuery.trim()) return [];
 
 		const query = searchQuery.toLowerCase();
-		const results: { type: 'notebook' | 'source' | 'card'; item: Notebook | Source | Card }[] = [];
+		const results: { type: 'notebook' | 'source' | 'card'; item: Notebook | Source | DisplayCard }[] = [];
 
 		// Filter by scope
 		const scopedNotebooks = scope === 'notebook' && currentNotebook
@@ -268,7 +268,7 @@
 								<span class="flex-1 text-sm truncate">{src.name}</span>
 								<span class="text-xs text-muted-foreground">Source</span>
 							{:else if result.type === 'card'}
-								{@const card = result.item as Card}
+								{@const card = result.item as DisplayCard}
 								<LayersIcon class="size-4 text-muted-foreground" />
 								<span class="flex-1 text-sm truncate">{card.front}</span>
 								<span class="text-xs text-muted-foreground">Card</span>

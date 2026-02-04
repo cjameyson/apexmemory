@@ -4,17 +4,17 @@
 	import SourceSidebarTabs, { type SidebarTab } from './source-sidebar-tabs.svelte';
 	import CardItem from './card-item.svelte';
 	import { PanelRightCloseIcon, PanelRightOpenIcon } from '@lucide/svelte';
-	import type { Source, Card } from '$lib/types';
+	import type { Source, DisplayCard } from '$lib/types';
 
 	interface Props {
 		source: Source;
-		cards: Card[];
+		cards: DisplayCard[];
 		activeTab?: SidebarTab;
 		isCollapsed?: boolean;
 		sidebarWidth?: number;
 		highlightedCardIds?: string[];
 		onTabChange?: (tab: SidebarTab) => void;
-		onCardClick?: (card: Card) => void;
+		onCardClick?: (card: DisplayCard) => void;
 		class?: string;
 	}
 
@@ -87,7 +87,10 @@
 	style={!isCollapsed ? `width: ${sidebarWidth}px` : undefined}
 >
 	<!-- Resize handle (left edge for right sidebar) -->
+	<!-- Separator with resize is interactive per WAI-ARIA splitter pattern -->
 	{#if !isCollapsed}
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			class={cn(
 				'absolute top-0 left-0 h-full w-1 cursor-col-resize transition-colors hover:bg-primary/50',

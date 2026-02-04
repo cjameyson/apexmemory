@@ -28,7 +28,8 @@
 	let currentSearch = $derived($page.url.searchParams.get('q') || '');
 
 	// Local search input tracks the text field during typing,
-	// synced back to URL state after debounce
+	// synced back to URL state after debounce (initial capture intentional, $effect syncs later)
+	// svelte-ignore state_referenced_locally
 	let searchInput = $state(currentSearch);
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 

@@ -31,11 +31,16 @@
 	let { cards: initialCards, mode, scope, initialIndex = 0, onProgressChange, onClose, class: className }: Props = $props();
 
 	// Mutable queue -- learning cards may be re-inserted
+	// Parent mounts focus-mode fresh each session, so capturing initial props is intentional.
+	// svelte-ignore state_referenced_locally
 	let cardQueue = $state<StudyCard[]>([...initialCards]);
+	// svelte-ignore state_referenced_locally
 	let currentIndex = $state(initialIndex);
 	let isRevealed = $state(false);
+	// svelte-ignore state_referenced_locally
 	let sessionComplete = $state(initialCards.length === 0);
 	let reviewedCount = $state(0);
+	// svelte-ignore state_referenced_locally
 	let totalCards = $state(initialCards.length);
 	let reviewStartTime = $state(Date.now());
 	let isSubmitting = $state(false);

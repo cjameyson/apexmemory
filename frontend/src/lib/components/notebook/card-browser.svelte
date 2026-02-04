@@ -1,9 +1,9 @@
 <script lang="ts">
-	import type { Card, Source } from '$lib/types';
+	import type { DisplayCard, Source } from '$lib/types';
 	import { SearchIcon } from '@lucide/svelte';
 
 	interface Props {
-		cards: Card[];
+		cards: DisplayCard[];
 		sources: Source[];
 		searchQuery?: string;
 		selectedSourceId?: string | null;
@@ -20,7 +20,8 @@
 		onSourceFilterChange
 	}: Props = $props();
 
-	// Local input state for debouncing
+	// Local input state for debouncing (initial capture intentional, $effect syncs)
+	// svelte-ignore state_referenced_locally
 	let localSearchQuery = $state(searchQuery);
 
 	// Sync local state when prop changes
@@ -62,7 +63,8 @@
 		return result;
 	});
 
-	function getSourceName(sourceId: string): string {
+	function getSourceName(sourceId: string | null): string {
+		if (!sourceId) return 'No source';
 		return sources.find((s) => s.id === sourceId)?.name ?? 'Unknown';
 	}
 </script>

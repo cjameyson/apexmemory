@@ -6,7 +6,7 @@
 	import SourceDetail from '$lib/components/notebook/source-detail.svelte';
 	import SourceContextSidebar from '$lib/components/notebook/source-context-sidebar.svelte';
 	import { type SidebarTab } from '$lib/components/notebook/source-sidebar-tabs.svelte';
-	import type { Card } from '$lib/types';
+	import type { DisplayCard } from '$lib/types';
 
 	let { data } = $props();
 
@@ -52,7 +52,7 @@
 		}
 	}
 
-	function handleCardClick(card: Card) {
+	function handleCardClick(card: DisplayCard) {
 		// Future: Scroll source viewer to card's linked section
 	}
 

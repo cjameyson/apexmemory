@@ -3,14 +3,14 @@
 	import { Button } from '$lib/components/ui/button';
 	import CardItem from './card-item.svelte';
 	import { PlusIcon } from '@lucide/svelte';
-	import type { Card, Source } from '$lib/types';
+	import type { DisplayCard, Source } from '$lib/types';
 
 	interface Props {
-		cards: Card[];
+		cards: DisplayCard[];
 		sources: Source[];
 		viewMode?: 'all' | 'due' | 'mastered';
 		onViewModeChange?: (mode: 'all' | 'due' | 'mastered') => void;
-		onCardClick?: (card: Card) => void;
+		onCardClick?: (card: DisplayCard) => void;
 		class?: string;
 	}
 
@@ -39,7 +39,7 @@
 	let masteredCount = $derived(cards.filter((c) => !c.due).length);
 
 	// Get source for a card
-	function getSource(card: Card): Source | undefined {
+	function getSource(card: DisplayCard): Source | undefined {
 		return sources.find((s) => s.id === card.sourceId);
 	}
 

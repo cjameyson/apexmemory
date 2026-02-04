@@ -1,8 +1,8 @@
 // Mock card data for development
 
-import type { MockCard as Card } from '$lib/types';
+import type { DisplayCard } from '$lib/types';
 
-const cardsMap: Record<string, Card[]> = {
+const cardsMap: Record<string, DisplayCard[]> = {
 	'nb-biology-101': [
 		{
 			id: 'card-bio-1',
@@ -133,26 +133,26 @@ const cardsMap: Record<string, Card[]> = {
 	]
 };
 
-export function getCardsForNotebook(notebookId: string): Card[] {
+export function getCardsForNotebook(notebookId: string): DisplayCard[] {
 	return cardsMap[notebookId] || [];
 }
 
-export function getCardsForSource(notebookId: string, sourceId: string): Card[] {
+export function getCardsForSource(notebookId: string, sourceId: string): DisplayCard[] {
 	const cards = cardsMap[notebookId] || [];
 	return cards.filter((c) => c.sourceId === sourceId);
 }
 
-export function getDueCardsForNotebook(notebookId: string): Card[] {
+export function getDueCardsForNotebook(notebookId: string): DisplayCard[] {
 	return getCardsForNotebook(notebookId).filter((c) => c.due);
 }
 
-export function getAllDueCards(): Card[] {
+export function getAllDueCards(): DisplayCard[] {
 	return Object.values(cardsMap)
 		.flat()
 		.filter((c) => c.due);
 }
 
-export function getCard(cardId: string): Card | undefined {
+export function getCard(cardId: string): DisplayCard | undefined {
 	return Object.values(cardsMap)
 		.flat()
 		.find((c) => c.id === cardId);

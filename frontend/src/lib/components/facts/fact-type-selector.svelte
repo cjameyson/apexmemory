@@ -18,7 +18,7 @@
 		{
 			value: 'image_occlusion',
 			label: 'Image Occlusion',
-			description: 'Hide image regions',
+			description: 'Best for diagrams, anatomy, maps, and charts',
 			icon: Image
 		}
 	];
@@ -43,7 +43,14 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div role="radiogroup" aria-label="Fact type" class="flex gap-3" onkeydown={handleKeydown}>
+<!-- svelte-ignore a11y_interactive_supports_focus -->
+<div
+	role="radiogroup"
+	aria-label="Fact type"
+	class="flex gap-3"
+	tabindex="0"
+	onkeydown={handleKeydown}
+>
 	{#each types as type (type.value)}
 		{@const isSelected = selected === type.value}
 		<button

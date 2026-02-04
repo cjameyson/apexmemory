@@ -1,7 +1,7 @@
 // Mock sources and cards for development
 // Returns sample data for any notebook ID until APIs exist
 
-import type { Source, MockCard as Card } from '$lib/types';
+import type { Source, DisplayCard } from '$lib/types';
 
 /**
  * Returns mock sources for any notebook ID.
@@ -54,7 +54,7 @@ export function getMockSourcesForNotebook(notebookId: string): Source[] {
  * Returns mock cards for any notebook ID.
  * Generates cards linked to the mock sources above.
  */
-export function getMockCardsForNotebook(notebookId: string): Card[] {
+export function getMockCardsForNotebook(notebookId: string): DisplayCard[] {
 	const sources = getMockSourcesForNotebook(notebookId);
 
 	return [

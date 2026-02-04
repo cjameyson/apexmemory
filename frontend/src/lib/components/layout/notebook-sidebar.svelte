@@ -12,12 +12,12 @@
 		PanelLeftOpenIcon,
 		SettingsIcon
 	} from '@lucide/svelte';
-	import type { Notebook, Source, Card } from '$lib/types';
+	import type { Notebook, Source, DisplayCard } from '$lib/types';
 
 	interface Props {
 		notebook: Notebook;
 		sources: Source[];
-		cards: Card[];
+		cards: DisplayCard[];
 		selectedSource?: Source | null;
 		isCollapsed?: boolean;
 		sidebarWidth?: number;
@@ -184,7 +184,10 @@
 	</div>
 
 	<!-- Resize handle (only when expanded) -->
+	<!-- Separator with resize is interactive per WAI-ARIA splitter pattern -->
 	{#if !isCollapsed}
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+		<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 		<div
 			class={cn(
 				'hover:bg-primary/50 absolute top-0 right-0 h-full w-1 cursor-col-resize transition-colors',

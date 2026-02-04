@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { Notebook, Source, Card } from '$lib/types';
+	import type { Notebook, Source, DisplayCard } from '$lib/types';
 	import { ConstructionIcon } from '@lucide/svelte';
 
 	interface Props {
 		notebook: Notebook;
 		sources: Source[];
-		cards: Card[];
+		cards: DisplayCard[];
 	}
 
 	let { notebook, sources, cards }: Props = $props();

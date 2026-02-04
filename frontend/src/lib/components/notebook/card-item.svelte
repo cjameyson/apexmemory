@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
-	import type { Card, Source } from '$lib/types';
+	import type { DisplayCard, Source } from '$lib/types';
 
 	interface Props {
-		card: Card;
+		card: DisplayCard;
 		source?: Source;
 		onclick?: () => void;
 		class?: string;

@@ -24,7 +24,9 @@
 
 	// initialData is captured at mount time only.
 	// Parent must destroy/recreate this component (via {#if} or {#key}) to reset.
+	// svelte-ignore state_referenced_locally
 	let text = $state(initialData?.text ?? '');
+	// svelte-ignore state_referenced_locally
 	let backExtra = $state(initialData?.backExtra ?? '');
 
 	// Example cloze facts for placeholder inspiration

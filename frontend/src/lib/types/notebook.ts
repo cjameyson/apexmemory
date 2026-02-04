@@ -29,11 +29,16 @@ export interface Notebook {
 	retention: number; // Mock until stats endpoint (uses fsrsSettings.desiredRetention as fallback)
 }
 
-/** @deprecated Use Card from '$lib/types/fact' for real API data. This is for mock UI only. */
-export interface MockCard {
+/**
+ * DisplayCard - UI-friendly card representation for display in lists, grids, and search.
+ * Constructed by combining Card (FSRS scheduling) + Fact (content) data.
+ * Used throughout the UI where card content needs to be displayed.
+ * For raw FSRS scheduling data, use Card from '$lib/types/fact'.
+ */
+export interface DisplayCard {
 	id: string;
 	notebookId: string;
-	sourceId: string;
+	sourceId: string | null;
 	front: string;
 	back: string;
 	due: boolean;

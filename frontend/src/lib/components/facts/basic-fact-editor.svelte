@@ -23,9 +23,13 @@
 
 	// initialData is captured at mount time only.
 	// Parent must destroy/recreate this component (via {#if} or {#key}) to reset.
+	// svelte-ignore state_referenced_locally
 	let front = $state(initialData?.front ?? '');
+	// svelte-ignore state_referenced_locally
 	let back = $state(initialData?.back ?? '');
+	// svelte-ignore state_referenced_locally
 	let backExtra = $state(initialData?.backExtra ?? '');
+	// svelte-ignore state_referenced_locally
 	let hint = $state(initialData?.hint ?? '');
 
 	const textareaBase = 'border-input bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full resize-y rounded-md border p-3 text-sm focus:ring-2 focus:outline-none';

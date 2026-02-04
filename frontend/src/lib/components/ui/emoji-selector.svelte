@@ -20,7 +20,8 @@
 
 	let { value = $bindable(''), defaultValue = '📓', placeholder = 'Select', class: className }: Props = $props();
 
-	// Initialize value if empty
+	// Initialize value if empty (one-time initialization on mount is intentional)
+	// svelte-ignore state_referenced_locally
 	if (!value && defaultValue) {
 		value = defaultValue;
 	}
@@ -111,7 +112,9 @@
 	</Popover.Trigger>
 
 	<Popover.Content class="w-80 p-0" align="start" sideOffset={4}>
-		<div class="flex flex-col" onkeydown={handleKeydown}>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<!-- svelte-ignore a11y_interactive_supports_focus -->
+		<div class="flex flex-col" role="dialog" aria-label="Emoji picker" onkeydown={handleKeydown}>
 			<!-- Search input -->
 			<div class="border-b p-2">
 				<div class="relative">
