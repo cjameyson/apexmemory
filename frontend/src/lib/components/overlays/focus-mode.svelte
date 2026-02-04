@@ -361,18 +361,20 @@
 	aria-modal="true"
 	aria-label="Focus mode review session"
 >
-	<!-- Header -->
-	<div class="flex items-center justify-between px-6 py-4">
-		<button
-			type="button"
-			onclick={handleClose}
-			class="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-			aria-label="Exit focus mode"
-		>
-			<XIcon class="size-6" />
-		</button>
+	<!-- Header: grid ensures center is truly centered regardless of left/right widths -->
+	<div class="grid grid-cols-3 items-center px-6 py-4">
+		<div class="justify-self-start">
+			<button
+				type="button"
+				onclick={handleClose}
+				class="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+				aria-label="Exit focus mode"
+			>
+				<XIcon class="size-6" />
+			</button>
+		</div>
 
-		<div class="flex items-center gap-3 text-white">
+		<div class="justify-self-center flex items-center gap-3 text-white">
 			{#if mode === 'practice'}
 				<span class="px-2 py-0.5 text-xs font-medium bg-amber-500/20 text-amber-300 rounded-full">Practice Mode</span>
 			{/if}
@@ -382,7 +384,7 @@
 			<span class="font-medium">{scopeTitle}</span>
 		</div>
 
-		<div class="flex items-center gap-3 text-white/70">
+		<div class="justify-self-end flex items-center gap-3 text-white/70">
 			<div class="w-24 h-2 bg-white/20 rounded-full overflow-hidden">
 				<div
 					class="h-full bg-white transition-all duration-300"
