@@ -64,6 +64,23 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: assets; Type: TABLE; Schema: app; Owner: -
+--
+
+CREATE TABLE app.assets (
+    user_id uuid NOT NULL,
+    id uuid DEFAULT uuidv7() NOT NULL,
+    content_type text NOT NULL,
+    filename text NOT NULL,
+    size_bytes bigint NOT NULL,
+    sha256 text NOT NULL,
+    metadata jsonb DEFAULT '{}'::jsonb NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: auth_identities; Type: TABLE; Schema: app; Owner: -
 --
 
@@ -246,6 +263,14 @@ CREATE TABLE app.users (
 
 
 --
+-- Name: assets assets_pkey; Type: CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.assets
+    ADD CONSTRAINT assets_pkey PRIMARY KEY (user_id, id);
+
+
+--
 -- Name: auth_identities auth_identities_pkey; Type: CONSTRAINT; Schema: app; Owner: -
 --
 
@@ -358,6 +383,20 @@ ALTER TABLE ONLY app.users
 
 
 --
+-- Name: ix_assets_sha256; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_assets_sha256 ON app.assets USING btree (user_id, sha256);
+
+
+--
+-- Name: ix_assets_user; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_assets_user ON app.assets USING btree (user_id, created_at DESC);
+
+
+--
 -- Name: ix_auth_identities_user; Type: INDEX; Schema: app; Owner: -
 --
 
@@ -383,6 +422,13 @@ CREATE INDEX ix_cards_fact ON app.cards USING btree (user_id, fact_id);
 --
 
 CREATE INDEX ix_cards_state ON app.cards USING btree (user_id, notebook_id, state);
+
+
+--
+-- Name: ix_facts_asset_ids; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_facts_asset_ids ON app.facts USING gin (((content -> 'asset_ids'::text)));
 
 
 --
@@ -449,6 +495,13 @@ CREATE UNIQUE INDEX ux_auth_identities_password_email ON app.auth_identities USI
 
 
 --
+-- Name: assets trg_assets_set_updated_at; Type: TRIGGER; Schema: app; Owner: -
+--
+
+CREATE TRIGGER trg_assets_set_updated_at BEFORE UPDATE ON app.assets FOR EACH ROW EXECUTE FUNCTION app_code.tg_set_updated_at();
+
+
+--
 -- Name: cards trg_cards_set_updated_at; Type: TRIGGER; Schema: app; Owner: -
 --
 
@@ -467,6 +520,14 @@ CREATE TRIGGER trg_cards_sync_notebook_count AFTER INSERT OR DELETE OR UPDATE OF
 --
 
 CREATE TRIGGER trg_facts_set_updated_at BEFORE UPDATE ON app.facts FOR EACH ROW EXECUTE FUNCTION app_code.tg_set_updated_at();
+
+
+--
+-- Name: assets assets_user_id_fkey; Type: FK CONSTRAINT; Schema: app; Owner: -
+--
+
+ALTER TABLE ONLY app.assets
+    ADD CONSTRAINT assets_user_id_fkey FOREIGN KEY (user_id) REFERENCES app.users(id);
 
 
 --
