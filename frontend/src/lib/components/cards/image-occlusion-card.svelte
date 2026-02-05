@@ -95,8 +95,8 @@
 					<!-- Masked state -->
 					<div
 						class="w-full h-full rounded-sm {isTarget
-							? 'bg-sky-500/90 border-2 border-sky-300'
-							: 'bg-slate-600/90 border border-slate-500'}"
+							? 'bg-sky-500 border-2 border-sky-300'
+							: 'bg-slate-600 border border-slate-500'}"
 					>
 						{#if isTarget && display.mode === 'hide_all_guess_one'}
 							<span class="absolute inset-0 flex items-center justify-center text-white font-bold text-lg">
