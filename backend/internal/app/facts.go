@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"regexp"
 	"sort"
 	"strconv"
@@ -178,6 +179,64 @@ func toCardResponse(c db.Card) CardResponse {
 		resp.BuriedUntil = &s
 	}
 	return resp
+}
+
+// diffAssetIDs returns asset IDs present in old but not in new_.
+func diffAssetIDs(old, new_ []uuid.UUID) []uuid.UUID {
+	newSet := make(map[uuid.UUID]bool, len(new_))
+	for _, id := range new_ {
+		newSet[id] = true
+	}
+	var removed []uuid.UUID
+	for _, id := range old {
+		if !newSet[id] {
+			removed = append(removed, id)
+		}
+	}
+	return removed
+}
+
+// cleanupOrphanedAssets deletes assets that are no longer referenced by any fact.
+// Runs best-effort: errors are logged but do not propagate.
+func (app *Application) cleanupOrphanedAssets(ctx context.Context, userID uuid.UUID, excludeFactID uuid.UUID, assetIDs []uuid.UUID) {
+	if app.Storage == nil || len(assetIDs) == 0 {
+		return
+	}
+	for _, assetID := range assetIDs {
+		assetIDJSON, _ := json.Marshal([]string{assetID.String()})
+		count, err := app.Queries.CountFactsReferencingAsset(ctx, db.CountFactsReferencingAssetParams{
+			UserID:        userID,
+			ExcludeFactID: excludeFactID,
+			AssetIDJson:   assetIDJSON,
+		})
+		if err != nil {
+			slog.Error("failed to count facts referencing asset",
+				"error", err,
+				"asset_id", assetID,
+				"user_id", userID,
+			)
+			continue
+		}
+		if count > 0 {
+			continue
+		}
+
+		key := storageKey(userID, assetID)
+		if err := app.Storage.Delete(ctx, key); err != nil {
+			slog.Error("failed to delete orphaned asset from storage",
+				"error", err,
+				"asset_id", assetID,
+				"user_id", userID,
+			)
+		}
+		if _, err := app.Queries.DeleteAsset(ctx, db.DeleteAssetParams{UserID: userID, ID: assetID}); err != nil {
+			slog.Error("failed to delete orphaned asset record",
+				"error", err,
+				"asset_id", assetID,
+				"user_id", userID,
+			)
+		}
+	}
 }
 
 // extractAssetIDs parses asset_ids from the content root and returns them as UUIDs.
@@ -497,6 +556,10 @@ func (app *Application) UpdateFact(ctx context.Context, userID, notebookID, fact
 		return UpdateFactResult{}, err
 	}
 
+	// Extract old and new asset IDs for orphan cleanup
+	oldAssetIDs, _ := extractAssetIDs(json.RawMessage(existingFact.Content))
+	newAssetIDs, _ := extractAssetIDs(content)
+
 	var result UpdateFactResult
 
 	err = WithTx(ctx, app.DB, func(q *db.Queries) error {
@@ -573,8 +636,17 @@ func (app *Application) UpdateFact(ctx context.Context, userID, notebookID, fact
 		result.Unchanged = len(expectedIDs) - len(toCreate)
 		return nil
 	})
+	if err != nil {
+		return result, err
+	}
 
-	return result, err
+	// Best-effort cleanup of assets removed in this update
+	removedAssetIDs := diffAssetIDs(oldAssetIDs, newAssetIDs)
+	if len(removedAssetIDs) > 0 {
+		app.cleanupOrphanedAssets(ctx, userID, factID, removedAssetIDs)
+	}
+
+	return result, nil
 }
 
 // FactListFilters holds optional filters for listing facts.
@@ -628,8 +700,23 @@ func (app *Application) GetFactStats(ctx context.Context, userID, notebookID uui
 	})
 }
 
-// DeleteFact deletes a fact (cascades to cards).
+// DeleteFact deletes a fact (cascades to cards) and cleans up orphaned assets.
 func (app *Application) DeleteFact(ctx context.Context, userID, notebookID, factID uuid.UUID) error {
+	// Read the fact first to extract asset IDs for cleanup
+	fact, err := app.Queries.GetFact(ctx, db.GetFactParams{
+		UserID:     userID,
+		ID:         factID,
+		NotebookID: notebookID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return errFactNotFound
+		}
+		return err
+	}
+
+	oldAssetIDs, _ := extractAssetIDs(json.RawMessage(fact.Content))
+
 	rows, err := app.Queries.DeleteFact(ctx, db.DeleteFactParams{
 		UserID:     userID,
 		ID:         factID,
@@ -641,5 +728,11 @@ func (app *Application) DeleteFact(ctx context.Context, userID, notebookID, fact
 	if rows == 0 {
 		return errFactNotFound
 	}
+
+	// Best-effort cleanup of orphaned assets
+	if len(oldAssetIDs) > 0 {
+		app.cleanupOrphanedAssets(ctx, userID, uuid.Nil, oldAssetIDs)
+	}
+
 	return nil
 }
