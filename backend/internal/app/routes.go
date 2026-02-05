@@ -43,6 +43,10 @@ func (app *Application) Routes() http.Handler {
 	mux.Handle("GET /v1/notebooks/{notebook_id}/cards", protected.ThenFunc(app.ListCardsHandler))
 	mux.Handle("GET /v1/notebooks/{notebook_id}/cards/{id}", protected.ThenFunc(app.GetCardHandler))
 
+	// Assets
+	mux.Handle("POST /v1/assets", protected.ThenFunc(app.UploadAssetHandler))
+	mux.Handle("GET /v1/assets/{id}/file", protected.ThenFunc(app.ServeAssetHandler))
+
 	// Reviews
 	mux.Handle("GET /v1/reviews/study", protected.ThenFunc(app.GetStudyCardsHandler))
 	mux.Handle("GET /v1/reviews/practice", protected.ThenFunc(app.GetPracticeCardsHandler))
