@@ -51,6 +51,7 @@ Add known bugs here.
 - [ ] Screen grab capability for image occlusion cards (or support paste from native screenshot tool)
 
 ## Backend
+- [ ] Need to support tags at the fact level, add filtering capability and tag management views in ui
 - [x] Verify notebook fsrs settings are utilized in the relevant places, fixed
 - [ ] Assets for image occlusion cards, are these sources? or use separate assets table?
 - [ ] Slugify notebook and sources on creation/edit - append nanoid to end if collision.  Use slugs for URLs

@@ -435,17 +435,17 @@ type EditorTool = 'select' | 'draw' | 'annotate-arrow';
 </phase_1_implementation_notes>
 
 <phase_1_exit_criteria>
-- [ ] All component files created with proper TypeScript interfaces
-- [ ] Command pattern infrastructure in place (commands.ts, history.svelte.ts)
-- [ ] Coordinate transformation utilities implemented and tested
-- [ ] Static layout renders correctly with mock data
-- [ ] Marching ants animation working on "selected" region
-- [ ] Undo/Redo buttons visible in toolbar (disabled state)
-- [ ] Design tokens used consistently (no hardcoded colors)
-- [ ] Visual design approved by human reviewer
+- [x] All component files created with proper TypeScript interfaces
+- [x] Command pattern infrastructure in place (commands.ts, history.svelte.ts)
+- [x] Coordinate transformation utilities implemented and tested
+- [x] Static layout renders correctly with mock data
+- [x] Marching ants animation working on "selected" region
+- [x] Undo/Redo buttons visible in toolbar (disabled state)
+- [x] Design tokens used consistently (no hardcoded colors)
+- [x] Visual design approved by human reviewer
 </phase_1_exit_criteria>
 
-**⏸️ STOP: Await human review before proceeding to Phase 2**
+**PHASE 1 COMPLETE**
 
 ---
 
@@ -481,7 +481,7 @@ When no image is loaded, show an upload interface:
 2. Show local preview immediately (optimistic UI)
 3. Upload to backend endpoint: POST /api/assets/upload
    - Request: FormData with 'file' field
-   - Response: { asset_id: string, url: string, width: number, height: number }
+   - Response: { asset_id: uuid (string), url: string, width: number, height: number }
 4. On success: Store asset_id, update image URL to CDN
 5. On failure: Show error toast, allow retry
 ```
