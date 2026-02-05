@@ -56,6 +56,9 @@ export interface ImageData {
 /** How regions are revealed during review */
 export type OcclusionMode = 'hide_all_guess_one' | 'hide_one_guess_one';
 
+/** How the target region is displayed after reveal */
+export type RevealStyle = 'show_label' | 'image_only';
+
 /** The complete field structure stored in fact content */
 export interface ImageOcclusionField {
 	version: 1;
@@ -64,6 +67,7 @@ export interface ImageOcclusionField {
 	regions: Region[];
 	annotations: Annotation[];
 	mode: OcclusionMode;
+	revealStyle?: RevealStyle;
 }
 
 // ============================================================================
