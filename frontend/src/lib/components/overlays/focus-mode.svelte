@@ -3,6 +3,8 @@
 	import { cn } from '$lib/utils';
 	import { generateUUID } from '$lib/utils/uuid';
 	import RatingButtons from '$lib/components/cards/rating-buttons.svelte';
+	import ImageOcclusionCard from '$lib/components/cards/image-occlusion-card.svelte';
+	import { RichTextContent } from '$lib/components/rich-text';
 	import * as Popover from '$lib/components/ui/popover';
 	import { XIcon, EyeIcon, HelpCircleIcon } from '@lucide/svelte';
 	import type { ReviewScope, StudyCard } from '$lib/types';
@@ -491,8 +493,13 @@
 				<div
 					class="bg-white/10 backdrop-blur-sm rounded-3xl p-8 mb-8 min-h-64 flex flex-col justify-center"
 				>
-					{#if display.isCloze}
-						<!-- Cloze card: in-place transform -->
+					{#if display.type === 'image_occlusion'}
+						<ImageOcclusionCard
+							{display}
+							{isRevealed}
+							onReveal={reveal}
+						/>
+					{:else if display.type === 'cloze'}
 						<div class="text-center">
 							<p class="text-2xl font-medium text-white">
 								{#if isRevealed}
@@ -502,25 +509,30 @@
 								{/if}
 							</p>
 						</div>
-					{:else}
-						<!-- Basic card: front/back display -->
-						<div class={cn('text-center', isRevealed && 'opacity-60')}>
-							<p class="text-2xl font-medium text-white">
-								{display.front}
-							</p>
+					{:else if display.type === 'basic'}
+						<div class={isRevealed ? 'opacity-60' : ''}>
+							<div class="text-center text-2xl font-medium text-white focus-prose">
+								{#if typeof display.front === 'string'}
+									<p>{display.front}</p>
+								{:else}
+									<RichTextContent content={display.front} class="text-white" />
+								{/if}
+							</div>
 						</div>
 
 						{#if isRevealed}
 							<div class="my-6 border-t border-white/20"></div>
-							<div class="text-center">
-								<p class="text-xl text-white/90">
-									{display.back}
-								</p>
+							<div class="text-center text-xl text-white/90 focus-prose">
+								{#if typeof display.back === 'string'}
+									<p>{display.back}</p>
+								{:else}
+									<RichTextContent content={display.back} class="text-white/90" />
+								{/if}
 							</div>
 						{/if}
 					{/if}
 
-					{#if !isRevealed}
+					{#if !isRevealed && display.type !== 'image_occlusion'}
 						<button
 							type="button"
 							onclick={reveal}
@@ -593,3 +605,13 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	/* Override prose colors for focus mode's dark background */
+	.focus-prose :global(.rich-text-content) {
+		--tw-prose-body: white;
+		--tw-prose-headings: white;
+		--tw-prose-bold: white;
+		--tw-prose-links: rgb(125 211 252); /* sky-300 */
+	}
+</style>
