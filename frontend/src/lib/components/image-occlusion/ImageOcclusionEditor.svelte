@@ -6,6 +6,7 @@
 		CreateRegionCommand,
 		DeleteRegionCommand,
 		MoveRegionCommand,
+		ResizeRegionCommand,
 		UpdateRegionMetadataCommand,
 		RotateImageCommand
 	} from './commands';
@@ -200,6 +201,19 @@
 		history.execute(command);
 	}
 
+	function handleRegionResize(id: string, newShape: RectShape) {
+		// Live visual update during drag
+		editor._updateRegion(id, { shape: newShape });
+	}
+
+	function handleRegionResizeEnd(id: string, originalShape: RectShape, newShape: RectShape) {
+		// Undo live mutation
+		editor._updateRegion(id, { shape: originalShape });
+		// Execute through command for undo support
+		const command = new ResizeRegionCommand(editor, id, originalShape, newShape);
+		history.execute(command);
+	}
+
 	function handleToolChange(tool: typeof editor.activeTool) {
 		editor.setActiveTool(tool);
 	}
@@ -387,6 +401,8 @@
 					onRegionCreate={handleRegionCreate}
 					onRegionMove={handleRegionMove}
 					onRegionMoveEnd={handleRegionMoveEnd}
+					onRegionResize={handleRegionResize}
+					onRegionResizeEnd={handleRegionResizeEnd}
 					onContainerResize={handleContainerResize}
 				/>
 			</div>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ImageData, Region, DisplayContext, EditorTool, Point, RectShape, ResizeHandlePosition } from './types';
-	import { calculateScale, calculateCenteredOffset, regionToDisplay, displayToImage } from './coordinates';
+	import { calculateScale, calculateCenteredOffset, regionToDisplay, displayToImage, constrainShapeToImageBounds, getResizeCursor } from './coordinates';
 	import RegionOverlay from './RegionOverlay.svelte';
 
 	type InteractionMode = 'idle' | 'drawing' | 'moving' | 'resizing';
@@ -18,6 +18,8 @@
 		onRegionCreate?: (displayShape: RectShape) => void;
 		onRegionMove?: (id: string, newShape: RectShape) => void;
 		onRegionMoveEnd?: (id: string, originalShape: RectShape, newPosition: Point) => void;
+		onRegionResize?: (id: string, newShape: RectShape) => void;
+		onRegionResizeEnd?: (id: string, originalShape: RectShape, newShape: RectShape) => void;
 		onContainerResize?: (width: number, height: number) => void;
 	}
 
@@ -34,6 +36,8 @@
 		onRegionCreate,
 		onRegionMove,
 		onRegionMoveEnd,
+		onRegionResize,
+		onRegionResizeEnd,
 		onContainerResize
 	}: Props = $props();
 
@@ -56,6 +60,12 @@
 	let moveRegionId = $state<string | null>(null);
 	let moveOriginalShape = $state<RectShape | null>(null);
 	let moveMouseOffset = $state<Point>({ x: 0, y: 0 });
+
+	// Resize state
+	let resizeRegionId = $state<string | null>(null);
+	let resizeOriginalShape = $state<RectShape | null>(null);
+	let resizeHandle = $state<ResizeHandlePosition | null>(null);
+	let resizeStartMouse = $state<Point>({ x: 0, y: 0 });
 
 	// Draw preview in display coordinates
 	let drawPreview = $derived<RectShape | null>(
@@ -218,6 +228,59 @@
 		};
 	});
 
+	// Window-level mouse handlers during resize
+	$effect(() => {
+		if (interactionMode !== 'resizing' || !resizeRegionId || !resizeOriginalShape || !resizeHandle) return;
+
+		const regionId = resizeRegionId;
+		const originalShape = resizeOriginalShape;
+		const handle = resizeHandle;
+		const startMouse = resizeStartMouse;
+
+		function onMouseMove(e: MouseEvent) {
+			const currentMouse = getContainerPoint(e);
+			const newShape = computeResizedShape(originalShape, handle, startMouse, currentMouse, displayContext);
+			onRegionResize?.(regionId, newShape);
+		}
+
+		function onMouseUp() {
+			const region = regions.find(r => r.id === regionId);
+			if (region && originalShape) {
+				const changed =
+					region.shape.x !== originalShape.x ||
+					region.shape.y !== originalShape.y ||
+					region.shape.width !== originalShape.width ||
+					region.shape.height !== originalShape.height;
+				if (changed) {
+					onRegionResizeEnd?.(regionId, originalShape, region.shape);
+				}
+			}
+			interactionMode = 'idle';
+			resizeRegionId = null;
+			resizeOriginalShape = null;
+			resizeHandle = null;
+		}
+
+		function onKeyDown(e: KeyboardEvent) {
+			if (e.key === 'Escape') {
+				onRegionResize?.(regionId, originalShape);
+				interactionMode = 'idle';
+				resizeRegionId = null;
+				resizeOriginalShape = null;
+				resizeHandle = null;
+			}
+		}
+
+		window.addEventListener('mousemove', onMouseMove);
+		window.addEventListener('mouseup', onMouseUp);
+		window.addEventListener('keydown', onKeyDown);
+		return () => {
+			window.removeEventListener('mousemove', onMouseMove);
+			window.removeEventListener('mouseup', onMouseUp);
+			window.removeEventListener('keydown', onKeyDown);
+		};
+	});
+
 	function handleMoveStart(regionId: string, e: MouseEvent) {
 		if (interactionMode !== 'idle') return;
 		const region = regions.find(r => r.id === regionId);
@@ -237,7 +300,55 @@
 	}
 
 	function handleResizeStart(regionId: string, e: MouseEvent, handle: ResizeHandlePosition) {
-		// Will be implemented in Task 5
+		if (interactionMode !== 'idle') return;
+		const region = regions.find(r => r.id === regionId);
+		if (!region) return;
+
+		e.preventDefault();
+		interactionMode = 'resizing';
+		resizeRegionId = regionId;
+		resizeOriginalShape = { ...region.shape };
+		resizeHandle = handle;
+		resizeStartMouse = getContainerPoint(e);
+	}
+
+	function computeResizedShape(
+		original: RectShape,
+		handle: ResizeHandlePosition,
+		startMouse: Point,
+		currentMouse: Point,
+		ctx: DisplayContext
+	): RectShape {
+		const scale = calculateScale(ctx) * ctx.zoom;
+		// Convert mouse delta from display to image pixels
+		const dx = (currentMouse.x - startMouse.x) / scale;
+		const dy = (currentMouse.y - startMouse.y) / scale;
+
+		let { x, y, width, height } = original;
+
+		// Adjust edges based on handle position
+		switch (handle) {
+			case 'nw': x += dx; y += dy; width -= dx; height -= dy; break;
+			case 'n':  y += dy; height -= dy; break;
+			case 'ne': y += dy; width += dx; height -= dy; break;
+			case 'w':  x += dx; width -= dx; break;
+			case 'e':  width += dx; break;
+			case 'sw': x += dx; width -= dx; height += dy; break;
+			case 's':  height += dy; break;
+			case 'se': width += dx; height += dy; break;
+		}
+
+		// Handle flipping (drag past opposite edge)
+		if (width < 0) { x += width; width = -width; }
+		if (height < 0) { y += height; height = -height; }
+
+		// Enforce minimum size (20 image pixels)
+		const MIN_SIZE = 20;
+		if (width < MIN_SIZE) width = MIN_SIZE;
+		if (height < MIN_SIZE) height = MIN_SIZE;
+
+		// Constrain to image bounds
+		return constrainShapeToImageBounds({ x, y, width, height }, ctx.imageWidth, ctx.imageHeight);
 	}
 
 	// Calculate image transform with transform-origin: 0 0
@@ -330,6 +441,7 @@
 	let canvasCursor = $derived(
 		isPanning ? 'grabbing'
 		: isSpaceHeld ? 'grab'
+		: interactionMode === 'resizing' && resizeHandle ? getResizeCursor(resizeHandle)
 		: interactionMode === 'drawing' ? 'crosshair'
 		: interactionMode === 'moving' ? 'move'
 		: activeTool === 'draw_region' ? 'crosshair'
