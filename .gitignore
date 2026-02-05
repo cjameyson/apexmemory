@@ -78,4 +78,7 @@ frontend/.husky/
 backend/seed
 backend/seed-notebooks
 
+# Worktrees
+.worktrees/
+
 # Prompts
