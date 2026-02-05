@@ -138,6 +138,11 @@
 		}
 	}
 
+	/** Focus the editor. */
+	export function focus() {
+		editor?.commands.focus();
+	}
+
 	/** Open file picker and insert selected images. */
 	function handleImageInsert() {
 		const input = document.createElement('input');

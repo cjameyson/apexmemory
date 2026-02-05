@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { FactType, FactDetail } from '$lib/types/fact';
+	import type { JSONContent } from '@tiptap/core';
 	import { untrack } from 'svelte';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import Button from '$lib/components/ui/button/button.svelte';
@@ -19,8 +20,51 @@
 		factType: FactType;
 		content: {
 			version: number;
-			fields: { name: string; type: string; value: string; regions?: { id: string }[] }[];
+			asset_ids?: string[];
+			fields: { name: string; type: string; value: string | JSONContent; regions?: { id: string }[] }[];
 		};
+	}
+
+	/** Walk TipTap JSON documents and collect all referenced asset IDs from image nodes. */
+	function extractAssetIds(...docs: (JSONContent | null)[]): string[] {
+		const ids: string[] = [];
+		function walk(node: Record<string, unknown>) {
+			if (node?.type === 'image') {
+				const attrs = node.attrs as Record<string, unknown> | undefined;
+				if (attrs?.asset_id && typeof attrs.asset_id === 'string') {
+					ids.push(attrs.asset_id);
+				}
+			}
+			if (Array.isArray(node?.content)) {
+				(node.content as Record<string, unknown>[]).forEach(walk);
+			}
+		}
+		for (const doc of docs) {
+			if (doc) walk(doc as Record<string, unknown>);
+		}
+		return [...new Set(ids)];
+	}
+
+	/** Check if a TipTap JSON document is effectively empty (no text or image content). */
+	function isRichTextEmpty(doc: JSONContent | null): boolean {
+		if (!doc) return true;
+		let hasContent = false;
+		function walk(node: Record<string, unknown>) {
+			if (hasContent) return;
+			if (node.type === 'text' && typeof node.text === 'string' && node.text.trim()) {
+				hasContent = true;
+				return;
+			}
+			if (node.type === 'image') {
+				hasContent = true;
+				return;
+			}
+			if (Array.isArray(node.content)) {
+				(node.content as Record<string, unknown>[]).forEach(walk);
+			}
+		}
+		walk(doc as Record<string, unknown>);
+		return !hasContent;
 	}
 
 	let {
@@ -44,7 +88,7 @@
 	let submitError = $state<string | null>(null);
 
 	// Independent state per type (preserved when switching)
-	let basicData = $state<BasicFactData>({ front: '', back: '', backExtra: '', hint: '' });
+	let basicData = $state<BasicFactData>({ front: null, back: null, backExtra: '', hint: '' });
 	let clozeData = $state<ClozeFactData>({ text: '', backExtra: '' });
 
 	// Validation errors
@@ -77,8 +121,8 @@
 	function validate(): boolean {
 		if (selectedType === 'basic') {
 			const errs: typeof basicErrors = {};
-			if (!basicData.front.trim()) errs.front = 'Front is required';
-			if (!basicData.back.trim()) errs.back = 'Back is required';
+			if (isRichTextEmpty(basicData.front)) errs.front = 'Front is required';
+			if (isRichTextEmpty(basicData.back)) errs.back = 'Back is required';
 			basicErrors = errs;
 			if (Object.keys(errs).length > 0) {
 				basicEditor?.focus();
@@ -132,9 +176,10 @@
 
 	function buildContent(): FactFormData['content'] {
 		if (selectedType === 'basic') {
+			const assetIds = extractAssetIds(basicData.front, basicData.back);
 			const fields: FactFormData['content']['fields'] = [
-				{ name: 'front', type: 'plain_text', value: basicData.front.trim() },
-				{ name: 'back', type: 'plain_text', value: basicData.back.trim() }
+				{ name: 'front', type: 'rich_text', value: basicData.front! },
+				{ name: 'back', type: 'rich_text', value: basicData.back! }
 			];
 			if (basicData.backExtra.trim()) {
 				fields.push({ name: 'back_extra', type: 'plain_text', value: basicData.backExtra.trim() });
@@ -142,7 +187,11 @@
 			if (basicData.hint.trim()) {
 				fields.push({ name: 'hint', type: 'plain_text', value: basicData.hint.trim() });
 			}
-			return { version: 1, fields };
+			const content: FactFormData['content'] = { version: 1, fields };
+			if (assetIds.length > 0) {
+				content.asset_ids = assetIds;
+			}
+			return content;
 		}
 		if (selectedType === 'cloze') {
 			const fields: FactFormData['content']['fields'] = [
@@ -177,7 +226,7 @@
 
 	function resetActiveType() {
 		if (selectedType === 'basic') {
-			basicData = { front: '', back: '', backExtra: '', hint: '' };
+			basicData = { front: null, back: null, backExtra: '', hint: '' };
 			basicErrors = {};
 		} else if (selectedType === 'cloze') {
 			clozeData = { text: '', backExtra: '' };
@@ -245,21 +294,41 @@
 	}
 
 	function parseContentToEditorData(content: Record<string, unknown>, factType: FactType) {
-		const fields = (content as { fields?: { name: string; value: string }[] }).fields ?? [];
-		const fieldMap = new Map(fields.map((f) => [f.name, f.value]));
+		const fields = (content as { fields?: { name: string; type: string; value: string | JSONContent }[] }).fields ?? [];
+		const fieldMap = new Map(fields.map((f) => [f.name, f]));
 
 		if (factType === 'basic') {
+			const frontField = fieldMap.get('front');
+			const backField = fieldMap.get('back');
+			const backExtraField = fieldMap.get('back_extra');
+			const hintField = fieldMap.get('hint');
+
+			// Support both rich_text (JSONContent) and legacy plain_text (string) values
+			function toRichText(field: { type: string; value: string | JSONContent } | undefined): JSONContent | null {
+				if (!field) return null;
+				if (field.type === 'rich_text' && typeof field.value === 'object') {
+					return field.value as JSONContent;
+				}
+				// Legacy plain_text: wrap in a minimal TipTap doc
+				const text = typeof field.value === 'string' ? field.value : '';
+				if (!text) return null;
+				return {
+					type: 'doc',
+					content: [{ type: 'paragraph', content: [{ type: 'text', text }] }]
+				};
+			}
+
 			basicData = {
-				front: fieldMap.get('front') ?? '',
-				back: fieldMap.get('back') ?? '',
-				backExtra: fieldMap.get('back_extra') ?? '',
-				hint: fieldMap.get('hint') ?? ''
+				front: toRichText(frontField),
+				back: toRichText(backField),
+				backExtra: (backExtraField?.value as string) ?? '',
+				hint: (hintField?.value as string) ?? ''
 			};
 			basicErrors = {};
 		} else if (factType === 'cloze') {
 			clozeData = {
-				text: fieldMap.get('text') ?? '',
-				backExtra: fieldMap.get('back_extra') ?? ''
+				text: (fieldMap.get('text')?.value as string) ?? '',
+				backExtra: (fieldMap.get('back_extra')?.value as string) ?? ''
 			};
 			clozeErrors = {};
 		}

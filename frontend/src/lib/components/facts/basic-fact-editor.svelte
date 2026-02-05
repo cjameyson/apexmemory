@@ -1,12 +1,12 @@
 <script lang="ts">
+	import type { JSONContent } from '@tiptap/core';
 	import { Info, Lightbulb } from '@lucide/svelte';
-	import { cn } from '$lib/utils';
-	import MiniToolbar from './mini-toolbar.svelte';
+	import { RichTextEditor } from '$lib/components/rich-text';
 	import IconInput from './icon-input.svelte';
 
 	export interface BasicFactData {
-		front: string;
-		back: string;
+		front: JSONContent | null;
+		back: JSONContent | null;
 		backExtra: string;
 		hint: string;
 	}
@@ -24,57 +24,50 @@
 	// initialData is captured at mount time only.
 	// Parent must destroy/recreate this component (via {#if} or {#key}) to reset.
 	// svelte-ignore state_referenced_locally
-	let front = $state(initialData?.front ?? '');
+	let front: JSONContent | null = $state(initialData?.front ?? null);
 	// svelte-ignore state_referenced_locally
-	let back = $state(initialData?.back ?? '');
+	let back: JSONContent | null = $state(initialData?.back ?? null);
 	// svelte-ignore state_referenced_locally
 	let backExtra = $state(initialData?.backExtra ?? '');
 	// svelte-ignore state_referenced_locally
 	let hint = $state(initialData?.hint ?? '');
 
-	const textareaBase = 'border-input bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring w-full resize-y rounded-md border p-3 text-sm focus:ring-2 focus:outline-none';
-	const errorClasses = 'border-destructive focus:ring-destructive';
-
-	let frontRef: HTMLTextAreaElement | undefined = $state();
+	let frontEditor: RichTextEditor | undefined = $state();
 
 	function notify() {
 		onchange({ front, back, backExtra, hint });
 	}
 
 	export function focus() {
-		frontRef?.focus();
+		frontEditor?.focus();
 	}
 </script>
 
 <div class="space-y-4">
 	<div class="space-y-1">
-		<label class="text-sm font-medium" for="basic-front">Front</label>
-		<MiniToolbar />
-		<textarea
-			id="basic-front"
-			bind:this={frontRef}
-			rows={2}
-			class={cn(textareaBase, errors?.front && errorClasses)}
+		<!-- svelte-ignore a11y_label_has_associated_control -->
+		<label class="text-sm font-medium">Front</label>
+		<RichTextEditor
+			bind:this={frontEditor}
+			content={front}
+			onchange={(c) => { front = c; notify(); }}
 			placeholder="Question or prompt..."
-			bind:value={front}
-			oninput={notify}
-		></textarea>
+			class={errors?.front ? 'border-destructive focus-within:ring-destructive' : ''}
+		/>
 		{#if errors?.front}
 			<p class="text-destructive text-xs">{errors.front}</p>
 		{/if}
 	</div>
 
 	<div class="space-y-1">
-		<label class="text-sm font-medium" for="basic-back">Back</label>
-		<MiniToolbar />
-		<textarea
-			id="basic-back"
-			rows={2}
-			class={cn(textareaBase, errors?.back && errorClasses)}
+		<!-- svelte-ignore a11y_label_has_associated_control -->
+		<label class="text-sm font-medium">Back</label>
+		<RichTextEditor
+			content={back}
+			onchange={(c) => { back = c; notify(); }}
 			placeholder="Answer..."
-			bind:value={back}
-			oninput={notify}
-		></textarea>
+			class={errors?.back ? 'border-destructive focus-within:ring-destructive' : ''}
+		/>
 		{#if errors?.back}
 			<p class="text-destructive text-xs">{errors.back}</p>
 		{/if}
