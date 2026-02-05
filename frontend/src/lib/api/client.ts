@@ -1,12 +1,16 @@
 import type { ApiAsset } from './types';
+import { resizeImageIfNeeded } from '$lib/utils/image-resize';
 
 /**
  * Upload a file as an asset via the SvelteKit proxy route.
  * Use this from client-side components (e.g., image upload in TipTap editor).
+ * Images larger than 2000px are automatically resized before upload.
  */
 export async function uploadAsset(file: File): Promise<ApiAsset> {
+	const resized = await resizeImageIfNeeded(file);
+
 	const formData = new FormData();
-	formData.append('file', file);
+	formData.append('file', resized);
 
 	const res = await fetch('/api/assets', {
 		method: 'POST',
