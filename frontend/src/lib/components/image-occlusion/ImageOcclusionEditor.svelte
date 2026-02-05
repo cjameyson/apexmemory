@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ImageOcclusionField, Region, ImageData, OcclusionMode } from './types';
+	import type { ImageOcclusionField, Region } from './types';
 	import { createEditorState } from './editor-state.svelte';
 	import { createHistoryManager } from './history.svelte';
 	import {
@@ -65,41 +65,7 @@
 		right: 'justify-end'
 	};
 
-	// ============================================================================
-	// Mock Data for Phase 1 Demo
-	// ============================================================================
-	const MOCK_IMAGE: ImageData = {
-		url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Camponotus_flavomarginatus_ant.jpg/1024px-Camponotus_flavomarginatus_ant.jpg',
-		width: 1024,
-		height: 768,
-		rotation: 0
-	};
-
-	const MOCK_REGIONS: Region[] = [
-		{
-			id: 'm_demo_head',
-			shape: { x: 620, y: 180, width: 200, height: 180 },
-			label: 'Head',
-			hint: 'The front part containing eyes and mandibles',
-			backContent: 'The head houses the brain, eyes, and mouthparts including powerful mandibles.'
-		},
-		{
-			id: 'm_demo_thorax',
-			shape: { x: 380, y: 220, width: 220, height: 200 },
-			label: 'Thorax',
-			hint: 'Middle section with legs attached'
-		},
-		{
-			id: 'm_demo_abdomen',
-			shape: { x: 120, y: 280, width: 280, height: 220 },
-			label: 'Abdomen',
-			hint: 'Contains digestive system',
-			backContent:
-				'The abdomen (gaster) contains the digestive system, reproductive organs, and in some species, a stinger.'
-		}
-	];
-
-	// Initialize with mock data or provided initial value
+	// Initialize from provided initial value
 	$effect(() => {
 		if (initialValue) {
 			editor.initialize(
@@ -108,11 +74,7 @@
 				initialValue.annotations,
 				initialValue.mode
 			);
-		} else {
-			// Use mock data for demo
-			editor.initialize(MOCK_IMAGE, MOCK_REGIONS, [], 'hide_all_guess_one');
-			// Pre-select the first region to demo marching ants
-			editor.setSelectedRegionId('m_demo_head');
+			cardTitle = initialValue.title ?? '';
 		}
 	});
 
@@ -357,13 +319,9 @@
 			<!-- Floating status bar -->
 			<div class="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-2">
 				<div
-					class="pointer-events-auto border-border bg-card/90 inline-flex rounded-md border shadow-sm backdrop-blur-sm"
+					class="border-border bg-card/90 pointer-events-auto inline-flex rounded-md border shadow-sm backdrop-blur-sm"
 				>
-					<StatusBar
-						regionCount={editor.regions.length}
-						mode={editor.mode}
-						zoom={editor.zoom}
-					/>
+					<StatusBar regionCount={editor.regions.length} mode={editor.mode} zoom={editor.zoom} />
 				</div>
 			</div>
 		{:else}

@@ -83,7 +83,7 @@ export class MoveRegionCommand implements EditorCommand {
 	constructor(
 		private readonly mutators: EditorStateMutators,
 		private readonly regionId: string,
-		private readonly originalPosition: Point,
+		private readonly originalShape: RectShape,
 		newPosition: Point
 	) {
 		this.targetId = regionId;
@@ -93,22 +93,16 @@ export class MoveRegionCommand implements EditorCommand {
 	execute(): void {
 		this.mutators._updateRegion(this.regionId, {
 			shape: {
+				...this.originalShape,
 				x: this.finalPosition.x,
-				y: this.finalPosition.y,
-				width: 0, // Will be preserved by partial update
-				height: 0
-			} as RectShape
+				y: this.finalPosition.y
+			}
 		});
 	}
 
 	undo(): void {
 		this.mutators._updateRegion(this.regionId, {
-			shape: {
-				x: this.originalPosition.x,
-				y: this.originalPosition.y,
-				width: 0,
-				height: 0
-			} as RectShape
+			shape: this.originalShape
 		});
 	}
 
