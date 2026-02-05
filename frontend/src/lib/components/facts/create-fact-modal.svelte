@@ -204,7 +204,11 @@
 		}
 		// image_occlusion: title as separate plain_text field + occlusion data with regions array
 		if (selectedType === 'image_occlusion' && imageOcclusionData) {
-			return {
+			const assetIds: string[] = [];
+			if (imageOcclusionData.image.assetId) {
+				assetIds.push(imageOcclusionData.image.assetId);
+			}
+			const content: FactFormData['content'] = {
 				version: 1,
 				fields: [
 					{
@@ -215,11 +219,15 @@
 					{
 						name: 'image_occlusion',
 						type: 'image_occlusion',
-						value: JSON.stringify(imageOcclusionData),
+						value: imageOcclusionData,
 						regions: imageOcclusionData.regions.map((r) => ({ id: r.id }))
 					}
 				]
 			};
+			if (assetIds.length > 0) {
+				content.asset_ids = assetIds;
+			}
+			return content;
 		}
 		return { version: 1, fields: [] };
 	}

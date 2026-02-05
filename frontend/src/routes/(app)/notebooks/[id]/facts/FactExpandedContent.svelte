@@ -57,7 +57,7 @@
 	);
 
 	// Parse image occlusion regions for label/hint lookup
-	const imageOcclusionRegions = $derived(() => {
+	const imageOcclusionRegions = $derived.by(() => {
 		const field = allFields.find((f) => f.type === 'image_occlusion');
 		if (!field) return new Map<string, { label: string; hint: string }>();
 		try {
@@ -177,7 +177,7 @@
 								<td class="py-1.5">{cloze?.text || '--'}</td>
 								<td class="py-1.5 text-muted-foreground">{cloze?.hint || '--'}</td>
 							{:else if fact.factType === 'image_occlusion'}
-								{@const region = imageOcclusionRegions().get(card.elementId)}
+								{@const region = imageOcclusionRegions.get(card.elementId)}
 								<td class="py-1.5">{region?.label || card.elementId || '--'}</td>
 								<td class="py-1.5 text-muted-foreground">{region?.hint || '--'}</td>
 							{/if}
