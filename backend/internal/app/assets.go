@@ -14,6 +14,7 @@ import (
 	_ "image/png"
 	"io"
 	"log/slog"
+	"net/http"
 
 	"apexmemory.ai/internal/db"
 	"github.com/google/uuid"
@@ -71,6 +72,14 @@ func (app *Application) UploadAsset(ctx context.Context, userID uuid.UUID, filen
 	}
 	if len(data) == 0 {
 		return db.Asset{}, &AssetValidationError{Message: "file is empty"}
+	}
+
+	// Verify the declared content type matches actual file bytes.
+	detected := http.DetectContentType(data)
+	if !allowedContentTypes[detected] {
+		return db.Asset{}, &AssetValidationError{
+			Message: fmt.Sprintf("file content does not match an allowed image type (detected: %s)", detected),
+		}
 	}
 
 	// Compute SHA-256 hash

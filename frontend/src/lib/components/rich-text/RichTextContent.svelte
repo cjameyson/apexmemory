@@ -34,7 +34,11 @@
 			};
 		},
 		renderHTML({ HTMLAttributes }) {
-			const attrs = { ...HTMLAttributes };
+			const allowed = ['src', 'alt', 'title', 'width', 'height', 'data-asset-id'];
+			const attrs: Record<string, unknown> = {};
+			for (const key of allowed) {
+				if (HTMLAttributes[key] != null) attrs[key] = HTMLAttributes[key];
+			}
 			if (attrs['data-asset-id']) {
 				attrs.src = assetUrl(attrs['data-asset-id'] as string);
 			}

@@ -107,30 +107,15 @@
 			editor
 				.chain()
 				.focus()
-				.setImage({
-					src,
-					alt: asset.filename,
-					...(asset.metadata.width ? { width: asset.metadata.width } : {}),
-					...(asset.metadata.height ? { height: asset.metadata.height } : {})
+				.insertContent({
+					type: 'image',
+					attrs: {
+						src,
+						alt: asset.filename,
+						asset_id: asset.id
+					}
 				})
 				.run();
-
-			// Set the asset_id attribute on the just-inserted image node.
-			// After setImage, the cursor is right after the image node.
-			const { state } = editor;
-			const pos = state.selection.anchor;
-			// Walk backward to find the image node we just inserted.
-			const resolvedPos = state.doc.resolve(pos);
-			const nodeBefore = resolvedPos.nodeBefore;
-			if (nodeBefore?.type.name === 'image') {
-				const imagePos = pos - nodeBefore.nodeSize;
-				editor.view.dispatch(
-					state.tr.setNodeMarkup(imagePos, undefined, {
-						...nodeBefore.attrs,
-						asset_id: asset.id
-					})
-				);
-			}
 		} catch (err) {
 			console.error('Failed to upload image:', err);
 		} finally {

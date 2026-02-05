@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type LocalStorage struct {
@@ -24,8 +25,29 @@ type objectMeta struct {
 	ContentType string `json:"content_type"`
 }
 
+// safePath resolves a storage key to an absolute path and verifies it remains
+// within basePath. Returns an error if the key would escape the storage root.
+func (s *LocalStorage) safePath(key string) (string, error) {
+	joined := filepath.Join(s.basePath, key)
+	absPath, err := filepath.Abs(joined)
+	if err != nil {
+		return "", fmt.Errorf("resolve path: %w", err)
+	}
+	absBase, err := filepath.Abs(s.basePath)
+	if err != nil {
+		return "", fmt.Errorf("resolve base: %w", err)
+	}
+	if !strings.HasPrefix(absPath, absBase+string(filepath.Separator)) {
+		return "", fmt.Errorf("invalid key: path traversal detected")
+	}
+	return absPath, nil
+}
+
 func (s *LocalStorage) Put(_ context.Context, key string, reader io.Reader, contentType string) error {
-	path := filepath.Join(s.basePath, key)
+	path, err := s.safePath(key)
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return fmt.Errorf("create directory: %w", err)
 	}
@@ -52,7 +74,10 @@ func (s *LocalStorage) Put(_ context.Context, key string, reader io.Reader, cont
 }
 
 func (s *LocalStorage) Get(_ context.Context, key string) (io.ReadCloser, string, error) {
-	path := filepath.Join(s.basePath, key)
+	path, err := s.safePath(key)
+	if err != nil {
+		return nil, "", err
+	}
 
 	f, err := os.Open(path)
 	if err != nil {
@@ -72,7 +97,10 @@ func (s *LocalStorage) Get(_ context.Context, key string) (io.ReadCloser, string
 }
 
 func (s *LocalStorage) Delete(_ context.Context, key string) error {
-	path := filepath.Join(s.basePath, key)
+	path, err := s.safePath(key)
+	if err != nil {
+		return err
+	}
 	os.Remove(path + ".meta")
 
 	if err := os.Remove(path); err != nil {
