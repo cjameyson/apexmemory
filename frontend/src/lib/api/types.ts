@@ -144,6 +144,24 @@ export interface ApiFactsListWithStats extends PaginatedResponse<ApiFact> {
 }
 
 // ============================================================================
+// Asset API Types
+// ============================================================================
+
+// Mirror backend AssetResponse struct
+export interface ApiAsset {
+	id: string;
+	content_type: string;
+	filename: string;
+	size_bytes: number;
+	sha256: string;
+	metadata: {
+		width?: number;
+		height?: number;
+	};
+	created_at: string;
+}
+
+// ============================================================================
 // Review API Types
 // ============================================================================
 
