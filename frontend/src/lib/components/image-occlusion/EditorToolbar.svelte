@@ -209,9 +209,8 @@
 			</Tooltip.Root>
 		</div>
 
+		<!-- AI Assist (hidden for now)
 		<Separator orientation="vertical" class="mx-1 h-6" />
-
-		<!-- AI Assist (coming soon) -->
 		<Tooltip.Root>
 			<Tooltip.Trigger>
 				<Button
@@ -234,5 +233,6 @@
 				<p>AI-assisted region detection (coming soon)</p>
 			</Tooltip.Content>
 		</Tooltip.Root>
+		-->
 	</div>
 </Tooltip.Provider>

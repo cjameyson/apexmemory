@@ -440,7 +440,7 @@
 					onContainerResize={handleContainerResize}
 				/>
 			</div>
-			<!-- Floating status bar -->
+			<!-- Floating status bar (hidden for now)
 			<div class="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-2">
 				<div
 					class="border-border bg-card/90 pointer-events-auto inline-flex rounded-md border shadow-sm backdrop-blur-sm"
@@ -448,6 +448,7 @@
 					<StatusBar regionCount={editor.regions.length} mode={editor.mode} zoom={editor.zoom} />
 				</div>
 			</div>
+			-->
 		{:else}
 			<ImageUploader onImageLoad={handleImageLoad} />
 		{/if}
