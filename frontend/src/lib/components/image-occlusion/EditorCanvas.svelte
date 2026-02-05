@@ -489,7 +489,7 @@
 		<img
 			src={image.url}
 			alt="Occlusion target"
-			class="pointer-events-none absolute left-0 top-0"
+			class="pointer-events-none absolute left-0 top-0 max-w-none"
 			style="width: {image.width}px; height: {image.height}px; transform: {imageTransform}; transform-origin: 0 0;"
 			draggable="false"
 		/>

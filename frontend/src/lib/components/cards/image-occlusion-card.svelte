@@ -88,7 +88,7 @@
 		<!-- Region overlays -->
 		{#each visibleRegions as { region, isTarget } (region.id)}
 			<div
-				class="absolute transition-all duration-300 rounded-sm overflow-hidden"
+				class="absolute transition-all duration-300 rounded-sm"
 				style={regionStyle(region)}
 			>
 				{#if shouldShowMask(isTarget)}
@@ -106,15 +106,14 @@
 					</div>
 				{:else if isTarget && isRevealed}
 					<!-- Revealed target -->
+					<div class="w-full h-full border-2 border-emerald-400 rounded-sm bg-emerald-500/20"></div>
 					{#if display.revealStyle === 'show_label'}
-						<div class="w-full h-full flex items-center justify-center bg-emerald-500/20 border-2 border-emerald-400 rounded-sm">
-							<span class="px-2 py-0.5 text-sm font-semibold text-emerald-300 bg-black/50 rounded text-center leading-tight">
+						<!-- Label floats below region, not clipped by it -->
+						<div class="absolute left-1/2 -translate-x-1/2 top-full mt-1 whitespace-nowrap z-10">
+							<span class="px-2 py-0.5 text-sm font-semibold text-emerald-300 bg-black/70 rounded text-center leading-tight">
 								{targetRegion?.label ?? ''}
 							</span>
 						</div>
-					{:else}
-						<!-- image_only: just show a subtle border -->
-						<div class="w-full h-full border-2 border-emerald-400/50 rounded-sm"></div>
 					{/if}
 				{/if}
 			</div>
