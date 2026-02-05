@@ -1,24 +1,54 @@
 <script lang="ts">
-	/**
-	 * Image Uploader - Placeholder for Phase 2
-	 *
-	 * This component will handle:
-	 * - Drag and drop file upload
-	 * - Click to browse
-	 * - Paste from clipboard
-	 * - URL input
-	 */
-
-	import { Upload, Image, Link } from '@lucide/svelte';
+	import { Upload } from '@lucide/svelte';
+	import { uploadAsset, assetUrl } from '$lib/api/client';
 
 	interface Props {
-		onImageLoad?: (url: string, width: number, height: number) => void;
+		onImageLoad?: (url: string, width: number, height: number, assetId: string) => void;
 	}
 
 	let { onImageLoad }: Props = $props();
 
-	// Placeholder - full implementation in Phase 2
 	let isDragging = $state(false);
+	let uploading = $state(false);
+	let errorMsg = $state<string | null>(null);
+
+	async function handleFile(file: File) {
+		if (!file.type.startsWith('image/')) {
+			errorMsg = 'Please select an image file (JPEG, PNG, WebP, or GIF)';
+			return;
+		}
+
+		errorMsg = null;
+		uploading = true;
+
+		try {
+			const asset = await uploadAsset(file);
+			const url = assetUrl(asset.id);
+			const width = asset.metadata?.width ?? 0;
+			const height = asset.metadata?.height ?? 0;
+			onImageLoad?.(url, width, height, asset.id);
+		} catch (err) {
+			errorMsg = err instanceof Error ? err.message : 'Upload failed';
+		} finally {
+			uploading = false;
+		}
+	}
+
+	function handleDrop(e: DragEvent) {
+		e.preventDefault();
+		isDragging = false;
+		const file = e.dataTransfer?.files[0];
+		if (file) handleFile(file);
+	}
+
+	function handleFileInput(e: Event) {
+		const input = e.target as HTMLInputElement;
+		const file = input.files?.[0];
+		if (file) handleFile(file);
+		input.value = '';
+	}
+
+	let fileInput: HTMLInputElement;
 </script>
 
 <div
@@ -28,39 +58,35 @@
 		isDragging = true;
 	}}
 	ondragleave={() => (isDragging = false)}
-	ondrop={(e) => {
-		e.preventDefault();
-		isDragging = false;
-		// Phase 2: Handle file drop
-	}}
+	ondrop={handleDrop}
 	role="button"
 	tabindex="0"
+	onclick={() => fileInput?.click()}
+	onkeydown={(e) => {
+		if (e.key === 'Enter' || e.key === ' ') fileInput?.click();
+	}}
 >
+	<input
+		bind:this={fileInput}
+		type="file"
+		accept="image/jpeg,image/png,image/webp,image/gif"
+		class="hidden"
+		onchange={handleFileInput}
+	/>
+
 	<div
-		class="flex max-w-md flex-col items-center rounded-xl border-2 border-dashed p-12 text-center transition-colors {isDragging ? 'border-primary' : 'border-border'}"
+		class="flex max-w-md flex-col items-center rounded-xl border-2 border-dashed border-border p-12 text-center"
 	>
-		<div class="mb-4 rounded-full bg-muted p-4">
-			<Upload class="h-8 w-8 text-muted-foreground" />
-		</div>
+		{#if uploading}
+			<div class="text-muted-foreground">Uploading...</div>
+		{:else}
+			<Upload class="mb-4 h-12 w-12 text-muted-foreground" />
+			<p class="mb-2 font-medium text-foreground">Drop an image here or click to browse</p>
+			<p class="text-sm text-muted-foreground">JPEG, PNG, WebP, or GIF up to 10MB</p>
+		{/if}
 
-		<h3 class="mb-2 text-lg font-semibold text-foreground">Upload an Image</h3>
-
-		<p class="mb-4 text-sm text-muted-foreground">
-			Drag and drop an image here, or click to browse
-		</p>
-
-		<div class="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
-			<Image class="h-4 w-4" />
-			<span>PNG, JPG, GIF, WebP</span>
-		</div>
-
-		<div class="flex items-center gap-2 text-xs text-muted-foreground">
-			<Link class="h-4 w-4" />
-			<span>Or paste an image URL</span>
-		</div>
-
-		<p class="mt-6 rounded bg-muted px-3 py-1.5 text-xs text-muted-foreground">
-			<kbd class="font-mono">Cmd+V</kbd> to paste from clipboard
-		</p>
+		{#if errorMsg}
+			<p class="mt-4 text-sm text-destructive">{errorMsg}</p>
+		{/if}
 	</div>
 </div>

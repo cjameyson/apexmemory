@@ -203,8 +203,8 @@
 		editor.setPanOffset({ x: 0, y: 0 });
 	}
 
-	function handleImageLoad(url: string, width: number, height: number) {
-		editor.initialize({ url, width, height, rotation: 0 }, [], [], 'hide_all_guess_one');
+	function handleImageLoad(url: string, width: number, height: number, assetId?: string) {
+		editor.initialize({ url, width, height, rotation: 0, assetId }, [], [], 'hide_all_guess_one');
 		history.clear();
 	}
 
