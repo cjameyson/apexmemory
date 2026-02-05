@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Region, DisplayContext, RectShape } from './types';
+	import type { Region, DisplayContext, RectShape, ResizeHandlePosition } from './types';
 	import { regionToDisplay, getResizeHandles } from './coordinates';
 
 	interface Props {
@@ -8,9 +8,11 @@
 		displayContext: DisplayContext;
 		onClick?: () => void;
 		onDblClick?: () => void;
+		onMoveStart?: (e: MouseEvent) => void;
+		onResizeStart?: (e: MouseEvent, position: ResizeHandlePosition) => void;
 	}
 
-	let { region, isSelected, displayContext, onClick, onDblClick }: Props = $props();
+	let { region, isSelected, displayContext, onClick, onDblClick, onMoveStart, onResizeStart }: Props = $props();
 
 	// Transform region to display coordinates
 	let displayShape = $derived<RectShape>(regionToDisplay(region.shape, displayContext));
@@ -43,6 +45,12 @@
 		height={displayShape.height}
 		class="region-fill"
 		class:selected={isSelected}
+		onmousedown={(e) => {
+			if (isSelected && e.button === 0) {
+				e.stopPropagation();
+				onMoveStart?.(e);
+			}
+		}}
 	/>
 
 	<!-- Region border -->
@@ -87,6 +95,10 @@
 				height={handle.size}
 				class="resize-handle"
 				data-position={handle.position}
+				onmousedown={(e) => {
+					e.stopPropagation();
+					onResizeStart?.(e, handle.position);
+				}}
 			/>
 		{/each}
 	{/if}

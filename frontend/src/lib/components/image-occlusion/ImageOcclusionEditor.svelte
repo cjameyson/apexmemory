@@ -1,10 +1,11 @@
 <script lang="ts">
-	import type { ImageOcclusionField, Region, RectShape } from './types';
+	import type { ImageOcclusionField, Region, RectShape, Point } from './types';
 	import { createEditorState } from './editor-state.svelte';
 	import { createHistoryManager } from './history.svelte';
 	import {
 		CreateRegionCommand,
 		DeleteRegionCommand,
+		MoveRegionCommand,
 		UpdateRegionMetadataCommand,
 		RotateImageCommand
 	} from './commands';
@@ -184,6 +185,19 @@
 	function cancelDelete() {
 		deleteConfirmOpen = false;
 		deletingRegionId = null;
+	}
+
+	function handleRegionMove(id: string, newShape: RectShape) {
+		// Live visual update during drag
+		editor._updateRegion(id, { shape: newShape });
+	}
+
+	function handleRegionMoveEnd(id: string, originalShape: RectShape, newPosition: Point) {
+		// Undo live mutation
+		editor._updateRegion(id, { shape: originalShape });
+		// Execute through command for undo support
+		const command = new MoveRegionCommand(editor, id, originalShape, newPosition);
+		history.execute(command);
 	}
 
 	function handleToolChange(tool: typeof editor.activeTool) {
@@ -371,6 +385,8 @@
 					onPanChange={handlePanChange}
 					onZoomChange={handleZoomChange}
 					onRegionCreate={handleRegionCreate}
+					onRegionMove={handleRegionMove}
+					onRegionMoveEnd={handleRegionMoveEnd}
 					onContainerResize={handleContainerResize}
 				/>
 			</div>

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { ImageData, Region, DisplayContext, EditorTool, Point, RectShape } from './types';
-	import { calculateScale, calculateCenteredOffset } from './coordinates';
+	import type { ImageData, Region, DisplayContext, EditorTool, Point, RectShape, ResizeHandlePosition } from './types';
+	import { calculateScale, calculateCenteredOffset, regionToDisplay, displayToImage } from './coordinates';
 	import RegionOverlay from './RegionOverlay.svelte';
 
 	type InteractionMode = 'idle' | 'drawing' | 'moving' | 'resizing';
@@ -16,6 +16,8 @@
 		onPanChange?: (offset: Point) => void;
 		onZoomChange?: (zoom: number) => void;
 		onRegionCreate?: (displayShape: RectShape) => void;
+		onRegionMove?: (id: string, newShape: RectShape) => void;
+		onRegionMoveEnd?: (id: string, originalShape: RectShape, newPosition: Point) => void;
 		onContainerResize?: (width: number, height: number) => void;
 	}
 
@@ -30,6 +32,8 @@
 		onPanChange,
 		onZoomChange,
 		onRegionCreate,
+		onRegionMove,
+		onRegionMoveEnd,
 		onContainerResize
 	}: Props = $props();
 
@@ -47,6 +51,11 @@
 	// Drawing state
 	let drawStart = $state<Point | null>(null);
 	let drawCurrent = $state<Point | null>(null);
+
+	// Move state
+	let moveRegionId = $state<string | null>(null);
+	let moveOriginalShape = $state<RectShape | null>(null);
+	let moveMouseOffset = $state<Point>({ x: 0, y: 0 });
 
 	// Draw preview in display coordinates
 	let drawPreview = $derived<RectShape | null>(
@@ -149,6 +158,87 @@
 			window.removeEventListener('mouseup', onMouseUp);
 		};
 	});
+
+	// Window-level mouse handlers during move
+	$effect(() => {
+		if (interactionMode !== 'moving' || !moveRegionId || !moveOriginalShape) return;
+
+		const regionId = moveRegionId;
+		const originalShape = moveOriginalShape;
+		const offset = moveMouseOffset;
+
+		function onMouseMove(e: MouseEvent) {
+			const mousePos = getContainerPoint(e);
+			const newDisplayX = mousePos.x - offset.x;
+			const newDisplayY = mousePos.y - offset.y;
+
+			// Convert to image coords
+			const newImagePos = displayToImage({ x: newDisplayX, y: newDisplayY }, displayContext);
+
+			// Clamp to image bounds (accounting for region size)
+			const clampedX = Math.max(0, Math.min(displayContext.imageWidth - originalShape.width, newImagePos.x));
+			const clampedY = Math.max(0, Math.min(displayContext.imageHeight - originalShape.height, newImagePos.y));
+
+			// Live visual update
+			onRegionMove?.(regionId, {
+				...originalShape,
+				x: clampedX,
+				y: clampedY
+			});
+		}
+
+		function onMouseUp() {
+			// Find current region state to get final position
+			const region = regions.find(r => r.id === regionId);
+			if (region && (region.shape.x !== originalShape.x || region.shape.y !== originalShape.y)) {
+				onRegionMoveEnd?.(regionId, originalShape, { x: region.shape.x, y: region.shape.y });
+			}
+			interactionMode = 'idle';
+			moveRegionId = null;
+			moveOriginalShape = null;
+		}
+
+		function onKeyDown(e: KeyboardEvent) {
+			if (e.key === 'Escape') {
+				// Cancel: restore original position
+				onRegionMove?.(regionId, originalShape);
+				interactionMode = 'idle';
+				moveRegionId = null;
+				moveOriginalShape = null;
+			}
+		}
+
+		window.addEventListener('mousemove', onMouseMove);
+		window.addEventListener('mouseup', onMouseUp);
+		window.addEventListener('keydown', onKeyDown);
+		return () => {
+			window.removeEventListener('mousemove', onMouseMove);
+			window.removeEventListener('mouseup', onMouseUp);
+			window.removeEventListener('keydown', onKeyDown);
+		};
+	});
+
+	function handleMoveStart(regionId: string, e: MouseEvent) {
+		if (interactionMode !== 'idle') return;
+		const region = regions.find(r => r.id === regionId);
+		if (!region) return;
+
+		interactionMode = 'moving';
+		moveRegionId = regionId;
+		moveOriginalShape = { ...region.shape };
+
+		// Offset between mouse and region origin (in display coords)
+		const displayShape = regionToDisplay(region.shape, displayContext);
+		const mousePos = getContainerPoint(e);
+		moveMouseOffset = {
+			x: mousePos.x - displayShape.x,
+			y: mousePos.y - displayShape.y
+		};
+	}
+
+	function handleResizeStart(regionId: string, e: MouseEvent, handle: ResizeHandlePosition) {
+		// Will be implemented in Task 5
+	}
 
 	// Calculate image transform with transform-origin: 0 0
 	let imageTransform = $derived(
@@ -283,6 +373,8 @@
 					{displayContext}
 					onClick={() => handleRegionClick(region.id)}
 					onDblClick={() => onDblClickRegion?.(region.id)}
+					onMoveStart={(e) => handleMoveStart(region.id, e)}
+					onResizeStart={(e, pos) => handleResizeStart(region.id, e, pos)}
 				/>
 			{/each}
 			{#if drawPreview}
