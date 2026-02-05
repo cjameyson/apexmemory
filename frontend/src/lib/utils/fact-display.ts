@@ -3,7 +3,7 @@ import type { FactType } from '$lib/types/fact';
 interface FactField {
 	name: string;
 	type: string;
-	value: string;
+	value: string | Record<string, unknown>;
 }
 
 interface FactContent {
@@ -21,8 +21,30 @@ function truncate(text: string, maxLength: number): string {
 	return text.slice(0, maxLength).trimEnd() + '...';
 }
 
-function getFieldValue(content: FactContent, name: string): string {
-	return content.fields.find((f) => f.name === name)?.value ?? '';
+/** Extract plain text from a TipTap JSON document by walking text nodes. */
+function extractTextFromDoc(doc: Record<string, unknown>): string {
+	const parts: string[] = [];
+	function walk(node: Record<string, unknown>) {
+		if (node.type === 'text' && typeof node.text === 'string') {
+			parts.push(node.text);
+		}
+		if (Array.isArray(node.content)) {
+			for (const child of node.content) {
+				walk(child as Record<string, unknown>);
+			}
+		}
+	}
+	walk(doc);
+	return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function getFieldText(content: FactContent, name: string): string {
+	const field = content.fields.find((f) => f.name === name);
+	if (!field) return '';
+	if (field.type === 'rich_text' && typeof field.value === 'object' && field.value !== null) {
+		return extractTextFromDoc(field.value as Record<string, unknown>);
+	}
+	return stripHtml(String(field.value ?? ''));
 }
 
 function stripHtml(html: string): string {
@@ -41,15 +63,15 @@ export function getFactDisplayText(
 
 	switch (factType) {
 		case 'basic': {
-			const front = stripHtml(getFieldValue(content, 'front'));
-			const back = stripHtml(getFieldValue(content, 'back'));
+			const front = getFieldText(content, 'front');
+			const back = getFieldText(content, 'back');
 			return {
 				primary: truncate(front || 'No front text', 120),
 				secondary: back ? truncate(back, 80) : null
 			};
 		}
 		case 'cloze': {
-			const text = stripHtml(getFieldValue(content, 'text'));
+			const text = getFieldText(content, 'text');
 			const masked = text.replace(/\{\{c\d+::([^}]*?)(?:::[^}]*)?\}\}/g, '[...]');
 			return {
 				primary: truncate(masked || 'No cloze text', 120),
@@ -57,7 +79,7 @@ export function getFactDisplayText(
 			};
 		}
 		case 'image_occlusion': {
-			const title = stripHtml(getFieldValue(content, 'title'));
+			const title = getFieldText(content, 'title');
 			const regions = content.fields.filter((f) => f.type === 'image_occlusion');
 			return {
 				primary: truncate(title || 'Image occlusion', 120),

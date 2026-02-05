@@ -44,7 +44,7 @@
 	interface FieldDisplay {
 		name: string;
 		type: string;
-		value: string;
+		value: string | Record<string, unknown>;
 	}
 
 	const allFields = $derived<FieldDisplay[]>(
@@ -61,7 +61,7 @@
 		const field = allFields.find((f) => f.type === 'image_occlusion');
 		if (!field) return new Map<string, { label: string; hint: string }>();
 		try {
-			const parsed = JSON.parse(field.value) as {
+			const parsed = (typeof field.value === 'string' ? JSON.parse(field.value) : field.value) as {
 				regions?: { id: string; label: string; hint?: string }[];
 			};
 			return new Map(
@@ -76,9 +76,25 @@
 		return name.charAt(0).toUpperCase() + name.slice(1);
 	}
 
-	function stripHtml(html: string | undefined): string {
-		if (!html) return '';
-		return html.replace(/<[^>]*>/g, '').trim();
+	function extractText(value: string | Record<string, unknown> | undefined): string {
+		if (!value) return '';
+		if (typeof value === 'string') {
+			return value.replace(/<[^>]*>/g, '').trim();
+		}
+		// TipTap JSON: walk text nodes
+		const parts: string[] = [];
+		function walk(node: Record<string, unknown>) {
+			if (node.type === 'text' && typeof node.text === 'string') {
+				parts.push(node.text);
+			}
+			if (Array.isArray(node.content)) {
+				for (const child of node.content) {
+					walk(child as Record<string, unknown>);
+				}
+			}
+		}
+		walk(value);
+		return parts.join(' ').replace(/\s+/g, ' ').trim();
 	}
 
 	function formatDue(due: string | null): string {
@@ -100,7 +116,7 @@
 		const clozeField = fields.find((f) => f.type === 'cloze_text');
 		if (!clozeField) return { text: '', hint: '' };
 
-		const raw = stripHtml(clozeField.value);
+		const raw = extractText(clozeField.value);
 		const num = elementId.replace('c', '');
 		const re = new RegExp(`\\{\\{c${num}::([^}]*?)(?:::([^}]*))?\\}\\}`);
 		const match = raw.match(re);
@@ -117,7 +133,7 @@
 			{#each fields as field}
 				<div>
 					<span class="text-xs font-medium text-muted-foreground">{formatFieldLabel(field.name)}</span>
-					<p class="mt-0.5 text-sm text-foreground">{stripHtml(field.value) || '(empty)'}</p>
+					<p class="mt-0.5 text-sm text-foreground">{extractText(field.value) || '(empty)'}</p>
 				</div>
 			{/each}
 		</div>
