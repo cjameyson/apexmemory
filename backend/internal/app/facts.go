@@ -180,8 +180,31 @@ func toCardResponse(c db.Card) CardResponse {
 	return resp
 }
 
+// extractAssetIDs parses asset_ids from the content root and returns them as UUIDs.
+func extractAssetIDs(content json.RawMessage) ([]uuid.UUID, error) {
+	var parsed struct {
+		AssetIDs []string `json:"asset_ids"`
+	}
+	if err := json.Unmarshal(content, &parsed); err != nil {
+		return nil, &FactValidationError{Message: "invalid content JSON"}
+	}
+	if len(parsed.AssetIDs) == 0 {
+		return nil, nil
+	}
+	ids := make([]uuid.UUID, 0, len(parsed.AssetIDs))
+	for _, raw := range parsed.AssetIDs {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return nil, &FactValidationError{Message: fmt.Sprintf("invalid asset_id: %s", raw)}
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
 // validateFactContent validates the JSON structure and returns extracted element IDs.
-func validateFactContent(factType string, content json.RawMessage) ([]string, error) {
+// It also verifies that any referenced asset_ids exist and are owned by the user.
+func (app *Application) validateFactContent(ctx context.Context, userID uuid.UUID, factType string, content json.RawMessage) ([]string, error) {
 	// Parse top-level structure
 	var parsed struct {
 		Version float64         `json:"version"`
@@ -211,6 +234,18 @@ func validateFactContent(factType string, content json.RawMessage) ([]string, er
 
 	if err := validateElementIDs(factType, elementIDs); err != nil {
 		return nil, err
+	}
+
+	// Validate asset_ids: each must exist and be owned by the user
+	assetIDs, err := extractAssetIDs(content)
+	if err != nil {
+		return nil, err
+	}
+	for _, assetID := range assetIDs {
+		_, err := app.Queries.GetAsset(ctx, db.GetAssetParams{UserID: userID, ID: assetID})
+		if err != nil {
+			return nil, &FactValidationError{Message: fmt.Sprintf("asset %s not found or not owned by user", assetID)}
+		}
 	}
 
 	return elementIDs, nil
@@ -341,7 +376,7 @@ func validateElementIDs(factType string, ids []string) error {
 
 // CreateFact creates a fact and its derived cards in a transaction.
 func (app *Application) CreateFact(ctx context.Context, userID, notebookID uuid.UUID, factType string, content json.RawMessage) (db.GetFactRow, []db.Card, error) {
-	elementIDs, err := validateFactContent(factType, content)
+	elementIDs, err := app.validateFactContent(ctx, userID, factType, content)
 	if err != nil {
 		return db.GetFactRow{}, nil, err
 	}
@@ -457,7 +492,7 @@ func (app *Application) UpdateFact(ctx context.Context, userID, notebookID, fact
 		return UpdateFactResult{}, err
 	}
 
-	expectedIDs, err := validateFactContent(existingFact.FactType, content)
+	expectedIDs, err := app.validateFactContent(ctx, userID, existingFact.FactType, content)
 	if err != nil {
 		return UpdateFactResult{}, err
 	}

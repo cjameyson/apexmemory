@@ -635,6 +635,10 @@ func TestGetCardHandler(t *testing.T) {
 }
 
 func TestContentValidation(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	ctx := t.Context()
+
 	tests := []struct {
 		name     string
 		factType string
@@ -689,11 +693,23 @@ func TestContentValidation(t *testing.T) {
 			content:  json.RawMessage(`{"fields": []}`),
 			wantErr:  true,
 		},
+		{
+			name:     "invalid asset_id format",
+			factType: "basic",
+			content:  json.RawMessage(`{"version": 1, "asset_ids": ["not-a-uuid"], "fields": [{"name": "front", "type": "plain_text", "value": "Q"}, {"name": "back", "type": "plain_text", "value": "A"}]}`),
+			wantErr:  true,
+		},
+		{
+			name:     "asset_id not found",
+			factType: "basic",
+			content:  json.RawMessage(`{"version": 1, "asset_ids": ["01960000-0000-7000-8000-000000000099"], "fields": [{"name": "front", "type": "plain_text", "value": "Q"}, {"name": "back", "type": "plain_text", "value": "A"}]}`),
+			wantErr:  true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := validateFactContent(tt.factType, tt.content)
+			_, err := app.validateFactContent(ctx, user.ID, tt.factType, tt.content)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("wantErr=%v, got err=%v", tt.wantErr, err)
 			}
