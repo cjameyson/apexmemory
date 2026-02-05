@@ -78,6 +78,9 @@ frontend/.husky/
 backend/seed
 backend/seed-notebooks
 
+# Local asset storage
+data/
+
 # Worktrees
 .worktrees/
 

@@ -19,4 +19,6 @@ type Config struct {
 	// to set forwarding headers (X-Forwarded-For, X-Real-IP, CF-Connecting-IP).
 	// If empty, only RemoteAddr is used (safe default for direct connections).
 	TrustedProxies []string
+	// StoragePath is the filesystem path for local asset storage.
+	StoragePath string
 }

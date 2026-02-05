@@ -16,8 +16,10 @@ type Querier interface {
 	CountCardsByNotebook(ctx context.Context, arg CountCardsByNotebookParams) (int64, error)
 	CountFactsByNotebook(ctx context.Context, arg CountFactsByNotebookParams) (int64, error)
 	CountFactsByNotebookFiltered(ctx context.Context, arg CountFactsByNotebookFilteredParams) (int64, error)
+	CountFactsReferencingAsset(ctx context.Context, arg CountFactsReferencingAssetParams) (int64, error)
 	CountPracticeCards(ctx context.Context, arg CountPracticeCardsParams) (int64, error)
 	CountReviewHistory(ctx context.Context, arg CountReviewHistoryParams) (int64, error)
+	CreateAsset(ctx context.Context, arg CreateAssetParams) (Asset, error)
 	CreateAuthIdentity(ctx context.Context, arg CreateAuthIdentityParams) (AuthIdentity, error)
 	CreateCard(ctx context.Context, arg CreateCardParams) (Card, error)
 	CreateFact(ctx context.Context, arg CreateFactParams) (AppFact, error)
@@ -28,6 +30,8 @@ type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// Creates a user and their password auth identity in a single transaction-friendly call
 	CreateUserWithPassword(ctx context.Context, arg CreateUserWithPasswordParams) (CreateUserWithPasswordRow, error)
+	DeleteAsset(ctx context.Context, arg DeleteAssetParams) (int64, error)
+	DeleteAssets(ctx context.Context, arg DeleteAssetsParams) (int64, error)
 	DeleteCardsByFactAndElements(ctx context.Context, arg DeleteCardsByFactAndElementsParams) error
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteFact(ctx context.Context, arg DeleteFactParams) (int64, error)
@@ -35,6 +39,7 @@ type Querier interface {
 	DeleteReview(ctx context.Context, arg DeleteReviewParams) (int64, error)
 	DeleteSession(ctx context.Context, tokenHash []byte) error
 	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
+	GetAsset(ctx context.Context, arg GetAssetParams) (Asset, error)
 	GetAuthIdentityByEmail(ctx context.Context, email pgtype.Text) (GetAuthIdentityByEmailRow, error)
 	GetAuthIdentityByProviderID(ctx context.Context, arg GetAuthIdentityByProviderIDParams) (GetAuthIdentityByProviderIDRow, error)
 	GetCard(ctx context.Context, arg GetCardParams) (Card, error)

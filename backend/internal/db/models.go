@@ -181,6 +181,18 @@ type AppReview struct {
 	CreatedAt        time.Time     `json:"created_at"`
 }
 
+type Asset struct {
+	UserID      uuid.UUID `json:"user_id"`
+	ID          uuid.UUID `json:"id"`
+	ContentType string    `json:"content_type"`
+	Filename    string    `json:"filename"`
+	SizeBytes   int64     `json:"size_bytes"`
+	Sha256      string    `json:"sha256"`
+	Metadata    []byte    `json:"metadata"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 type AuthIdentity struct {
 	ID              uuid.UUID          `json:"id"`
 	UserID          uuid.UUID          `json:"user_id"`

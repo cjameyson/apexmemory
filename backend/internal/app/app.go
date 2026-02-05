@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"apexmemory.ai/internal/db"
+	"apexmemory.ai/internal/storage"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -19,6 +20,7 @@ type Application struct {
 	Logger         *slog.Logger
 	DB             *pgxpool.Pool
 	Queries        *db.Queries
+	Storage        storage.Storage
 	RateLimiters   *RateLimiters
 	BackgroundJobs *BackgroundJobs
 	trustedProxies *TrustedProxyChecker

@@ -22,6 +22,7 @@ sql:
           app_notebook: Notebook
           app_note: Note
           app_card: Card
+          app_asset: Asset
         overrides:
           - db_type: "uuid"
             go_type: "github.com/google/uuid.UUID"

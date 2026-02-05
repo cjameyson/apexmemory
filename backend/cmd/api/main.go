@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"apexmemory.ai/internal/app"
+	"apexmemory.ai/internal/storage"
 )
 
 func main() {
@@ -69,7 +70,26 @@ func run() error {
 		fmt.Fprintln(os.Stderr, "warning: -db-max-idle-conns is deprecated; use -db-min-idle-conns")
 	}
 
+	// Storage path from env var (default: ./data/assets)
+	cfg.StoragePath = os.Getenv("STORAGE_PATH")
+	if cfg.StoragePath == "" {
+		cfg.StoragePath = "./data/assets"
+	}
+
 	application := app.New(cfg)
+
+	store, err := storage.NewLocalStorage(cfg.StoragePath)
+	if err != nil {
+		application.Logger.Error("failed to initialize storage",
+			"error", err,
+			"error_code", "STORAGE_INIT_FAILED",
+			"path", cfg.StoragePath,
+			"retryable", false,
+			"remediation_hint", "Check that the storage path is writable",
+		)
+		return err
+	}
+	application.Storage = store
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
