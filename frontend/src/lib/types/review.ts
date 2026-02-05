@@ -1,4 +1,6 @@
 import type { CardState, FactType } from './fact';
+import type { JSONContent } from '@tiptap/core';
+import type { Region, OcclusionMode, RevealStyle } from '$lib/components/image-occlusion/types';
 
 export type ReviewMode = 'scheduled' | 'practice';
 
@@ -18,9 +20,29 @@ export interface StudyCard {
 	intervals: { again: string; hard: string; good: string; easy: string };
 }
 
-export interface CardDisplay {
-	front: string;
-	back: string;
-	isCloze?: boolean;
-	clozeAnswer?: string;
+export interface BasicCardDisplay {
+	type: 'basic';
+	front: JSONContent | string;
+	back: JSONContent | string;
 }
+
+export interface ClozeCardDisplay {
+	type: 'cloze';
+	front: string;
+	clozeAnswer: string;
+}
+
+export interface ImageOcclusionCardDisplay {
+	type: 'image_occlusion';
+	title: string;
+	imageUrl: string;
+	imageWidth: number;
+	imageHeight: number;
+	imageRotation: 0 | 90 | 180 | 270;
+	regions: Region[];
+	targetRegionId: string;
+	mode: OcclusionMode;
+	revealStyle: RevealStyle;
+}
+
+export type CardDisplay = BasicCardDisplay | ClozeCardDisplay | ImageOcclusionCardDisplay;
