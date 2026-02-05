@@ -15,6 +15,7 @@
 	import ImageUploader from './ImageUploader.svelte';
 	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 	import { generateRegionId } from './utils';
+	import { uploadAsset, assetUrl } from '$lib/api/client';
 
 	interface Props {
 		initialValue?: ImageOcclusionField;
@@ -218,6 +219,33 @@
 		isDragging = false;
 	}
 
+	// Clipboard paste handler
+	function handlePaste(e: ClipboardEvent) {
+		if (editor.hasImage) return;
+		const items = e.clipboardData?.items;
+		if (!items) return;
+		for (const item of items) {
+			if (item.type.startsWith('image/')) {
+				e.preventDefault();
+				const file = item.getAsFile();
+				if (file) handlePastedFile(file);
+				return;
+			}
+		}
+	}
+
+	async function handlePastedFile(file: File) {
+		try {
+			const asset = await uploadAsset(file);
+			const url = assetUrl(asset.id);
+			const width = asset.metadata?.width ?? 0;
+			const height = asset.metadata?.height ?? 0;
+			handleImageLoad(url, width, height, asset.id);
+		} catch (err) {
+			console.error('Paste upload failed:', err);
+		}
+	}
+
 	// Keyboard shortcuts
 	function handleKeydown(e: KeyboardEvent) {
 		// Ignore if typing in an input
@@ -267,6 +295,7 @@
 
 <svelte:window
 	onkeydown={handleKeydown}
+	onpaste={handlePaste}
 	onmousemove={isDragging ? handleMouseMove : undefined}
 	onmouseup={isDragging ? handleMouseUp : undefined}
 />
@@ -313,6 +342,7 @@
 					onSelectRegion={handleSelectRegion}
 					onDblClickRegion={handleDblClickRegion}
 					onPanChange={handlePanChange}
+					onZoomChange={handleZoomChange}
 					onContainerResize={handleContainerResize}
 				/>
 			</div>

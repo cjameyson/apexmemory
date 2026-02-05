@@ -12,6 +12,7 @@
 		onSelectRegion?: (id: string | null) => void;
 		onDblClickRegion?: (id: string) => void;
 		onPanChange?: (offset: Point) => void;
+		onZoomChange?: (zoom: number) => void;
 		onContainerResize?: (width: number, height: number) => void;
 	}
 
@@ -24,6 +25,7 @@
 		onSelectRegion,
 		onDblClickRegion,
 		onPanChange,
+		onZoomChange,
 		onContainerResize
 	}: Props = $props();
 
@@ -130,6 +132,14 @@
 		return `0 0 ${displayContext.containerWidth} ${displayContext.containerHeight}`;
 	});
 
+	function handleWheel(e: WheelEvent) {
+		if (!e.ctrlKey && !e.metaKey) return;
+		e.preventDefault();
+		const zoomFactor = 1 - e.deltaY * 0.003;
+		const newZoom = Math.max(0.1, Math.min(5, displayContext.zoom * zoomFactor));
+		onZoomChange?.(newZoom);
+	}
+
 	function handleCanvasMouseDown(e: MouseEvent) {
 		// Middle mouse button or space + left click = pan
 		if (e.button === 1 || (e.button === 0 && isSpaceHeld)) {
@@ -177,6 +187,7 @@
 	style="cursor: {canvasCursor()}"
 	onmousedown={handleCanvasMouseDown}
 	onclick={handleCanvasClick}
+	onwheel={handleWheel}
 	onkeydown={(e) => e.key === 'Escape' && onSelectRegion?.(null)}
 	tabindex="0"
 	role="application"
