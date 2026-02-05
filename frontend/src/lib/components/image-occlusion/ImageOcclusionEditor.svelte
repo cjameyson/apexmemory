@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { ImageOcclusionField, Region } from './types';
+	import type { ImageOcclusionField, Region, RectShape } from './types';
 	import { createEditorState } from './editor-state.svelte';
 	import { createHistoryManager } from './history.svelte';
 	import {
@@ -8,6 +8,7 @@
 		UpdateRegionMetadataCommand,
 		RotateImageCommand
 	} from './commands';
+	import { displayToRegion, constrainShapeToImageBounds } from './coordinates';
 	import EditorCanvas from './EditorCanvas.svelte';
 	import EditorToolbar, { type ToolbarPosition } from './EditorToolbar.svelte';
 	import LabelPanel from './LabelPanel.svelte';
@@ -106,6 +107,32 @@
 	// ============================================================================
 	// Event Handlers
 	// ============================================================================
+
+	function handleRegionCreate(displayShape: RectShape) {
+		if (!editor.image) return;
+
+		// Convert display coordinates to image coordinates
+		const imageShape = displayToRegion(displayShape, editor.displayContext);
+
+		// Constrain to image bounds
+		const constrained = constrainShapeToImageBounds(
+			imageShape,
+			editor.image.width,
+			editor.image.height
+		);
+
+		const region: Region = {
+			id: generateRegionId(),
+			shape: constrained,
+			label: ''
+		};
+
+		const command = new CreateRegionCommand(editor, region);
+		history.execute(command);
+
+		// Switch to select tool after drawing
+		editor.setActiveTool('select');
+	}
 
 	function handleContainerResize(width: number, height: number) {
 		editor.setContainerSize(width, height);
@@ -343,6 +370,7 @@
 					onDblClickRegion={handleDblClickRegion}
 					onPanChange={handlePanChange}
 					onZoomChange={handleZoomChange}
+					onRegionCreate={handleRegionCreate}
 					onContainerResize={handleContainerResize}
 				/>
 			</div>

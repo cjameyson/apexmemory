@@ -1,7 +1,9 @@
 <script lang="ts">
-	import type { ImageData, Region, DisplayContext, EditorTool, Point } from './types';
+	import type { ImageData, Region, DisplayContext, EditorTool, Point, RectShape } from './types';
 	import { calculateScale, calculateCenteredOffset } from './coordinates';
 	import RegionOverlay from './RegionOverlay.svelte';
+
+	type InteractionMode = 'idle' | 'drawing' | 'moving' | 'resizing';
 
 	interface Props {
 		image: ImageData | null;
@@ -13,6 +15,7 @@
 		onDblClickRegion?: (id: string) => void;
 		onPanChange?: (offset: Point) => void;
 		onZoomChange?: (zoom: number) => void;
+		onRegionCreate?: (displayShape: RectShape) => void;
 		onContainerResize?: (width: number, height: number) => void;
 	}
 
@@ -26,16 +29,36 @@
 		onDblClickRegion,
 		onPanChange,
 		onZoomChange,
+		onRegionCreate,
 		onContainerResize
 	}: Props = $props();
 
 	let containerRef: HTMLDivElement | undefined = $state();
+
+	// Interaction state
+	let interactionMode = $state<InteractionMode>('idle');
 
 	// Panning state
 	let isPanning = $state(false);
 	let panStartMouse = $state<Point>({ x: 0, y: 0 });
 	let panStartOffset = $state<Point>({ x: 0, y: 0 });
 	let isSpaceHeld = $state(false);
+
+	// Drawing state
+	let drawStart = $state<Point | null>(null);
+	let drawCurrent = $state<Point | null>(null);
+
+	// Draw preview in display coordinates
+	let drawPreview = $derived<RectShape | null>(
+		drawStart && drawCurrent
+			? {
+					x: Math.min(drawStart.x, drawCurrent.x),
+					y: Math.min(drawStart.y, drawCurrent.y),
+					width: Math.abs(drawCurrent.x - drawStart.x),
+					height: Math.abs(drawCurrent.y - drawStart.y)
+				}
+			: null
+	);
 
 	// Set up ResizeObserver
 	$effect(() => {
@@ -76,6 +99,36 @@
 		};
 	});
 
+	// Window-level mouse handlers during drawing
+	$effect(() => {
+		if (interactionMode !== 'drawing') return;
+
+		function onMouseMove(e: MouseEvent) {
+			drawCurrent = getContainerPoint(e);
+		}
+
+		function onMouseUp() {
+			const preview = drawPreview;
+			// Reset state
+			interactionMode = 'idle';
+			drawStart = null;
+			drawCurrent = null;
+
+			if (!preview) return;
+			// Minimum 20x20 display pixels
+			if (preview.width < 20 || preview.height < 20) return;
+
+			onRegionCreate?.(preview);
+		}
+
+		window.addEventListener('mousemove', onMouseMove);
+		window.addEventListener('mouseup', onMouseUp);
+		return () => {
+			window.removeEventListener('mousemove', onMouseMove);
+			window.removeEventListener('mouseup', onMouseUp);
+		};
+	});
+
 	// Window-level mouse handlers while panning
 	$effect(() => {
 		if (!isPanning) return;
@@ -98,39 +151,40 @@
 	});
 
 	// Calculate image transform with transform-origin: 0 0
-	let imageTransform = $derived(() => {
-		if (!image || displayContext.containerWidth === 0) return '';
+	let imageTransform = $derived(
+		(() => {
+			if (!image || displayContext.containerWidth === 0) return '';
 
-		const scale = calculateScale(displayContext) * displayContext.zoom;
-		const offset = calculateCenteredOffset(displayContext);
+			const scale = calculateScale(displayContext) * displayContext.zoom;
+			const offset = calculateCenteredOffset(displayContext);
 
-		const transforms: string[] = [];
+			const transforms: string[] = [];
 
-		// Position image at centered offset
-		transforms.push(`translate(${offset.x}px, ${offset.y}px)`);
+			// Position image at centered offset
+			transforms.push(`translate(${offset.x}px, ${offset.y}px)`);
 
-		// Scale from top-left (transform-origin: 0 0)
-		transforms.push(`scale(${scale})`);
+			// Scale from top-left (transform-origin: 0 0)
+			transforms.push(`scale(${scale})`);
 
-		// Rotation around image center (in unscaled image coords, after scale is applied)
-		if (displayContext.rotation !== 0) {
-			const cx = image.width / 2;
-			const cy = image.height / 2;
-			transforms.push(`translate(${cx}px, ${cy}px)`);
-			transforms.push(`rotate(${displayContext.rotation}deg)`);
-			transforms.push(`translate(${-cx}px, ${-cy}px)`);
-		}
+			// Rotation around image center (in unscaled image coords, after scale is applied)
+			if (displayContext.rotation !== 0) {
+				const cx = image.width / 2;
+				const cy = image.height / 2;
+				transforms.push(`translate(${cx}px, ${cy}px)`);
+				transforms.push(`rotate(${displayContext.rotation}deg)`);
+				transforms.push(`translate(${-cx}px, ${-cy}px)`);
+			}
 
-		return transforms.join(' ');
-	});
+			return transforms.join(' ');
+		})()
+	);
 
 	// Image dimensions for SVG viewBox
-	let svgViewBox = $derived(() => {
-		if (!displayContext.containerWidth || !displayContext.containerHeight) {
-			return '0 0 100 100';
-		}
-		return `0 0 ${displayContext.containerWidth} ${displayContext.containerHeight}`;
-	});
+	let svgViewBox = $derived(
+		!displayContext.containerWidth || !displayContext.containerHeight
+			? '0 0 100 100'
+			: `0 0 ${displayContext.containerWidth} ${displayContext.containerHeight}`
+	);
 
 	function handleWheel(e: WheelEvent) {
 		if (!e.ctrlKey && !e.metaKey) return;
@@ -140,7 +194,23 @@
 		onZoomChange?.(newZoom);
 	}
 
+	function getContainerPoint(e: MouseEvent): Point {
+		if (!containerRef) return { x: 0, y: 0 };
+		const rect = containerRef.getBoundingClientRect();
+		return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+	}
+
 	function handleCanvasMouseDown(e: MouseEvent) {
+		// Start drawing when draw tool is active
+		if (e.button === 0 && activeTool === 'draw_region' && interactionMode === 'idle' && !isSpaceHeld) {
+			e.preventDefault();
+			interactionMode = 'drawing';
+			const point = getContainerPoint(e);
+			drawStart = point;
+			drawCurrent = point;
+			return;
+		}
+
 		// Middle mouse button or space + left click = pan
 		if (e.button === 1 || (e.button === 0 && isSpaceHeld)) {
 			e.preventDefault();
@@ -167,24 +237,21 @@
 	}
 
 	// Cursor based on active tool and pan state
-	let canvasCursor = $derived(() => {
-		if (isPanning) return 'grabbing';
-		if (isSpaceHeld) return 'grab';
-		switch (activeTool) {
-			case 'draw_region':
-				return 'crosshair';
-			case 'draw_arrow':
-				return 'crosshair';
-			default:
-				return 'default';
-		}
-	});
+	let canvasCursor = $derived(
+		isPanning ? 'grabbing'
+		: isSpaceHeld ? 'grab'
+		: interactionMode === 'drawing' ? 'crosshair'
+		: interactionMode === 'moving' ? 'move'
+		: activeTool === 'draw_region' ? 'crosshair'
+		: activeTool === 'draw_arrow' ? 'crosshair'
+		: 'default'
+	);
 </script>
 
 <div
 	bind:this={containerRef}
 	class="relative h-full w-full overflow-hidden bg-muted/30"
-	style="cursor: {canvasCursor()}"
+	style="cursor: {canvasCursor}"
 	onmousedown={handleCanvasMouseDown}
 	onclick={handleCanvasClick}
 	onwheel={handleWheel}
@@ -199,14 +266,14 @@
 			src={image.url}
 			alt="Occlusion target"
 			class="pointer-events-none absolute left-0 top-0"
-			style="width: {image.width}px; height: {image.height}px; transform: {imageTransform()}; transform-origin: 0 0;"
+			style="width: {image.width}px; height: {image.height}px; transform: {imageTransform}; transform-origin: 0 0;"
 			draggable="false"
 		/>
 
 		<!-- SVG overlay for regions -->
 		<svg
 			class="absolute inset-0 h-full w-full"
-			viewBox={svgViewBox()}
+			viewBox={svgViewBox}
 			preserveAspectRatio="none"
 		>
 			{#each regions as region (region.id)}
@@ -218,6 +285,19 @@
 					onDblClick={() => onDblClickRegion?.(region.id)}
 				/>
 			{/each}
+			{#if drawPreview}
+				<rect
+					x={drawPreview.x}
+					y={drawPreview.y}
+					width={drawPreview.width}
+					height={drawPreview.height}
+					fill="oklch(from var(--primary) l c h / 0.2)"
+					stroke="var(--primary)"
+					stroke-width="2"
+					stroke-dasharray="6 3"
+					pointer-events="none"
+				/>
+			{/if}
 		</svg>
 	{:else}
 		<!-- Empty state placeholder -->
