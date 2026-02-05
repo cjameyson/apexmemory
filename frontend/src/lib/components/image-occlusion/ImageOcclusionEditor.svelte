@@ -344,6 +344,35 @@
 					}
 					break;
 			}
+
+			// Arrow key nudge for selected region
+			if (editor.selectedRegionId && ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+				e.preventDefault();
+				const region = editor.regions.find(r => r.id === editor.selectedRegionId);
+				if (!region || !editor.image) return;
+
+				const step = e.shiftKey ? 10 : 1;
+				let dx = 0, dy = 0;
+				switch (e.key) {
+					case 'ArrowUp': dy = -step; break;
+					case 'ArrowDown': dy = step; break;
+					case 'ArrowLeft': dx = -step; break;
+					case 'ArrowRight': dx = step; break;
+				}
+
+				const newX = Math.max(0, Math.min(editor.image.width - region.shape.width, region.shape.x + dx));
+				const newY = Math.max(0, Math.min(editor.image.height - region.shape.height, region.shape.y + dy));
+
+				if (newX !== region.shape.x || newY !== region.shape.y) {
+					const command = new MoveRegionCommand(
+						editor,
+						region.id,
+						region.shape,
+						{ x: newX, y: newY }
+					);
+					history.execute(command);
+				}
+			}
 		}
 	}
 </script>
