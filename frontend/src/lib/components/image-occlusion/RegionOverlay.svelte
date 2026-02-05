@@ -46,9 +46,12 @@
 		class="region-fill"
 		class:selected={isSelected}
 		onmousedown={(e) => {
-			if (isSelected && e.button === 0) {
+			if (e.button === 0) {
+				// Always stop propagation to prevent canvas draw handler
 				e.stopPropagation();
-				onMoveStart?.(e);
+				if (isSelected) {
+					onMoveStart?.(e);
+				}
 			}
 		}}
 	/>

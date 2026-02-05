@@ -55,17 +55,20 @@
 	// Drawing state
 	let drawStart = $state<Point | null>(null);
 	let drawCurrent = $state<Point | null>(null);
+	let justFinishedDrawing = $state(false);
 
 	// Move state
 	let moveRegionId = $state<string | null>(null);
 	let moveOriginalShape = $state<RectShape | null>(null);
 	let moveMouseOffset = $state<Point>({ x: 0, y: 0 });
+	let lastMovePosition = $state<Point | null>(null);
 
 	// Resize state
 	let resizeRegionId = $state<string | null>(null);
 	let resizeOriginalShape = $state<RectShape | null>(null);
 	let resizeHandle = $state<ResizeHandlePosition | null>(null);
 	let resizeStartMouse = $state<Point>({ x: 0, y: 0 });
+	let lastResizeShape = $state<RectShape | null>(null);
 
 	// Draw preview in display coordinates
 	let drawPreview = $derived<RectShape | null>(
@@ -132,6 +135,8 @@
 			interactionMode = 'idle';
 			drawStart = null;
 			drawCurrent = null;
+			// Prevent the subsequent click event from deselecting
+			justFinishedDrawing = true;
 
 			if (!preview) return;
 			// Minimum 20x20 display pixels
@@ -189,6 +194,9 @@
 			const clampedX = Math.max(0, Math.min(displayContext.imageWidth - originalShape.width, newImagePos.x));
 			const clampedY = Math.max(0, Math.min(displayContext.imageHeight - originalShape.height, newImagePos.y));
 
+			const pos = { x: clampedX, y: clampedY };
+			lastMovePosition = pos;
+
 			// Live visual update
 			onRegionMove?.(regionId, {
 				...originalShape,
@@ -198,23 +206,26 @@
 		}
 
 		function onMouseUp() {
-			// Find current region state to get final position
-			const region = regions.find(r => r.id === regionId);
-			if (region && (region.shape.x !== originalShape.x || region.shape.y !== originalShape.y)) {
-				onRegionMoveEnd?.(regionId, originalShape, { x: region.shape.x, y: region.shape.y });
+			const finalPos = lastMovePosition;
+			if (finalPos && (finalPos.x !== originalShape.x || finalPos.y !== originalShape.y)) {
+				onRegionMoveEnd?.(regionId, originalShape, finalPos);
 			}
 			interactionMode = 'idle';
 			moveRegionId = null;
 			moveOriginalShape = null;
+			lastMovePosition = null;
 		}
 
 		function onKeyDown(e: KeyboardEvent) {
 			if (e.key === 'Escape') {
+				e.preventDefault();
+				e.stopPropagation();
 				// Cancel: restore original position
 				onRegionMove?.(regionId, originalShape);
 				interactionMode = 'idle';
 				moveRegionId = null;
 				moveOriginalShape = null;
+				lastMovePosition = null;
 			}
 		}
 
@@ -240,34 +251,39 @@
 		function onMouseMove(e: MouseEvent) {
 			const currentMouse = getContainerPoint(e);
 			const newShape = computeResizedShape(originalShape, handle, startMouse, currentMouse, displayContext);
+			lastResizeShape = newShape;
 			onRegionResize?.(regionId, newShape);
 		}
 
 		function onMouseUp() {
-			const region = regions.find(r => r.id === regionId);
-			if (region && originalShape) {
+			const finalShape = lastResizeShape;
+			if (finalShape && originalShape) {
 				const changed =
-					region.shape.x !== originalShape.x ||
-					region.shape.y !== originalShape.y ||
-					region.shape.width !== originalShape.width ||
-					region.shape.height !== originalShape.height;
+					finalShape.x !== originalShape.x ||
+					finalShape.y !== originalShape.y ||
+					finalShape.width !== originalShape.width ||
+					finalShape.height !== originalShape.height;
 				if (changed) {
-					onRegionResizeEnd?.(regionId, originalShape, region.shape);
+					onRegionResizeEnd?.(regionId, originalShape, finalShape);
 				}
 			}
 			interactionMode = 'idle';
 			resizeRegionId = null;
 			resizeOriginalShape = null;
 			resizeHandle = null;
+			lastResizeShape = null;
 		}
 
 		function onKeyDown(e: KeyboardEvent) {
 			if (e.key === 'Escape') {
+				e.preventDefault();
+				e.stopPropagation();
 				onRegionResize?.(regionId, originalShape);
 				interactionMode = 'idle';
 				resizeRegionId = null;
 				resizeOriginalShape = null;
 				resizeHandle = null;
+				lastResizeShape = null;
 			}
 		}
 
@@ -426,6 +442,12 @@
 		// Don't deselect if we were panning
 		if (isSpaceHeld) return;
 
+		// Don't deselect after finishing a draw (click fires after mouseup)
+		if (justFinishedDrawing) {
+			justFinishedDrawing = false;
+			return;
+		}
+
 		// Only deselect if clicking directly on the canvas (not on a region)
 		if (e.target === e.currentTarget || (e.target as Element).tagName === 'svg') {
 			onSelectRegion?.(null);
@@ -457,7 +479,7 @@
 	onmousedown={handleCanvasMouseDown}
 	onclick={handleCanvasClick}
 	onwheel={handleWheel}
-	onkeydown={(e) => e.key === 'Escape' && onSelectRegion?.(null)}
+	onkeydown={(e) => e.key === 'Escape' && interactionMode === 'idle' && onSelectRegion?.(null)}
 	tabindex="0"
 	role="application"
 	aria-label="Image occlusion editor canvas"

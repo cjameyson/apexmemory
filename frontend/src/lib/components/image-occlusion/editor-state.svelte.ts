@@ -164,8 +164,8 @@ export function createEditorState(): EditorState {
 				const newShape: RectShape = {
 					x: updates.shape.x ?? existingShape.x,
 					y: updates.shape.y ?? existingShape.y,
-					width: updates.shape.width || existingShape.width,
-					height: updates.shape.height || existingShape.height
+					width: updates.shape.width ?? existingShape.width,
+					height: updates.shape.height ?? existingShape.height
 				};
 				return { ...r, ...updates, shape: newShape };
 			}
