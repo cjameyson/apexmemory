@@ -121,7 +121,7 @@
 		</div>
 	{:else}
 		<!-- NOT SELECTED: Compact plain text display -->
-		<button class="flex w-full items-center gap-2 text-left" onclick={onSelect}>
+		<div class="flex w-full items-center gap-2 text-left">
 			<span
 				class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/10 text-xs font-medium text-primary"
 			>
@@ -130,6 +130,6 @@
 			<span class="flex-1 truncate text-sm text-foreground">
 				{region.label || 'Untitled region'}
 			</span>
-		</button>
+		</div>
 	{/if}
 </div>

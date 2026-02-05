@@ -362,9 +362,9 @@ func extractClozeElementIDs(content json.RawMessage) ([]string, error) {
 func extractImageOcclusionElementIDs(content json.RawMessage) ([]string, error) {
 	var parsed struct {
 		Fields []struct {
-			Name    string `json:"name"`
-			Type    string `json:"type"`
-			Value   string `json:"value"`
+			Name    string          `json:"name"`
+			Type    string          `json:"type"`
+			Value   json.RawMessage `json:"value"`
 			Regions []struct {
 				ID string `json:"id"`
 			} `json:"regions"`
@@ -378,7 +378,11 @@ func extractImageOcclusionElementIDs(content json.RawMessage) ([]string, error) 
 	hasTitle := false
 	for _, field := range parsed.Fields {
 		if field.Name == "title" && field.Type == "plain_text" {
-			if strings.TrimSpace(field.Value) == "" {
+			var titleStr string
+			if err := json.Unmarshal(field.Value, &titleStr); err != nil {
+				return nil, &FactValidationError{Message: "image occlusion title must be a string"}
+			}
+			if strings.TrimSpace(titleStr) == "" {
 				return nil, &FactValidationError{Message: "image occlusion title must not be empty"}
 			}
 			hasTitle = true

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ImageOcclusionField, Region, RectShape, Point } from './types';
+	import { untrack } from 'svelte';
 	import { createEditorState } from './editor-state.svelte';
 	import { createHistoryManager } from './history.svelte';
 	import {
@@ -69,17 +70,21 @@
 		right: 'justify-end'
 	};
 
-	// Initialize from provided initial value
+	// Initialize from provided initial value (once on mount).
+	// untrack prevents re-running when initialValue changes due to
+	// the onChange → imageOcclusionData → initialValue feedback loop.
 	$effect(() => {
-		if (initialValue) {
-			editor.initialize(
-				initialValue.image,
-				initialValue.regions,
-				initialValue.annotations,
-				initialValue.mode
-			);
-			cardTitle = initialValue.title ?? '';
-		}
+		untrack(() => {
+			if (initialValue) {
+				editor.initialize(
+					initialValue.image,
+					initialValue.regions,
+					initialValue.annotations,
+					initialValue.mode
+				);
+				cardTitle = initialValue.title ?? '';
+			}
+		});
 	});
 
 	// Notify parent of changes

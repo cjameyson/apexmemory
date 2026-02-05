@@ -22,7 +22,12 @@
 		content: {
 			version: number;
 			asset_ids?: string[];
-			fields: { name: string; type: string; value: string | JSONContent; regions?: { id: string }[] }[];
+			fields: {
+				name: string;
+				type: string;
+				value: string | JSONContent;
+				regions?: { id: string }[];
+			}[];
 		};
 	}
 
@@ -307,7 +312,9 @@
 	}
 
 	function parseContentToEditorData(content: Record<string, unknown>, factType: FactType) {
-		const fields = (content as { fields?: { name: string; type: string; value: string | JSONContent }[] }).fields ?? [];
+		const fields =
+			(content as { fields?: { name: string; type: string; value: string | JSONContent }[] })
+				.fields ?? [];
 		const fieldMap = new Map(fields.map((f) => [f.name, f]));
 
 		if (factType === 'basic') {
@@ -317,7 +324,9 @@
 			const hintField = fieldMap.get('hint');
 
 			// Support both rich_text (JSONContent) and legacy plain_text (string) values
-			function toRichText(field: { type: string; value: string | JSONContent } | undefined): JSONContent | null {
+			function toRichText(
+				field: { type: string; value: string | JSONContent } | undefined
+			): JSONContent | null {
 				if (!field) return null;
 				if (field.type === 'rich_text' && typeof field.value === 'object') {
 					return field.value as JSONContent;
@@ -344,6 +353,19 @@
 				backExtra: (fieldMap.get('back_extra')?.value as string) ?? ''
 			};
 			clozeErrors = {};
+		} else if (factType === 'image_occlusion') {
+			const titleField = fieldMap.get('title');
+			const occlusionField = fieldMap.get('image_occlusion');
+
+			if (occlusionField?.value && typeof occlusionField.value === 'object') {
+				const data = occlusionField.value as ImageOcclusionField;
+				// Use the authoritative title from the dedicated title field
+				if (titleField?.value && typeof titleField.value === 'string') {
+					data.title = titleField.value;
+				}
+				imageOcclusionData = data;
+			}
+			imageOcclusionErrors = {};
 		}
 	}
 
@@ -443,7 +465,11 @@
 			<!-- Image occlusion editor fills the modal content area -->
 			<div class="image-occlusion-editor min-h-0 flex-1 overflow-hidden">
 				{#key formKey}
-					<ImageOcclusionEditor bind:this={imageOcclusionEditor} onChange={handleImageOcclusionChange} errors={imageOcclusionErrors} />
+					<ImageOcclusionEditor
+						initialValue={imageOcclusionData ?? undefined}
+						onChange={handleImageOcclusionChange}
+						errors={imageOcclusionErrors}
+					/>
 				{/key}
 			</div>
 		{:else}
@@ -474,41 +500,44 @@
 				<p class="text-destructive mb-2 text-sm">{submitError}</p>
 			{/if}
 			<div class="flex w-full items-center justify-between">
-			<div class="text-muted-foreground flex items-center gap-3 text-xs">
-				<span
-					><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">&#8984;S</kbd> Save</span
-				>
-				{#if !isEditMode && selectedType !== 'image_occlusion'}
+				<div class="text-muted-foreground flex items-center gap-3 text-xs">
 					<span
-						><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">&#8984;&#8679;S</kbd> Save
-						& New</span
+						><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">&#8984;S</kbd> Save</span
 					>
-				{/if}
-				<span
-					><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">&#9099;</kbd> Cancel</span
-				>
-			</div>
-			<div class="flex items-center gap-2">
-				{#if cardCount > 0}
-					<span class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium">
-						{cardCount}
-						{cardCount === 1 ? 'card' : 'cards'}
-					</span>
-				{/if}
-				{#if !isEditMode && selectedType !== 'image_occlusion'}
-					<Button
-						variant="secondary"
-						size="sm"
-						onclick={() => handleCreate(true)}
-						disabled={submitting}
+					{#if !isEditMode && selectedType !== 'image_occlusion'}
+						<span
+							><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]"
+								>&#8984;&#8679;S</kbd
+							> Save & New</span
+						>
+					{/if}
+					<span
+						><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">&#9099;</kbd> Cancel</span
 					>
-						Save & New
+				</div>
+				<div class="flex items-center gap-2">
+					{#if cardCount > 0}
+						<span
+							class="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs font-medium"
+						>
+							{cardCount}
+							{cardCount === 1 ? 'card' : 'cards'}
+						</span>
+					{/if}
+					{#if !isEditMode && selectedType !== 'image_occlusion'}
+						<Button
+							variant="secondary"
+							size="sm"
+							onclick={() => handleCreate(true)}
+							disabled={submitting}
+						>
+							Save & New
+						</Button>
+					{/if}
+					<Button size="sm" onclick={() => handleCreate(false)} disabled={submitting}>
+						{isEditMode ? 'Save' : 'Create Fact'}
 					</Button>
-				{/if}
-				<Button size="sm" onclick={() => handleCreate(false)} disabled={submitting}>
-					{isEditMode ? 'Save' : 'Create Fact'}
-				</Button>
-			</div>
+				</div>
 			</div>
 		</Dialog.Footer>
 	</Dialog.Content>

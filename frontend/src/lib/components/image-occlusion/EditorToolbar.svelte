@@ -58,7 +58,7 @@
 	let zoomPercentage = $derived(Math.round(zoom * 100));
 </script>
 
-<Tooltip.Provider>
+<Tooltip.Provider ignoreNonKeyboardFocus={true}>
 	<div
 		role="toolbar"
 		data-toolbar-name="Image Occlusion Editor Toolbar"
