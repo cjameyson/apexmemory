@@ -13,11 +13,14 @@
 		image_occlusion: { label: 'Image Occlusion', icon: Image }
 	};
 	import ClozeFactEditor, { type ClozeFactData } from './cloze-fact-editor.svelte';
-	import ImageOcclusionPlaceholder from './image-occlusion-placeholder.svelte';
+	import { ImageOcclusionEditor, type ImageOcclusionField } from '$lib/components/image-occlusion';
 
 	export interface FactFormData {
 		factType: FactType;
-		content: { version: number; fields: { name: string; type: string; value: string }[] };
+		content: {
+			version: number;
+			fields: { name: string; type: string; value: string; regions?: { id: string }[] }[];
+		};
 	}
 
 	let {
@@ -47,15 +50,24 @@
 	// Validation errors
 	let basicErrors = $state<Partial<Record<keyof BasicFactData, string>>>({});
 	let clozeErrors = $state<Partial<Record<keyof ClozeFactData, string>>>({});
+	let imageOcclusionErrors = $state<{ title?: boolean; regionLabels?: Set<string> }>({});
 
 	// Card count from cloze editor
 	let clozeCardCount = $state(0);
+	// Image occlusion data
+	let imageOcclusionData = $state<ImageOcclusionField | null>(null);
 	// Incrementing formKey forces {#key} to destroy and recreate editor components,
 	// clearing their internal state (e.g. input values) after "Save & New".
 	let formKey = $state(0);
 
 	let cardCount = $derived(
-		selectedType === 'basic' ? 1 : selectedType === 'cloze' ? clozeCardCount : 0
+		selectedType === 'basic'
+			? 1
+			: selectedType === 'cloze'
+				? clozeCardCount
+				: selectedType === 'image_occlusion' && imageOcclusionData
+					? imageOcclusionData.regions.length
+					: 0
 	);
 
 	// Editor refs
@@ -88,12 +100,39 @@
 			}
 			return true;
 		}
+		if (selectedType === 'image_occlusion') {
+			const errs: typeof imageOcclusionErrors = {};
+			const errors: string[] = [];
+
+			if (!imageOcclusionData) {
+				submitError = 'No image occlusion data';
+				return false;
+			}
+			if (!imageOcclusionData.title.trim()) {
+				errs.title = true;
+				errors.push('Title is required');
+			}
+			if (imageOcclusionData.regions.length === 0) {
+				errors.push('At least one region is required');
+			}
+			const missingLabels = imageOcclusionData.regions.filter((r) => !r.label.trim());
+			if (missingLabels.length > 0) {
+				errs.regionLabels = new Set(missingLabels.map((r) => r.id));
+				errors.push(`${missingLabels.length} region(s) missing labels`);
+			}
+			imageOcclusionErrors = errs;
+			if (errors.length > 0) {
+				submitError = errors.join('. ');
+				return false;
+			}
+			return true;
+		}
 		return false;
 	}
 
 	function buildContent(): FactFormData['content'] {
 		if (selectedType === 'basic') {
-			const fields: { name: string; type: string; value: string }[] = [
+			const fields: FactFormData['content']['fields'] = [
 				{ name: 'front', type: 'plain_text', value: basicData.front.trim() },
 				{ name: 'back', type: 'plain_text', value: basicData.back.trim() }
 			];
@@ -105,14 +144,35 @@
 			}
 			return { version: 1, fields };
 		}
-		// cloze
-		const fields: { name: string; type: string; value: string }[] = [
-			{ name: 'text', type: 'cloze_text', value: clozeData.text.trim() }
-		];
-		if (clozeData.backExtra.trim()) {
-			fields.push({ name: 'back_extra', type: 'plain_text', value: clozeData.backExtra.trim() });
+		if (selectedType === 'cloze') {
+			const fields: FactFormData['content']['fields'] = [
+				{ name: 'text', type: 'cloze_text', value: clozeData.text.trim() }
+			];
+			if (clozeData.backExtra.trim()) {
+				fields.push({ name: 'back_extra', type: 'plain_text', value: clozeData.backExtra.trim() });
+			}
+			return { version: 1, fields };
 		}
-		return { version: 1, fields };
+		// image_occlusion: title as separate plain_text field + occlusion data with regions array
+		if (selectedType === 'image_occlusion' && imageOcclusionData) {
+			return {
+				version: 1,
+				fields: [
+					{
+						name: 'title',
+						type: 'plain_text',
+						value: imageOcclusionData.title.trim()
+					},
+					{
+						name: 'image_occlusion',
+						type: 'image_occlusion',
+						value: JSON.stringify(imageOcclusionData),
+						regions: imageOcclusionData.regions.map((r) => ({ id: r.id }))
+					}
+				]
+			};
+		}
+		return { version: 1, fields: [] };
 	}
 
 	function resetActiveType() {
@@ -122,6 +182,8 @@
 		} else if (selectedType === 'cloze') {
 			clozeData = { text: '', backExtra: '' };
 			clozeErrors = {};
+		} else if (selectedType === 'image_occlusion') {
+			imageOcclusionData = null;
 		}
 		formKey++;
 	}
@@ -143,7 +205,12 @@
 				open = false;
 			}
 		} catch (err) {
-			submitError = err instanceof Error ? err.message : isEditMode ? 'Failed to save fact' : 'Failed to create fact';
+			submitError =
+				err instanceof Error
+					? err.message
+					: isEditMode
+						? 'Failed to save fact'
+						: 'Failed to create fact';
 		} finally {
 			submitting = false;
 		}
@@ -169,6 +236,12 @@
 	function handleClozeChange(data: ClozeFactData) {
 		clozeData = data;
 		clozeErrors = {};
+	}
+
+	function handleImageOcclusionChange(data: ImageOcclusionField) {
+		imageOcclusionData = data;
+		imageOcclusionErrors = {};
+		submitError = null;
 	}
 
 	function parseContentToEditorData(content: Record<string, unknown>, factType: FactType) {
@@ -233,68 +306,78 @@
 
 <Dialog.Root bind:open onOpenChange={(v) => !v && onclose()}>
 	<Dialog.Content
-		class="top-[40px] flex max-h-[calc(100vh-80px)] translate-y-0 flex-col overflow-visible sm:max-w-[80vw]"
+		class="top-[40px] flex translate-y-0 flex-col overflow-visible {selectedType ===
+		'image_occlusion'
+			? 'h-[calc(100vh-80px)] sm:max-w-[95vw]'
+			: 'max-h-[calc(100vh-80px)] sm:max-w-[80vw]'}"
 		showCloseButton={true}
 	>
-		<div class="space-y-4">
+		<div class="shrink-0 space-y-4 pr-2">
 			<Dialog.Header>
 				{#if isEditMode}
 					{@const meta = factTypeMeta[selectedType]}
 					<Dialog.Title class="flex items-center gap-2">
 						Edit Fact
-						<span class="bg-muted text-muted-foreground inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium">
+						<span
+							class="bg-muted text-muted-foreground inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium"
+						>
 							<meta.icon class="h-3.5 w-3.5" />
 							{meta.label}
 						</span>
 					</Dialog.Title>
 				{:else}
-					<Dialog.Title>Create Fact</Dialog.Title>
+					<Dialog.Title>
+						<FactTypeSelector
+							selected={selectedType}
+							onchange={(t) => (selectedType = t)}
+							disabled={submitting}
+						/>
+					</Dialog.Title>
 				{/if}
 				<Dialog.Description></Dialog.Description>
 			</Dialog.Header>
-			{#if !isEditMode}
-				<FactTypeSelector
-					selected={selectedType}
-					onchange={(t) => (selectedType = t)}
-					disabled={submitting}
-				/>
-			{/if}
 		</div>
 
-		<div class="flex-1 space-y-6 overflow-y-auto px-0.5 py-2">
-
-			{#key formKey}
-				{#if selectedType === 'basic'}
-					<BasicFactEditor
-						bind:this={basicEditor}
-						initialData={basicData}
-						onchange={handleBasicChange}
-						errors={basicErrors}
-					/>
-				{:else if selectedType === 'cloze'}
-					<ClozeFactEditor
-						bind:this={clozeEditor}
-						initialData={clozeData}
-						onchange={handleClozeChange}
-						errors={clozeErrors}
-						oncardcount={(count) => (clozeCardCount = count)}
-					/>
-				{:else}
-					<ImageOcclusionPlaceholder />
-				{/if}
-			{/key}
-		</div>
-
-		{#if submitError}
-			<p class="text-destructive px-0.5 text-sm">{submitError}</p>
+		{#if selectedType === 'image_occlusion'}
+			<!-- Image occlusion editor fills the modal content area -->
+			<div class="image-occlusion-editor min-h-0 flex-1 overflow-hidden">
+				{#key formKey}
+					<ImageOcclusionEditor onChange={handleImageOcclusionChange} errors={imageOcclusionErrors} />
+				{/key}
+			</div>
+		{:else}
+			<div class="flex-1 space-y-6 overflow-y-auto px-0.5 py-2">
+				{#key formKey}
+					{#if selectedType === 'basic'}
+						<BasicFactEditor
+							bind:this={basicEditor}
+							initialData={basicData}
+							onchange={handleBasicChange}
+							errors={basicErrors}
+						/>
+					{:else if selectedType === 'cloze'}
+						<ClozeFactEditor
+							bind:this={clozeEditor}
+							initialData={clozeData}
+							onchange={handleClozeChange}
+							errors={clozeErrors}
+							oncardcount={(count) => (clozeCardCount = count)}
+						/>
+					{/if}
+				{/key}
+			</div>
 		{/if}
 
-		<Dialog.Footer class="w-full flex-row items-center !justify-between border-t pt-4">
+		<Dialog.Footer class="w-full shrink-0 flex-col border-t pt-4">
+			{#if submitError}
+				<p class="text-destructive mb-2 text-sm">{submitError}</p>
+			{/if}
+			<div class="flex w-full items-center justify-between">
 			<div class="text-muted-foreground flex items-center gap-3 text-xs">
 				<span
 					><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">&#8984;S</kbd> Save</span
 				>
-				{#if !isEditMode}
+				{#if !isEditMode && selectedType !== 'image_occlusion'}
 					<span
 						><kbd class="bg-muted rounded px-1.5 py-0.5 font-mono text-[10px]">&#8984;&#8679;S</kbd> Save
 						& New</span
@@ -311,23 +394,20 @@
 						{cardCount === 1 ? 'card' : 'cards'}
 					</span>
 				{/if}
-				{#if !isEditMode}
+				{#if !isEditMode && selectedType !== 'image_occlusion'}
 					<Button
 						variant="secondary"
 						size="sm"
 						onclick={() => handleCreate(true)}
-						disabled={submitting || selectedType === 'image_occlusion'}
+						disabled={submitting}
 					>
 						Save & New
 					</Button>
 				{/if}
-				<Button
-					size="sm"
-					onclick={() => handleCreate(false)}
-					disabled={submitting || selectedType === 'image_occlusion'}
-				>
+				<Button size="sm" onclick={() => handleCreate(false)} disabled={submitting}>
 					{isEditMode ? 'Save' : 'Create Fact'}
 				</Button>
+			</div>
 			</div>
 		</Dialog.Footer>
 	</Dialog.Content>

@@ -1,0 +1,354 @@
+<script lang="ts">
+	import type { ImageOcclusionField, Region, ImageData, OcclusionMode } from './types';
+	import { createEditorState } from './editor-state.svelte';
+	import { createHistoryManager } from './history.svelte';
+	import {
+		CreateRegionCommand,
+		DeleteRegionCommand,
+		UpdateRegionMetadataCommand,
+		RotateImageCommand
+	} from './commands';
+	import EditorCanvas from './EditorCanvas.svelte';
+	import EditorToolbar, { type ToolbarPosition } from './EditorToolbar.svelte';
+	import LabelPanel from './LabelPanel.svelte';
+	import ImageUploader from './ImageUploader.svelte';
+	import { generateRegionId } from './utils';
+
+	interface Props {
+		initialValue?: ImageOcclusionField;
+		onChange?: (field: ImageOcclusionField) => void;
+		errors?: { title?: boolean; regionLabels?: Set<string> };
+	}
+
+	let { initialValue, onChange, errors }: Props = $props();
+
+	// Create editor state and history managers
+	const editor = createEditorState();
+	const history = createHistoryManager();
+
+	// Panel width state
+	let panelWidth = $state(380);
+	let isDragging = $state(false);
+	let containerRef: HTMLDivElement | undefined = $state();
+
+	// Focus label signal: set to a region id to trigger label input focus+select
+	let focusLabelRegionId = $state<string | null>(null);
+
+	// Card title
+	let cardTitle = $state('');
+
+	// Toolbar position
+	let toolbarPosition = $state<ToolbarPosition>('left');
+
+	// Filter: set of visible region IDs (null = show all)
+	let visibleRegionIds = $state<Set<string> | null>(null);
+	let canvasRegions = $derived(
+		visibleRegionIds ? editor.regions.filter((r) => visibleRegionIds!.has(r.id)) : editor.regions
+	);
+	const toolbarJustify: Record<ToolbarPosition, string> = {
+		left: 'justify-start',
+		center: 'justify-center',
+		right: 'justify-end'
+	};
+
+	// ============================================================================
+	// Mock Data for Phase 1 Demo
+	// ============================================================================
+	const MOCK_IMAGE: ImageData = {
+		url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Camponotus_flavomarginatus_ant.jpg/1024px-Camponotus_flavomarginatus_ant.jpg',
+		width: 1024,
+		height: 768,
+		rotation: 0
+	};
+
+	const MOCK_REGIONS: Region[] = [
+		{
+			id: 'm_demo_head',
+			shape: { x: 620, y: 180, width: 200, height: 180 },
+			label: 'Head',
+			hint: 'The front part containing eyes and mandibles',
+			backContent: 'The head houses the brain, eyes, and mouthparts including powerful mandibles.'
+		},
+		{
+			id: 'm_demo_thorax',
+			shape: { x: 380, y: 220, width: 220, height: 200 },
+			label: 'Thorax',
+			hint: 'Middle section with legs attached'
+		},
+		{
+			id: 'm_demo_abdomen',
+			shape: { x: 120, y: 280, width: 280, height: 220 },
+			label: 'Abdomen',
+			hint: 'Contains digestive system',
+			backContent: 'The abdomen (gaster) contains the digestive system, reproductive organs, and in some species, a stinger.'
+		}
+	];
+
+	// Initialize with mock data or provided initial value
+	$effect(() => {
+		if (initialValue) {
+			editor.initialize(
+				initialValue.image,
+				initialValue.regions,
+				initialValue.annotations,
+				initialValue.mode
+			);
+		} else {
+			// Use mock data for demo
+			editor.initialize(MOCK_IMAGE, MOCK_REGIONS, [], 'hide_all_guess_one');
+			// Pre-select the first region to demo marching ants
+			editor.setSelectedRegionId('m_demo_head');
+		}
+	});
+
+	// Notify parent of changes
+	function notifyChange() {
+		if (!editor.image) return;
+
+		const field: ImageOcclusionField = {
+			version: 1,
+			title: cardTitle,
+			image: editor.image,
+			regions: editor.regions,
+			annotations: editor.annotations,
+			mode: editor.mode
+		};
+
+		onChange?.(field);
+	}
+
+	// Call notifyChange whenever regions or title change
+	$effect(() => {
+		// Track regions and title for changes
+		const _ = editor.regions;
+		const _t = cardTitle;
+		notifyChange();
+	});
+
+	// ============================================================================
+	// Event Handlers
+	// ============================================================================
+
+	function handleContainerResize(width: number, height: number) {
+		editor.setContainerSize(width, height);
+	}
+
+	function handleSelectRegion(id: string | null) {
+		editor.setSelectedRegionId(id);
+		// Clear focus signal when selection changes via normal click
+		focusLabelRegionId = null;
+	}
+
+	function handleDblClickRegion(id: string) {
+		editor.setSelectedRegionId(id);
+		focusLabelRegionId = id;
+	}
+
+	function handleUpdateRegion(
+		id: string,
+		updates: Partial<Pick<Region, 'label' | 'hint' | 'backContent'>>
+	) {
+		const region = editor.regions.find((r) => r.id === id);
+		if (!region) return;
+
+		const originalValues: Partial<Pick<Region, 'label' | 'hint' | 'backContent'>> = {};
+		if ('label' in updates) originalValues.label = region.label;
+		if ('hint' in updates) originalValues.hint = region.hint;
+		if ('backContent' in updates) originalValues.backContent = region.backContent;
+
+		const command = new UpdateRegionMetadataCommand(editor, id, originalValues, updates);
+		history.execute(command);
+	}
+
+	function handleDeleteRegion(id: string) {
+		const region = editor.regions.find((r) => r.id === id);
+		if (!region) return;
+
+		const command = new DeleteRegionCommand(editor, region, editor.selectedRegionId);
+		history.execute(command);
+	}
+
+	function handleToolChange(tool: typeof editor.activeTool) {
+		editor.setActiveTool(tool);
+	}
+
+	function handleUndo() {
+		history.undo();
+	}
+
+	function handleRedo() {
+		history.redo();
+	}
+
+	function handleRotate() {
+		if (!editor.image) return;
+
+		const currentRotation = editor.image.rotation;
+		const newRotation = ((currentRotation + 90) % 360) as 0 | 90 | 180 | 270;
+
+		const command = new RotateImageCommand(editor, currentRotation, newRotation);
+		history.execute(command);
+	}
+
+	function handlePanChange(offset: { x: number; y: number }) {
+		editor.setPanOffset(offset);
+	}
+
+	function handleZoomChange(zoom: number) {
+		editor.setZoom(zoom);
+	}
+
+	function handleZoomFit() {
+		editor.setZoom(1);
+		editor.setPanOffset({ x: 0, y: 0 });
+	}
+
+	function handleImageLoad(url: string, width: number, height: number) {
+		editor.initialize({ url, width, height, rotation: 0 }, [], [], 'hide_all_guess_one');
+		history.clear();
+	}
+
+	// Resizable divider handlers
+	function handleDividerMouseDown(e: MouseEvent) {
+		e.preventDefault();
+		isDragging = true;
+	}
+
+	function handleMouseMove(e: MouseEvent) {
+		if (!isDragging || !containerRef) return;
+
+		const containerRect = containerRef.getBoundingClientRect();
+		const newWidth = containerRect.right - e.clientX;
+
+		// Clamp between 200px and 500px
+		panelWidth = Math.max(200, Math.min(500, newWidth));
+	}
+
+	function handleMouseUp() {
+		isDragging = false;
+	}
+
+	// Keyboard shortcuts
+	function handleKeydown(e: KeyboardEvent) {
+		// Ignore if typing in an input
+		if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+			return;
+		}
+
+		// Undo: Cmd/Ctrl + Z
+		if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+			e.preventDefault();
+			handleUndo();
+			return;
+		}
+
+		// Redo: Cmd/Ctrl + Shift + Z
+		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'z') {
+			e.preventDefault();
+			handleRedo();
+			return;
+		}
+
+		// Tool shortcuts
+		if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+			switch (e.key.toLowerCase()) {
+				case 'v':
+					editor.setActiveTool('select');
+					break;
+				case 'r':
+					editor.setActiveTool('draw_region');
+					break;
+				case 'escape':
+					editor.setSelectedRegionId(null);
+					break;
+				case 'delete':
+				case 'backspace':
+					if (editor.selectedRegionId) {
+						handleDeleteRegion(editor.selectedRegionId);
+					}
+					break;
+			}
+		}
+	}
+</script>
+
+<svelte:window
+	onkeydown={handleKeydown}
+	onmousemove={isDragging ? handleMouseMove : undefined}
+	onmouseup={isDragging ? handleMouseUp : undefined}
+/>
+
+<div
+	bind:this={containerRef}
+	class="flex h-full w-full overflow-hidden rounded-lg border border-border bg-card"
+	class:select-none={isDragging}
+>
+	<!-- Canvas area with floating toolbar -->
+	<div class="relative flex-1 overflow-hidden">
+		{#if editor.hasImage}
+			<!-- Floating toolbar overlay -->
+			<div class="pointer-events-none absolute inset-x-0 top-0 z-10 flex {toolbarJustify[toolbarPosition]} p-2">
+				<div class="pointer-events-auto">
+					<EditorToolbar
+						activeTool={editor.activeTool}
+						canUndo={history.canUndo}
+						canRedo={history.canRedo}
+						zoom={editor.zoom}
+						position={toolbarPosition}
+						onToolChange={handleToolChange}
+						onUndo={handleUndo}
+						onRedo={handleRedo}
+						onRotate={handleRotate}
+						onZoomChange={handleZoomChange}
+						onZoomFit={handleZoomFit}
+						onPositionChange={(pos) => (toolbarPosition = pos)}
+					/>
+				</div>
+			</div>
+			<div class="h-full w-full">
+				<EditorCanvas
+					image={editor.image}
+					regions={canvasRegions}
+					selectedRegionId={editor.selectedRegionId}
+					displayContext={editor.displayContext}
+					activeTool={editor.activeTool}
+					onSelectRegion={handleSelectRegion}
+					onDblClickRegion={handleDblClickRegion}
+					onPanChange={handlePanChange}
+					onContainerResize={handleContainerResize}
+				/>
+			</div>
+		{:else}
+			<ImageUploader onImageLoad={handleImageLoad} />
+		{/if}
+	</div>
+
+	<!-- Resizable divider -->
+	<div
+		class="group flex w-1 cursor-col-resize items-center justify-center bg-border transition-colors hover:bg-primary/50"
+		class:bg-primary={isDragging}
+		onmousedown={handleDividerMouseDown}
+		role="separator"
+		aria-orientation="vertical"
+		tabindex="0"
+	>
+		<div class="h-8 w-0.5 rounded-full bg-muted-foreground/30 transition-colors group-hover:bg-primary" class:bg-primary={isDragging}></div>
+	</div>
+
+	<!-- Label Panel with dynamic width -->
+	<div class="overflow-hidden" style="width: {panelWidth}px; min-width: {panelWidth}px;">
+		<LabelPanel
+			regions={editor.regions}
+			selectedRegionId={editor.selectedRegionId}
+			{focusLabelRegionId}
+			title={cardTitle}
+			titleError={errors?.title ?? false}
+			regionLabelErrors={errors?.regionLabels}
+			onSelectRegion={handleSelectRegion}
+			onUpdateRegion={handleUpdateRegion}
+			onDeleteRegion={handleDeleteRegion}
+			onFilterChange={(ids) => (visibleRegionIds = ids)}
+			onTitleChange={(v) => (cardTitle = v)}
+		/>
+	</div>
+</div>

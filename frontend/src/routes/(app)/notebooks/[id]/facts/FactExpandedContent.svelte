@@ -47,9 +47,30 @@
 		value: string;
 	}
 
-	const fields = $derived<FieldDisplay[]>(
+	const allFields = $derived<FieldDisplay[]>(
 		(fact.content as { fields?: FieldDisplay[] })?.fields ?? []
 	);
+
+	// Hide image_occlusion JSON blob from field display
+	const fields = $derived(
+		allFields.filter((f) => f.type !== 'image_occlusion')
+	);
+
+	// Parse image occlusion regions for label/hint lookup
+	const imageOcclusionRegions = $derived(() => {
+		const field = allFields.find((f) => f.type === 'image_occlusion');
+		if (!field) return new Map<string, { label: string; hint: string }>();
+		try {
+			const parsed = JSON.parse(field.value) as {
+				regions?: { id: string; label: string; hint?: string }[];
+			};
+			return new Map(
+				(parsed.regions ?? []).map((r) => [r.id, { label: r.label, hint: r.hint ?? '' }])
+			);
+		} catch {
+			return new Map<string, { label: string; hint: string }>();
+		}
+	});
 
 	function formatFieldLabel(name: string): string {
 		return name.charAt(0).toUpperCase() + name.slice(1);
@@ -140,8 +161,9 @@
 								<td class="py-1.5">{cloze?.text || '--'}</td>
 								<td class="py-1.5 text-muted-foreground">{cloze?.hint || '--'}</td>
 							{:else if fact.factType === 'image_occlusion'}
-								<td class="py-1.5">{card.elementId || '--'}</td>
-								<td class="py-1.5 text-muted-foreground">--</td>
+								{@const region = imageOcclusionRegions().get(card.elementId)}
+								<td class="py-1.5">{region?.label || card.elementId || '--'}</td>
+								<td class="py-1.5 text-muted-foreground">{region?.hint || '--'}</td>
 							{/if}
 							<td class="py-1.5">{formatDue(card.due)}</td>
 							<td class="py-1.5 text-right">{card.reps}</td>
