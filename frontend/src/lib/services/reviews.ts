@@ -1,5 +1,8 @@
 import type { ApiStudyCard } from '$lib/api/types';
-import type { StudyCard, CardDisplay } from '$lib/types/review';
+import type { StudyCard, CardDisplay, BasicCardDisplay, ClozeCardDisplay, ImageOcclusionCardDisplay } from '$lib/types/review';
+import type { ImageOcclusionField } from '$lib/components/image-occlusion/types';
+import type { JSONContent } from '@tiptap/core';
+import { assetUrl } from '$lib/api/client';
 import { toast } from 'svelte-sonner';
 
 const RATING_MAP: Record<number, 'again' | 'hard' | 'good' | 'easy'> = {
@@ -64,47 +67,73 @@ export async function fetchPracticeCards(notebookId?: string): Promise<StudyCard
 }
 
 /**
- * Extract front/back display text from a study card's fact content.
+ * Extract display data from a study card's fact content.
+ * Returns a discriminated union routed by card type.
  */
 export function extractCardDisplay(card: StudyCard): CardDisplay {
-	const content = card.factContent as { version?: number; fields?: Array<{ name: string; type: string; value: string }> };
+	const content = card.factContent as {
+		version?: number;
+		fields?: Array<{ name: string; type: string; value: unknown }>;
+	};
 	const fields = content?.fields ?? [];
 
 	if (card.factType === 'basic') {
+		const frontField = fields.find((f) => f.name === 'front');
+		const backField = fields.find((f) => f.name === 'back');
 		return {
-			front: fields[0]?.value ?? '',
-			back: fields[1]?.value ?? ''
-		};
+			type: 'basic',
+			front: frontField?.type === 'rich_text' && typeof frontField.value === 'object'
+				? (frontField.value as JSONContent)
+				: String(frontField?.value ?? ''),
+			back: backField?.type === 'rich_text' && typeof backField.value === 'object'
+				? (backField.value as JSONContent)
+				: String(backField?.value ?? '')
+		} satisfies BasicCardDisplay;
 	}
 
 	if (card.factType === 'cloze') {
 		const textField = fields.find((f) => f.type === 'cloze_text') ?? fields[0];
-		const text = textField?.value ?? '';
-		const elementId = card.elementId; // e.g. "c1"
+		const text = String(textField?.value ?? '');
+		const elementId = card.elementId;
 
-		// Extract the answer for the target cloze
 		let clozeAnswer = '';
-		text.replace(/\{\{(c\d+)::([^}]+)\}\}/g, (_, id, content) => {
-			if (id === elementId) clozeAnswer = content;
+		text.replace(/\{\{(c\d+)::([^}]+)\}\}/g, (_, id, answer) => {
+			if (id === elementId) clozeAnswer = answer;
 			return '';
 		});
 
-		// Front: replace the target cloze with [...], show others filled
-		const front = text.replace(/\{\{(c\d+)::([^}]+)\}\}/g, (_, id, content) => {
-			return id === elementId ? '[...]' : content;
+		const front = text.replace(/\{\{(c\d+)::([^}]+)\}\}/g, (_, id, answer) => {
+			return id === elementId ? '[...]' : answer;
 		});
 
-		// Back: show all cloze content filled
-		const back = text.replace(/\{\{c\d+::([^}]+)\}\}/g, (_, content) => content);
-
-		return { front, back, isCloze: true, clozeAnswer };
+		return { type: 'cloze', front, clozeAnswer } satisfies ClozeCardDisplay;
 	}
 
-	// image_occlusion: placeholder for now
 	if (card.factType === 'image_occlusion') {
-		const title = fields.find((f) => f.name === 'title')?.value ?? 'Image Occlusion';
-		return { front: title, back: title };
+		const ioField = fields.find((f) => f.type === 'image_occlusion');
+		const data = ioField?.value as ImageOcclusionField | undefined;
+
+		if (!data?.image || !data?.regions?.length) {
+			return { type: 'basic', front: data?.title ?? 'Image Occlusion', back: '' };
+		}
+
+		const resolvedUrl = data.image.assetId
+			? assetUrl(data.image.assetId)
+			: data.image.url;
+
+		return {
+			type: 'image_occlusion',
+			title: data.title || 'Image Occlusion',
+			imageUrl: resolvedUrl,
+			imageWidth: data.image.width,
+			imageHeight: data.image.height,
+			imageRotation: data.image.rotation ?? 0,
+			regions: data.regions,
+			targetRegionId: card.elementId,
+			mode: data.mode ?? 'hide_all_guess_one',
+			revealStyle: data.revealStyle ?? 'show_label'
+		} satisfies ImageOcclusionCardDisplay;
 	}
 
-	return { front: 'Unknown card type', back: '' };
+	return { type: 'basic', front: 'Unknown card type', back: '' };
 }
