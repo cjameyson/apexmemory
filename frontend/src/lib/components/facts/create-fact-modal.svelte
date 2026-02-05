@@ -15,6 +15,7 @@
 	};
 	import ClozeFactEditor, { type ClozeFactData } from './cloze-fact-editor.svelte';
 	import { ImageOcclusionEditor, type ImageOcclusionField } from '$lib/components/image-occlusion';
+	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 
 	export interface FactFormData {
 		factType: FactType;
@@ -117,6 +118,10 @@
 	// Editor refs
 	let basicEditor: BasicFactEditor | undefined = $state();
 	let clozeEditor: ClozeFactEditor | undefined = $state();
+	let imageOcclusionEditor: ImageOcclusionEditor | undefined = $state();
+
+	// Discard confirmation for dirty image occlusion editor
+	let discardConfirmOpen = $state(false);
 
 	function validate(): boolean {
 		if (selectedType === 'basic') {
@@ -377,11 +382,30 @@
 			else if (type === 'cloze') clozeEditor?.focus();
 		});
 	});
+
+	function handleClose() {
+		if (selectedType === 'image_occlusion' && imageOcclusionEditor?.getIsDirty()) {
+			// Re-open immediately since bind:open already set it to false
+			open = true;
+			discardConfirmOpen = true;
+			return;
+		}
+		onclose();
+	}
+
+	function confirmDiscard() {
+		discardConfirmOpen = false;
+		onclose();
+	}
+
+	function cancelDiscard() {
+		discardConfirmOpen = false;
+	}
 </script>
 
 <svelte:window onkeydown={open ? handleKeydown : undefined} />
 
-<Dialog.Root bind:open onOpenChange={(v) => !v && onclose()}>
+<Dialog.Root bind:open onOpenChange={(v) => !v && handleClose()}>
 	<Dialog.Content
 		class="top-[40px] flex translate-y-0 flex-col overflow-visible {selectedType ===
 		'image_occlusion'
@@ -419,7 +443,7 @@
 			<!-- Image occlusion editor fills the modal content area -->
 			<div class="image-occlusion-editor min-h-0 flex-1 overflow-hidden">
 				{#key formKey}
-					<ImageOcclusionEditor onChange={handleImageOcclusionChange} errors={imageOcclusionErrors} />
+					<ImageOcclusionEditor bind:this={imageOcclusionEditor} onChange={handleImageOcclusionChange} errors={imageOcclusionErrors} />
 				{/key}
 			</div>
 		{:else}
@@ -489,3 +513,12 @@
 		</Dialog.Footer>
 	</Dialog.Content>
 </Dialog.Root>
+
+<ConfirmDialog
+	bind:open={discardConfirmOpen}
+	title="Discard changes?"
+	description="You have unsaved changes to the image occlusion editor."
+	confirmLabel="Discard"
+	onconfirm={confirmDiscard}
+	oncancel={cancelDiscard}
+/>

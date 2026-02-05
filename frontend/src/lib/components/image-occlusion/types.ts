@@ -243,10 +243,4 @@ export interface StatusBarProps {
 	mode: OcclusionMode;
 	/** Current zoom percentage */
 	zoom: number;
-	/** Number of undo operations available */
-	undoCount: number;
-	/** Number of redo operations available */
-	redoCount: number;
-	/** Whether there are unsaved changes */
-	isDirty: boolean;
 }

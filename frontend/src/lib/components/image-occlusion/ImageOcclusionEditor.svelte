@@ -11,7 +11,9 @@
 	import EditorCanvas from './EditorCanvas.svelte';
 	import EditorToolbar, { type ToolbarPosition } from './EditorToolbar.svelte';
 	import LabelPanel from './LabelPanel.svelte';
+	import StatusBar from './StatusBar.svelte';
 	import ImageUploader from './ImageUploader.svelte';
+	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
 	import { generateRegionId } from './utils';
 
 	interface Props {
@@ -33,6 +35,18 @@
 
 	// Focus label signal: set to a region id to trigger label input focus+select
 	let focusLabelRegionId = $state<string | null>(null);
+
+	// Delete confirmation state
+	let deleteConfirmOpen = $state(false);
+	let deletingRegionId = $state<string | null>(null);
+	let deletingRegionLabel = $derived(
+		deletingRegionId ? (editor.regions.find((r) => r.id === deletingRegionId)?.label ?? '') : ''
+	);
+
+	// Dirty state (exposed for parent to use in close confirmation)
+	export function getIsDirty() {
+		return history.undoCount > 0;
+	}
 
 	// Card title
 	let cardTitle = $state('');
@@ -80,7 +94,8 @@
 			shape: { x: 120, y: 280, width: 280, height: 220 },
 			label: 'Abdomen',
 			hint: 'Contains digestive system',
-			backContent: 'The abdomen (gaster) contains the digestive system, reproductive organs, and in some species, a stinger.'
+			backContent:
+				'The abdomen (gaster) contains the digestive system, reproductive organs, and in some species, a stinger.'
 		}
 	];
 
@@ -161,11 +176,24 @@
 	}
 
 	function handleDeleteRegion(id: string) {
-		const region = editor.regions.find((r) => r.id === id);
-		if (!region) return;
+		deletingRegionId = id;
+		deleteConfirmOpen = true;
+	}
 
-		const command = new DeleteRegionCommand(editor, region, editor.selectedRegionId);
-		history.execute(command);
+	function confirmDelete() {
+		if (!deletingRegionId) return;
+		const region = editor.regions.find((r) => r.id === deletingRegionId);
+		if (region) {
+			const command = new DeleteRegionCommand(editor, region, editor.selectedRegionId);
+			history.execute(command);
+		}
+		deleteConfirmOpen = false;
+		deletingRegionId = null;
+	}
+
+	function cancelDelete() {
+		deleteConfirmOpen = false;
+		deletingRegionId = null;
 	}
 
 	function handleToolChange(tool: typeof editor.activeTool) {
@@ -231,7 +259,10 @@
 	// Keyboard shortcuts
 	function handleKeydown(e: KeyboardEvent) {
 		// Ignore if typing in an input
-		if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') {
+		if (
+			(e.target as HTMLElement).tagName === 'INPUT' ||
+			(e.target as HTMLElement).tagName === 'TEXTAREA'
+		) {
 			return;
 		}
 
@@ -280,14 +311,19 @@
 
 <div
 	bind:this={containerRef}
-	class="flex h-full w-full overflow-hidden rounded-lg border border-border bg-card"
+	class="border-border bg-card flex h-full w-full overflow-hidden rounded-lg border"
 	class:select-none={isDragging}
 >
 	<!-- Canvas area with floating toolbar -->
 	<div class="relative flex-1 overflow-hidden">
 		{#if editor.hasImage}
 			<!-- Floating toolbar overlay -->
-			<div class="pointer-events-none absolute inset-x-0 top-0 z-10 flex {toolbarJustify[toolbarPosition]} p-2">
+			<div
+				data-debug="image occlusion editor toolbar wrapper"
+				class="pointer-events-none absolute inset-x-0 top-0 z-10 flex {toolbarJustify[
+					toolbarPosition
+				]} p-2"
+			>
 				<div class="pointer-events-auto">
 					<EditorToolbar
 						activeTool={editor.activeTool}
@@ -305,7 +341,7 @@
 					/>
 				</div>
 			</div>
-			<div class="h-full w-full">
+			<div data-debug="image occlusion editor canvas" class="h-full w-full">
 				<EditorCanvas
 					image={editor.image}
 					regions={canvasRegions}
@@ -318,6 +354,18 @@
 					onContainerResize={handleContainerResize}
 				/>
 			</div>
+			<!-- Floating status bar -->
+			<div class="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-2">
+				<div
+					class="pointer-events-auto border-border bg-card/90 inline-flex rounded-md border shadow-sm backdrop-blur-sm"
+				>
+					<StatusBar
+						regionCount={editor.regions.length}
+						mode={editor.mode}
+						zoom={editor.zoom}
+					/>
+				</div>
+			</div>
 		{:else}
 			<ImageUploader onImageLoad={handleImageLoad} />
 		{/if}
@@ -325,14 +373,17 @@
 
 	<!-- Resizable divider -->
 	<div
-		class="group flex w-1 cursor-col-resize items-center justify-center bg-border transition-colors hover:bg-primary/50"
+		class="group bg-border hover:bg-primary/50 flex w-1 cursor-col-resize items-center justify-center transition-colors"
 		class:bg-primary={isDragging}
 		onmousedown={handleDividerMouseDown}
 		role="separator"
 		aria-orientation="vertical"
 		tabindex="0"
 	>
-		<div class="h-8 w-0.5 rounded-full bg-muted-foreground/30 transition-colors group-hover:bg-primary" class:bg-primary={isDragging}></div>
+		<div
+			class="bg-muted-foreground/30 group-hover:bg-primary h-8 w-0.5 rounded-full transition-colors"
+			class:bg-primary={isDragging}
+		></div>
 	</div>
 
 	<!-- Label Panel with dynamic width -->
@@ -352,3 +403,14 @@
 		/>
 	</div>
 </div>
+
+<ConfirmDialog
+	bind:open={deleteConfirmOpen}
+	title="Delete Region"
+	description={deletingRegionLabel
+		? `Delete region "${deletingRegionLabel}"? You can undo this with Ctrl+Z.`
+		: 'Delete this region? You can undo this with Ctrl+Z.'}
+	confirmLabel="Delete"
+	onconfirm={confirmDelete}
+	oncancel={cancelDelete}
+/>

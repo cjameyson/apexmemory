@@ -11,7 +11,8 @@
 		RotateCw,
 		ZoomIn,
 		ZoomOut,
-		Maximize
+		Maximize,
+		Sparkles
 	} from '@lucide/svelte';
 
 	export type ToolbarPosition = 'left' | 'center' | 'right';
@@ -46,7 +47,6 @@
 		onPositionChange
 	}: Props = $props();
 
-
 	function handleZoomIn() {
 		onZoomChange?.(Math.min(5, zoom + 0.25));
 	}
@@ -60,7 +60,9 @@
 
 <Tooltip.Provider>
 	<div
-		class="inline-flex items-center gap-1 rounded-md border border-border bg-card/95 px-2 py-1 shadow-sm backdrop-blur-sm"
+		role="toolbar"
+		data-toolbar-name="Image Occlusion Editor Toolbar"
+		class="border-border bg-card/95 inline-flex items-center gap-1 rounded-md border px-2 py-1 shadow-sm backdrop-blur-sm"
 	>
 		<!-- Undo/Redo group -->
 		<div class="flex items-center">
@@ -72,6 +74,7 @@
 						disabled={!canUndo}
 						onclick={onUndo}
 						aria-label="Undo"
+						tabindex={-1}
 					>
 						<Undo2 class="h-4 w-4" />
 					</Button>
@@ -173,7 +176,7 @@
 				</Tooltip.Content>
 			</Tooltip.Root>
 
-			<span class="min-w-[48px] text-center text-xs font-medium text-muted-foreground">
+			<span class="text-muted-foreground min-w-[48px] text-center text-xs font-medium">
 				{zoomPercentage}%
 			</span>
 
@@ -206,5 +209,30 @@
 			</Tooltip.Root>
 		</div>
 
+		<Separator orientation="vertical" class="mx-1 h-6" />
+
+		<!-- AI Assist (coming soon) -->
+		<Tooltip.Root>
+			<Tooltip.Trigger>
+				<Button
+					variant="ghost"
+					size="sm"
+					disabled={true}
+					aria-label="AI Assist (coming soon)"
+					class="relative gap-1.5 opacity-60"
+				>
+					<Sparkles class="h-4 w-4" />
+					<span class="text-xs">AI</span>
+					<span
+						class="bg-muted text-muted-foreground absolute -right-1 -top-1 rounded px-1 text-[9px] font-medium leading-tight"
+					>
+						Soon
+					</span>
+				</Button>
+			</Tooltip.Trigger>
+			<Tooltip.Content>
+				<p>AI-assisted region detection (coming soon)</p>
+			</Tooltip.Content>
+		</Tooltip.Root>
 	</div>
 </Tooltip.Provider>
