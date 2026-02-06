@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { ImageOcclusionCardDisplay } from '$lib/types/review';
 	import type { Region } from '$lib/components/image-occlusion/types';
-	import { EyeIcon, LightbulbIcon } from '@lucide/svelte';
+	import { EyeIcon, LightbulbIcon, CircleHelpIcon } from '@lucide/svelte';
+	import { occlusionDebug, MASK_COLORS, type MaskColor } from '$lib/stores/debug-occlusion.svelte';
 
 	interface Props {
 		display: ImageOcclusionCardDisplay;
@@ -25,6 +26,9 @@
 	);
 
 	let hasHint = $derived(!!targetRegion?.hint);
+
+	let debug = $derived(occlusionDebug.state);
+	let useDebug = $derived(debug.enabled);
 
 	/**
 	 * Determine which regions to show as masked overlays.
@@ -65,6 +69,83 @@
 	}
 
 	/**
+	 * Get the CSS classes for a region overlay based on current state and debug settings.
+	 */
+	function getMaskClasses(isTarget: boolean): string {
+		const masked = shouldShowMask(isTarget);
+		const color: MaskColor = useDebug ? debug.maskColor : 'primary';
+		const colors = MASK_COLORS[color];
+
+		if (masked) {
+			if (isTarget) {
+				return `${colors.bg} border-2 ${colors.border}`;
+			}
+			return 'bg-slate-600 border border-slate-500';
+		}
+
+		if (isTarget && isRevealed) {
+			return `${colors.bgRevealed} border-2 ${colors.borderRevealed}`;
+		}
+
+		return '';
+	}
+
+	/**
+	 * Get animation classes for the target mask.
+	 * Defaults: marching ants slow. Debug overrides all.
+	 */
+	function getAnimationClasses(isTarget: boolean): string {
+		if (!isTarget || isRevealed) return '';
+
+		const classes: string[] = [];
+
+		const effectivePulse = useDebug ? debug.pulse : 'off';
+		const effectiveAnts = useDebug ? debug.marchingAnts : 'slow';
+
+		if (effectivePulse === 'subtle') classes.push('occlusion-pulse-subtle');
+		else if (effectivePulse === 'pronounced') classes.push('occlusion-pulse-pronounced');
+
+		if (effectiveAnts === 'slow') classes.push('occlusion-ants-slow');
+		else if (effectiveAnts === 'medium') classes.push('occlusion-ants-medium');
+
+		return classes.join(' ');
+	}
+
+	/**
+	 * Get reveal transition classes for the persistent div.
+	 */
+	function getRevealTransitionClasses(isTarget: boolean): string {
+		if (!isTarget || !useDebug) return 'transition-all duration-300';
+
+		if (debug.reveal === 'fade-cross') return 'occlusion-reveal-fade-cross';
+		if (debug.reveal === 'dissolve') return 'occlusion-reveal-dissolve';
+		if (debug.reveal === 'slide-away') {
+			const base = 'occlusion-reveal-slide-away';
+			return isRevealed ? `${base} occlusion-slide-away-active` : base;
+		}
+		return 'transition-all duration-300';
+	}
+
+	/**
+	 * Get entrance animation class.
+	 */
+	function getEntranceClass(): string {
+		if (!useDebug) return '';
+		if (debug.entrance === 'fade-in') return 'occlusion-enter-fade-in';
+		if (debug.entrance === 'scale-up') return 'occlusion-enter-scale-up';
+		return '';
+	}
+
+	/**
+	 * Whether to show the indicator icon on the target mask.
+	 */
+	function showIndicator(isTarget: boolean): boolean {
+		if (!isTarget || isRevealed) return false;
+		if (useDebug) return debug.showIndicator;
+		return true;
+	}
+
+	/**
 	 * Get rotation CSS transform.
 	 */
 	let rotationStyle = $derived(
@@ -86,36 +167,27 @@
 			draggable="false"
 		/>
 
-		<!-- Region overlays -->
+		<!-- Region overlays — single persistent div per region for smooth transitions -->
 		{#each visibleRegions as { region, isTarget } (region.id)}
 			<div
-				class="absolute transition-all duration-300 rounded-sm"
+				class="absolute rounded-sm {getEntranceClass()}"
 				style={regionStyle(region)}
 			>
-				{#if shouldShowMask(isTarget)}
-					<!-- Masked state -->
-					<div
-						class="w-full h-full rounded-sm {isTarget
-							? 'bg-sky-500 border-2 border-sky-300'
-							: 'bg-slate-600 border border-slate-500'}"
-					>
-						{#if isTarget && display.mode === 'hide_all_guess_one'}
-							<span class="absolute inset-0 flex items-center justify-center text-white font-bold text-lg">
-								?
-							</span>
-						{/if}
-					</div>
-				{:else if isTarget && isRevealed}
-					<!-- Revealed target -->
-					<div class="w-full h-full border-2 border-emerald-400 rounded-sm bg-emerald-500/20"></div>
-					{#if display.revealStyle === 'show_label'}
-						<!-- Label floats below region, not clipped by it -->
-						<div class="absolute left-1/2 -translate-x-1/2 top-full mt-1 whitespace-nowrap z-10">
-							<span class="px-2 py-0.5 text-sm font-semibold text-emerald-300 bg-black/70 rounded text-center leading-tight">
-								{targetRegion?.label ?? ''}
-							</span>
-						</div>
+				<div
+					class="w-full h-full rounded-sm {isTarget && isRevealed && display.revealStyle === 'show_label' ? 'rounded-tl-none' : ''} {getMaskClasses(isTarget)} {getAnimationClasses(isTarget)} {getRevealTransitionClasses(isTarget)}"
+				>
+					{#if showIndicator(isTarget)}
+						<span class="absolute inset-0 flex items-center justify-center text-white/70">
+							<CircleHelpIcon class="size-5" />
+						</span>
 					{/if}
+				</div>
+
+				<!-- PAWLS-style annotation label: above region, left-aligned, solid bg matches border -->
+				{#if isTarget && isRevealed && display.revealStyle === 'show_label'}
+					<span class="absolute bottom-full left-0 bg-emerald-400 rounded-t-[2px] px-1.5 py-px text-[10px] font-bold text-emerald-950 whitespace-nowrap leading-tight z-10">
+						{targetRegion?.label ?? ''}
+					</span>
 				{/if}
 			</div>
 		{/each}

@@ -364,6 +364,99 @@
 }
 
 /* =============================================================================
+   Occlusion Mask Effects (dev-only experimentation — remove after baking winner)
+   ============================================================================= */
+
+/* Pulse: subtle */
+@keyframes occlusion-pulse-subtle {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+/* Pulse: pronounced */
+@keyframes occlusion-pulse-pronounced {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.02); }
+}
+
+/* Marching ants: shared base */
+@keyframes occlusion-march {
+  to { background-position: 16px 0, -16px 100%, 0 -16px, 100% 16px; }
+}
+
+@layer utilities {
+  .occlusion-pulse-subtle {
+    animation: occlusion-pulse-subtle 2s ease-in-out infinite;
+  }
+
+  .occlusion-pulse-pronounced {
+    animation: occlusion-pulse-pronounced 1.5s ease-in-out infinite;
+  }
+
+  .occlusion-ants-slow {
+    background-image:
+      linear-gradient(90deg, rgba(255,255,255,0.7) 50%, transparent 50%),
+      linear-gradient(90deg, rgba(255,255,255,0.7) 50%, transparent 50%),
+      linear-gradient(0deg, rgba(255,255,255,0.7) 50%, transparent 50%),
+      linear-gradient(0deg, rgba(255,255,255,0.7) 50%, transparent 50%);
+    background-size: 16px 2px, 16px 2px, 2px 16px, 2px 16px;
+    background-position: 0 0, 0 100%, 0 0, 100% 0;
+    background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+    animation: occlusion-march 2s linear infinite;
+  }
+
+  .occlusion-ants-medium {
+    background-image:
+      linear-gradient(90deg, rgba(255,255,255,0.7) 50%, transparent 50%),
+      linear-gradient(90deg, rgba(255,255,255,0.7) 50%, transparent 50%),
+      linear-gradient(0deg, rgba(255,255,255,0.7) 50%, transparent 50%),
+      linear-gradient(0deg, rgba(255,255,255,0.7) 50%, transparent 50%);
+    background-size: 16px 2px, 16px 2px, 2px 16px, 2px 16px;
+    background-position: 0 0, 0 100%, 0 0, 100% 0;
+    background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+    animation: occlusion-march 0.8s linear infinite;
+  }
+
+  /* Reveal transitions applied to the persistent mask div */
+  .occlusion-reveal-fade-cross {
+    transition: background-color 400ms ease-out, border-color 400ms ease-out, opacity 400ms ease-out;
+  }
+
+  .occlusion-reveal-dissolve {
+    transition: background-color 500ms ease-out, border-color 500ms ease-out 200ms, opacity 500ms ease-out;
+  }
+
+  .occlusion-reveal-slide-away {
+    transition: transform 300ms ease-out, opacity 300ms ease-out, border-color 300ms ease-out;
+  }
+
+  .occlusion-slide-away-active {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  /* Entrance: fade-in */
+  .occlusion-enter-fade-in {
+    animation: occlusion-fade-in 400ms ease-out both;
+  }
+
+  /* Entrance: scale-up */
+  .occlusion-enter-scale-up {
+    animation: occlusion-scale-up 300ms ease-out both;
+  }
+}
+
+@keyframes occlusion-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes occlusion-scale-up {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+/* =============================================================================
    Prose Styles (for rendered markdown/flashcard content)
    ============================================================================= */
 
