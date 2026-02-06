@@ -12,7 +12,8 @@
 		ZoomIn,
 		ZoomOut,
 		Maximize,
-		Sparkles
+		Sparkles,
+		Type
 	} from '@lucide/svelte';
 
 	export type ToolbarPosition = 'left' | 'center' | 'right';
@@ -22,8 +23,10 @@
 		canUndo: boolean;
 		canRedo: boolean;
 		zoom: number;
+		showLabels?: boolean;
 		position?: ToolbarPosition;
 		onToolChange?: (tool: EditorTool) => void;
+		onToggleLabels?: () => void;
 		onUndo?: () => void;
 		onRedo?: () => void;
 		onRotate?: () => void;
@@ -37,8 +40,10 @@
 		canUndo,
 		canRedo,
 		zoom,
+		showLabels = true,
 		position = 'center',
 		onToolChange,
+		onToggleLabels,
 		onUndo,
 		onRedo,
 		onRotate,
@@ -152,6 +157,25 @@
 			</Tooltip.Trigger>
 			<Tooltip.Content>
 				<p>Rotate 90°</p>
+			</Tooltip.Content>
+		</Tooltip.Root>
+
+		<!-- Toggle labels -->
+		<Tooltip.Root>
+			<Tooltip.Trigger>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					class={showLabels ? 'bg-primary/15 text-primary hover:bg-primary/25' : ''}
+					onclick={onToggleLabels}
+					aria-label="Toggle region labels"
+					aria-pressed={showLabels}
+				>
+					<Type class="h-4 w-4" />
+				</Button>
+			</Tooltip.Trigger>
+			<Tooltip.Content>
+				<p>{showLabels ? 'Hide' : 'Show'} Labels (L)</p>
 			</Tooltip.Content>
 		</Tooltip.Root>
 

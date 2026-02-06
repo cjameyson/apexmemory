@@ -11,6 +11,7 @@
 		selectedRegionId: string | null;
 		displayContext: DisplayContext;
 		activeTool: EditorTool;
+		showLabels?: boolean;
 		onSelectRegion?: (id: string | null) => void;
 		onDblClickRegion?: (id: string) => void;
 		onPanChange?: (offset: Point) => void;
@@ -29,6 +30,7 @@
 		selectedRegionId,
 		displayContext,
 		activeTool,
+		showLabels = true,
 		onSelectRegion,
 		onDblClickRegion,
 		onPanChange,
@@ -505,6 +507,7 @@
 					{region}
 					index={i + 1}
 					isSelected={region.id === selectedRegionId}
+					{showLabels}
 					{displayContext}
 					onClick={() => handleRegionClick(region.id)}
 					onDblClick={() => onDblClickRegion?.(region.id)}

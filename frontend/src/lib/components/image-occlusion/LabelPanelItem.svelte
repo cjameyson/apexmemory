@@ -40,10 +40,10 @@
 	// Color classes based on state
 	let badgeClasses = $derived(
 		isSelected
-			? 'bg-success/10 text-success'
+			? 'bg-success text-success-foreground'
 			: isUnlabeled
-				? 'bg-warning/10 text-warning'
-				: 'bg-primary/10 text-primary'
+				? 'bg-warning text-warning-foreground'
+				: 'bg-primary text-primary-foreground'
 	);
 
 	let wrapperClasses = $derived(
@@ -58,7 +58,6 @@
 
 	$effect(() => {
 		if (focusLabel && isSelected && labelInputRef) {
-			// Use tick to ensure DOM is updated after selected state renders inputs
 			requestAnimationFrame(() => {
 				labelInputRef?.focus();
 				labelInputRef?.select();
@@ -84,14 +83,63 @@
 >
 	{#if isSelected}
 		<!-- SELECTED: Full edit mode -->
-		<div class="space-y-2">
-			<!-- Top row: numbered badge + delete button -->
-			<div class="flex items-center justify-between">
+		<div class="space-y-1.5">
+			<!-- Label field with badge -->
+			<div class="flex items-center gap-2">
 				<span
-					class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-medium {badgeClasses}"
+					class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold {badgeClasses}"
 				>
 					{index}
 				</span>
+				<span class="w-12 shrink-0 text-right text-xs font-medium text-muted-foreground"
+					>Label<span class="text-destructive"> *</span></span
+				>
+				<Input
+					bind:ref={labelInputRef}
+					value={region.label}
+					placeholder="Label..."
+					class="h-7 flex-1 text-sm"
+					aria-label="Region label"
+					aria-invalid={labelError || undefined}
+					onclick={(e: MouseEvent) => e.stopPropagation()}
+					oninput={(e: Event) => onLabelChange?.((e.target as HTMLInputElement).value)}
+					onkeydown={handleLabelKeydown}
+				/>
+			</div>
+
+			<!-- Hint field (indented to align with Label input) -->
+			<div class="flex items-center gap-2 pl-7">
+				<span class="w-12 shrink-0 text-right text-xs font-medium text-muted-foreground"
+					>Hint</span
+				>
+				<Input
+					value={region.hint ?? ''}
+					placeholder="Hint for review..."
+					class="h-7 flex-1 text-sm"
+					aria-label="Region hint"
+					onclick={(e: MouseEvent) => e.stopPropagation()}
+					oninput={(e: Event) => onHintChange?.((e.target as HTMLInputElement).value)}
+				/>
+			</div>
+
+			<!-- Back Extra field (indented to align) -->
+			<div class="flex items-start gap-2 pl-7">
+				<span class="w-12 shrink-0 pt-1.5 text-right text-xs font-medium text-muted-foreground"
+					>Extra</span
+				>
+				<Textarea
+					value={region.backExtra ?? ''}
+					placeholder="Additional answer content..."
+					class="min-h-[40px] flex-1 resize-none bg-background text-sm"
+					aria-label="Region back extra"
+					onclick={(e: MouseEvent) => e.stopPropagation()}
+					oninput={(e: Event) =>
+						onBackExtraChange?.((e.target as HTMLTextAreaElement).value)}
+				/>
+			</div>
+
+			<!-- Delete button (bottom-right) -->
+			<div class="flex justify-end pl-7">
 				<Button
 					variant="ghost"
 					size="icon-sm"
@@ -104,54 +152,12 @@
 					<Trash2 class="h-3.5 w-3.5" />
 				</Button>
 			</div>
-
-			<div>
-				<span class="mb-1 block text-xs font-medium text-muted-foreground"
-					>Label<span class="text-destructive"> *</span></span
-				>
-				<Input
-					bind:ref={labelInputRef}
-					value={region.label}
-					placeholder="Label..."
-					class="h-7 text-sm"
-					aria-label="Region label"
-					aria-invalid={labelError || undefined}
-					onclick={(e: MouseEvent) => e.stopPropagation()}
-					oninput={(e: Event) => onLabelChange?.((e.target as HTMLInputElement).value)}
-					onkeydown={handleLabelKeydown}
-				/>
-			</div>
-
-			<div>
-				<span class="mb-1 block text-xs font-medium text-muted-foreground">Hint</span>
-				<Input
-					value={region.hint ?? ''}
-					placeholder="Optional hint shown during review..."
-					class="h-7 text-sm"
-					aria-label="Region hint"
-					onclick={(e: MouseEvent) => e.stopPropagation()}
-					oninput={(e: Event) => onHintChange?.((e.target as HTMLInputElement).value)}
-				/>
-			</div>
-
-			<div>
-				<span class="mb-1 block text-xs font-medium text-muted-foreground">Back Extra</span>
-				<Textarea
-					value={region.backExtra ?? ''}
-					placeholder="Additional content shown on answer..."
-					class="min-h-[50px] resize-none bg-background text-sm"
-					aria-label="Region back extra"
-					onclick={(e: MouseEvent) => e.stopPropagation()}
-					oninput={(e: Event) =>
-						onBackExtraChange?.((e.target as HTMLTextAreaElement).value)}
-				/>
-			</div>
 		</div>
 	{:else}
-		<!-- NOT SELECTED: Compact plain text display -->
+		<!-- NOT SELECTED: Compact inline display -->
 		<div class="flex w-full items-center gap-2 text-left">
 			<span
-				class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-medium {badgeClasses}"
+				class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold {badgeClasses}"
 			>
 				{index}
 			</span>

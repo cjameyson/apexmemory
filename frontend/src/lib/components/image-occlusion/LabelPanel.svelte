@@ -3,7 +3,7 @@
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import LabelPanelItem from './LabelPanelItem.svelte';
-	import { Search, SquareDashed } from '@lucide/svelte';
+	import { SquareDashed } from '@lucide/svelte';
 
 	interface Props {
 		regions: Region[];
@@ -97,16 +97,9 @@
 		/>
 	</div>
 
-	<!-- Filter -->
-	<div class="flex items-center gap-2 border-b border-border px-3 py-2">
-		<div class="relative flex-1">
-			<Search class="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-			<Input
-				bind:value={filterText}
-				placeholder="Filter regions..."
-				class="h-7 pl-7 text-sm"
-			/>
-		</div>
+	<!-- Region count -->
+	<div class="flex items-center justify-between border-b border-border px-3 py-1.5">
+		<span class="text-xs font-medium text-muted-foreground">Regions</span>
 		<span class="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
 			{regions.length}
 		</span>

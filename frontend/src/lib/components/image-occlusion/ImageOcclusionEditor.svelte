@@ -59,6 +59,12 @@
 	// Toolbar position
 	let toolbarPosition = $state<ToolbarPosition>('left');
 
+	// Label visibility (persisted in localStorage)
+	const SHOW_LABELS_KEY = 'apex:occlusion-show-labels';
+	let showLabels = $state(
+		typeof localStorage !== 'undefined' ? localStorage.getItem(SHOW_LABELS_KEY) !== 'false' : true
+	);
+
 	// Filter: set of visible region IDs (null = show all)
 	let visibleRegionIds = $state<Set<string> | null>(null);
 	let canvasRegions = $derived(
@@ -246,6 +252,13 @@
 		history.execute(command);
 	}
 
+	function handleToggleLabels() {
+		showLabels = !showLabels;
+		try {
+			localStorage.setItem(SHOW_LABELS_KEY, String(showLabels));
+		} catch {}
+	}
+
 	function handlePanChange(offset: { x: number; y: number }) {
 		editor.setPanOffset(offset);
 	}
@@ -344,6 +357,9 @@
 				case 'r':
 					editor.setActiveTool('draw_region');
 					break;
+				case 'l':
+					handleToggleLabels();
+					break;
 				case 'escape':
 					editor.setSelectedRegionId(null);
 					break;
@@ -422,8 +438,10 @@
 						canUndo={history.canUndo}
 						canRedo={history.canRedo}
 						zoom={editor.zoom}
+						{showLabels}
 						position={toolbarPosition}
 						onToolChange={handleToolChange}
+						onToggleLabels={handleToggleLabels}
 						onUndo={handleUndo}
 						onRedo={handleRedo}
 						onRotate={handleRotate}
@@ -440,6 +458,7 @@
 					selectedRegionId={editor.selectedRegionId}
 					displayContext={editor.displayContext}
 					activeTool={editor.activeTool}
+					{showLabels}
 					onSelectRegion={handleSelectRegion}
 					onDblClickRegion={handleDblClickRegion}
 					onPanChange={handlePanChange}

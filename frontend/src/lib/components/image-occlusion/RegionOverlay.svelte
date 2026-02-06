@@ -6,6 +6,7 @@
 		region: Region;
 		index: number;
 		isSelected: boolean;
+		showLabels?: boolean;
 		displayContext: DisplayContext;
 		onClick?: () => void;
 		onDblClick?: () => void;
@@ -13,7 +14,7 @@
 		onResizeStart?: (e: MouseEvent, position: ResizeHandlePosition) => void;
 	}
 
-	let { region, index, isSelected, displayContext, onClick, onDblClick, onMoveStart, onResizeStart }: Props = $props();
+	let { region, index, isSelected, showLabels = true, displayContext, onClick, onDblClick, onMoveStart, onResizeStart }: Props = $props();
 
 	// Transform region to display coordinates
 	let displayShape = $derived<RectShape>(regionToDisplay(region.shape, displayContext));
@@ -36,11 +37,10 @@
 				: 'var(--primary-foreground)'
 	);
 
-	// Index badge positioning (top-left corner, slightly inset)
+	// Index badge centered on top-left corner of region rect
 	const BADGE_R = 9;
-	let badgeCx = $derived(displayShape.x + 2 + BADGE_R);
-	let badgeCy = $derived(displayShape.y + 2 + BADGE_R);
-	let showBadge = $derived(displayShape.width > 30 && displayShape.height > 30);
+	let badgeCx = $derived(displayShape.x);
+	let badgeCy = $derived(displayShape.y);
 </script>
 
 <g
@@ -92,30 +92,30 @@
 		/>
 	{/if}
 
-	<!-- Region label in center -->
-	<text
-		x={displayShape.x + displayShape.width / 2}
-		y={displayShape.y + displayShape.height / 2}
-		class="region-label"
-		text-anchor="middle"
-		dominant-baseline="central"
-	>
-		{regionLabel}
-	</text>
-
-	<!-- Index badge (top-left corner) -->
-	{#if showBadge}
-		<circle cx={badgeCx} cy={badgeCy} r={BADGE_R} class="badge-circle" />
+	{#if showLabels}
+		<!-- Region label in center -->
 		<text
-			x={badgeCx}
-			y={badgeCy}
-			class="badge-text"
+			x={displayShape.x + displayShape.width / 2}
+			y={displayShape.y + displayShape.height / 2}
+			class="region-label"
 			text-anchor="middle"
 			dominant-baseline="central"
 		>
-			{index}
+			{regionLabel}
 		</text>
 	{/if}
+
+	<!-- Index badge (centered on top-left corner, always visible) -->
+	<circle cx={badgeCx} cy={badgeCy} r={BADGE_R} class="badge-circle" />
+	<text
+		x={badgeCx}
+		y={badgeCy}
+		class="badge-text"
+		text-anchor="middle"
+		dominant-baseline="central"
+	>
+		{index}
+	</text>
 
 	<!-- Resize handles (when selected) -->
 	{#if isSelected}
@@ -183,8 +183,8 @@
 		pointer-events: none;
 		user-select: none;
 		text-shadow:
-			0 1px 3px rgba(0, 0, 0, 0.7),
-			0 0 8px rgba(0, 0, 0, 0.4);
+			0 1px 2px rgba(0, 0, 0, 0.6),
+			0 0 3px rgba(0, 0, 0, 0.3);
 	}
 
 	.badge-circle {
