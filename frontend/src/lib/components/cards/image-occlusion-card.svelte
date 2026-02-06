@@ -1,8 +1,15 @@
 <script lang="ts">
 	import type { ImageOcclusionCardDisplay } from '$lib/types/review';
 	import type { Region } from '$lib/components/image-occlusion/types';
-	import { EyeIcon, LightbulbIcon, CircleHelpIcon } from '@lucide/svelte';
-	import { occlusionDebug, MASK_COLORS, type MaskColor } from '$lib/stores/debug-occlusion.svelte';
+	import { EyeIcon, LightbulbIcon } from '@lucide/svelte';
+	import {
+		displaySettings,
+		ACTIVE_MASK_PRESETS,
+		INACTIVE_MASK_PRESETS,
+		REVEAL_PRESETS,
+		ICON_PRESETS,
+		DEFAULTS
+	} from '$lib/stores/display-settings.svelte';
 
 	interface Props {
 		display: ImageOcclusionCardDisplay;
@@ -27,8 +34,7 @@
 
 	let hasHint = $derived(!!targetRegion?.hint);
 
-	let debug = $derived(occlusionDebug.state);
-	let useDebug = $derived(debug.enabled);
+	let ioSettings = $derived(displaySettings.imageOcclusion);
 
 	/**
 	 * Determine which regions to show as masked overlays.
@@ -69,22 +75,26 @@
 	}
 
 	/**
-	 * Get the CSS classes for a region overlay based on current state and debug settings.
+	 * Get the CSS classes for a region overlay based on current state.
 	 */
 	function getMaskClasses(isTarget: boolean): string {
 		const masked = shouldShowMask(isTarget);
-		const color: MaskColor = useDebug ? debug.maskColor : 'primary';
-		const colors = MASK_COLORS[color];
 
 		if (masked) {
 			if (isTarget) {
-				return `${colors.bg} border-2 ${colors.border}`;
+				const preset = ACTIVE_MASK_PRESETS[ioSettings.active_mask_color]
+					?? ACTIVE_MASK_PRESETS[DEFAULTS.image_occlusion.active_mask_color];
+				return `${preset.bg} ${preset.border}`;
 			}
-			return 'bg-slate-600 border border-slate-500';
+			const preset = INACTIVE_MASK_PRESETS[ioSettings.inactive_mask_color]
+				?? INACTIVE_MASK_PRESETS[DEFAULTS.image_occlusion.inactive_mask_color];
+			return `${preset.bg} ${preset.border}`;
 		}
 
 		if (isTarget && isRevealed) {
-			return `${colors.bgRevealed} border-2 ${colors.borderRevealed}`;
+			const preset = REVEAL_PRESETS[ioSettings.reveal_color]
+				?? REVEAL_PRESETS[DEFAULTS.image_occlusion.reveal_color];
+			return `${preset.bg} ${preset.border}`;
 		}
 
 		return '';
@@ -92,48 +102,10 @@
 
 	/**
 	 * Get animation classes for the target mask.
-	 * Defaults: marching ants slow. Debug overrides all.
 	 */
 	function getAnimationClasses(isTarget: boolean): string {
 		if (!isTarget || isRevealed) return '';
-
-		const classes: string[] = [];
-
-		const effectivePulse = useDebug ? debug.pulse : 'off';
-		const effectiveAnts = useDebug ? debug.marchingAnts : 'slow';
-
-		if (effectivePulse === 'subtle') classes.push('occlusion-pulse-subtle');
-		else if (effectivePulse === 'pronounced') classes.push('occlusion-pulse-pronounced');
-
-		if (effectiveAnts === 'slow') classes.push('occlusion-ants-slow');
-		else if (effectiveAnts === 'medium') classes.push('occlusion-ants-medium');
-
-		return classes.join(' ');
-	}
-
-	/**
-	 * Get reveal transition classes for the persistent div.
-	 */
-	function getRevealTransitionClasses(isTarget: boolean): string {
-		if (!isTarget || !useDebug) return 'transition-all duration-300';
-
-		if (debug.reveal === 'fade-cross') return 'occlusion-reveal-fade-cross';
-		if (debug.reveal === 'dissolve') return 'occlusion-reveal-dissolve';
-		if (debug.reveal === 'slide-away') {
-			const base = 'occlusion-reveal-slide-away';
-			return isRevealed ? `${base} occlusion-slide-away-active` : base;
-		}
-		return 'transition-all duration-300';
-	}
-
-	/**
-	 * Get entrance animation class.
-	 */
-	function getEntranceClass(): string {
-		if (!useDebug) return '';
-		if (debug.entrance === 'fade-in') return 'occlusion-enter-fade-in';
-		if (debug.entrance === 'scale-up') return 'occlusion-enter-scale-up';
-		return '';
+		return ioSettings.marching_ants ? 'occlusion-ants-slow' : '';
 	}
 
 	/**
@@ -141,8 +113,7 @@
 	 */
 	function showIndicator(isTarget: boolean): boolean {
 		if (!isTarget || isRevealed) return false;
-		if (useDebug) return debug.showIndicator;
-		return true;
+		return ioSettings.icon !== 'none';
 	}
 
 	/**
@@ -151,6 +122,13 @@
 	let rotationStyle = $derived(
 		display.imageRotation ? `transform:rotate(${display.imageRotation}deg)` : ''
 	);
+
+	let revealPreset = $derived(
+		REVEAL_PRESETS[ioSettings.reveal_color]
+			?? REVEAL_PRESETS[DEFAULTS.image_occlusion.reveal_color]
+	);
+
+	let IconComponent = $derived(ICON_PRESETS[ioSettings.icon] ?? null);
 </script>
 
 <div class="flex flex-col items-center gap-4 w-full">
@@ -170,22 +148,22 @@
 		<!-- Region overlays — single persistent div per region for smooth transitions -->
 		{#each visibleRegions as { region, isTarget } (region.id)}
 			<div
-				class="absolute rounded-sm {getEntranceClass()}"
+				class="absolute rounded-sm"
 				style={regionStyle(region)}
 			>
 				<div
-					class="w-full h-full rounded-sm {isTarget && isRevealed && display.revealStyle === 'show_label' ? 'rounded-tl-none' : ''} {getMaskClasses(isTarget)} {getAnimationClasses(isTarget)} {getRevealTransitionClasses(isTarget)}"
+					class="w-full h-full rounded-sm transition-all duration-300 {isTarget && isRevealed && display.revealStyle === 'show_label' ? 'rounded-tl-none' : ''} {getMaskClasses(isTarget)} {getAnimationClasses(isTarget)}"
 				>
-					{#if showIndicator(isTarget)}
+					{#if showIndicator(isTarget) && IconComponent}
 						<span class="absolute inset-0 flex items-center justify-center text-white/70">
-							<CircleHelpIcon class="size-5" />
+							<IconComponent class="size-5 occlusion-icon-pulse" />
 						</span>
 					{/if}
 				</div>
 
 				<!-- PAWLS-style annotation label: above region, left-aligned, solid bg matches border -->
 				{#if isTarget && isRevealed && display.revealStyle === 'show_label'}
-					<span class="absolute bottom-full left-0 bg-emerald-400 rounded-t-[2px] px-1.5 py-px text-[10px] font-bold text-emerald-950 whitespace-nowrap leading-tight z-10">
+					<span class="absolute bottom-full left-0 {revealPreset.label} rounded-t-[2px] px-1.5 py-px text-[10px] font-bold {revealPreset.labelText} whitespace-nowrap leading-tight z-10">
 						{targetRegion?.label ?? ''}
 					</span>
 				{/if}

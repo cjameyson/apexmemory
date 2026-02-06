@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { dev } from '$app/environment';
 	import { cn } from '$lib/utils';
 	import { generateUUID } from '$lib/utils/uuid';
 	import RatingButtons from '$lib/components/cards/rating-buttons.svelte';
@@ -13,8 +12,6 @@
 	import { extractCardDisplay, ratingToString } from '$lib/services/reviews';
 	import type { ApiReviewResponse, ApiUndoReviewResponse } from '$lib/api/types';
 	import { toast } from 'svelte-sonner';
-	import OcclusionDebugPanel from '$lib/components/debug/occlusion-debug-panel.svelte';
-	import { occlusionDebug } from '$lib/stores/debug-occlusion.svelte';
 
 	const ratingExplanations = [
 		{ label: 'Again', color: 'text-again', description: 'Forgot or got it wrong. Resets the card and you\'ll see it again very soon.' },
@@ -359,12 +356,10 @@
 	}
 
 	let dialogEl = $state<HTMLDivElement>();
-	let debugPanelVisible = $state(false);
 
 	onMount(() => {
 		dialogEl?.focus();
 		reviewStartTime = Date.now();
-		if (dev) occlusionDebug.init();
 
 		function handleKeydown(e: KeyboardEvent) {
 			// Z key for undo (case insensitive, no modifiers)
@@ -374,13 +369,6 @@
 					handleUndo();
 					return;
 				}
-			}
-
-			// D key for debug panel toggle (dev only, pre-reveal only)
-			if (dev && (e.key === 'd' || e.key === 'D') && !e.ctrlKey && !e.metaKey && !e.altKey && !isRevealed) {
-				e.preventDefault();
-				debugPanelVisible = !debugPanelVisible;
-				return;
 			}
 
 			if (sessionComplete || isSubmitting) return;
@@ -415,14 +403,6 @@
 	aria-modal="true"
 	aria-label="Focus mode review session"
 >
-	<!-- Debug panel (dev only, image occlusion cards) -->
-	{#if dev && display?.type === 'image_occlusion'}
-		<OcclusionDebugPanel
-			visible={debugPanelVisible}
-			onToggle={() => debugPanelVisible = !debugPanelVisible}
-		/>
-	{/if}
-
 	<!-- Header: grid ensures center is truly centered regardless of left/right widths -->
 	<div class="grid grid-cols-3 items-center px-6 py-4">
 		<div class="justify-self-start">
