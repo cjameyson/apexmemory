@@ -3,6 +3,7 @@
 	import { Editor, type JSONContent } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import Image from '@tiptap/extension-image';
+	import Underline from '@tiptap/extension-underline';
 	import { uploadAsset, assetUrl } from '$lib/api/client';
 	import EditorToolbar from './EditorToolbar.svelte';
 
@@ -17,9 +18,9 @@
 
 	let editorElement: HTMLDivElement | undefined = $state();
 	let editor: Editor | undefined = $state();
-	// svelte-ignore state_referenced_locally
 	let transactionKey: number = $state(0);
 	let uploading: boolean = $state(false);
+	let lastSyncedContent: string = $state('');
 
 	/** Custom Image node extended with asset_id attribute. */
 	const AssetImage = Image.extend({
@@ -38,16 +39,33 @@
 		}
 	});
 
+	function normalizeContent(value: JSONContent | null | undefined): JSONContent {
+		return value ?? { type: 'doc', content: [{ type: 'paragraph' }] };
+	}
+
+	function serializeContent(value: JSONContent): string {
+		try {
+			return JSON.stringify(value);
+		} catch {
+			return '';
+		}
+	}
+
 	onMount(() => {
 		if (!editorElement) return;
+
+		const initialContent = normalizeContent(content);
+		lastSyncedContent = serializeContent(initialContent);
 
 		editor = new Editor({
 			extensions: [
 				StarterKit,
+				Underline,
 				AssetImage.configure({ allowBase64: false })
 			],
-			content: content ?? undefined,
+			content: initialContent,
 			onUpdate: ({ editor: ed }) => {
+				lastSyncedContent = serializeContent(ed.getJSON());
 				onchange?.(ed.getJSON());
 			},
 			onTransaction: () => {
@@ -89,6 +107,16 @@
 		});
 
 		editor.mount(editorElement);
+	});
+
+	$effect(() => {
+		if (!editor) return;
+		const nextContent = normalizeContent(content);
+		const serialized = serializeContent(nextContent);
+		if (serialized === lastSyncedContent) return;
+
+		editor.commands.setContent(nextContent, { emitUpdate: false });
+		lastSyncedContent = serialized;
 	});
 
 	onDestroy(() => {

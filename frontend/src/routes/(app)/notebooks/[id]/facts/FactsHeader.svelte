@@ -7,6 +7,7 @@
 	import { fetchStudyCards, fetchPracticeCards } from '$lib/services/reviews';
 	import { PlusIcon, ZapIcon, RepeatIcon, LoaderCircleIcon } from '@lucide/svelte';
 	import { invalidateAll, pushState } from '$app/navigation';
+	import { toast } from 'svelte-sonner';
 	import QuickStats from './QuickStats.svelte';
 	import CreateFactModal from '$lib/components/facts/create-fact-modal.svelte';
 	import ConfirmDialog from '$lib/components/ui/confirm-dialog.svelte';
@@ -27,13 +28,16 @@
 	// Delete modal state
 	let deleteModalOpen = $state(false);
 	let deletingFactId = $state<string | null>(null);
-	let deletingFactDisplay = $state<string>('');
 	let isDeleting = $state(false);
 
 	async function startReview() {
 		isLoadingReview = true;
 		try {
 			const cards = await fetchStudyCards(notebookId);
+			if (cards.length === 0) {
+				toast.info('No cards available to review right now.');
+				return;
+			}
 			pushState('', {
 				focusMode: {
 					type: 'notebook',
@@ -44,6 +48,10 @@
 					cards
 				}
 			});
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to load study cards.';
+			fetchError = message;
+			toast.error(message);
 		} finally {
 			isLoadingReview = false;
 		}
@@ -53,6 +61,10 @@
 		isLoadingPractice = true;
 		try {
 			const cards = await fetchPracticeCards(notebookId);
+			if (cards.length === 0) {
+				toast.info('No cards available to practice right now.');
+				return;
+			}
 			pushState('', {
 				focusMode: {
 					type: 'notebook',
@@ -63,6 +75,10 @@
 					cards
 				}
 			});
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to load practice cards.';
+			fetchError = message;
+			toast.error(message);
 		} finally {
 			isLoadingPractice = false;
 		}
@@ -99,9 +115,8 @@
 		modalOpen = true;
 	}
 
-	export function openDelete(factId: string, displayText: string) {
+	export function openDelete(factId: string, _displayText: string) {
 		deletingFactId = factId;
-		deletingFactDisplay = displayText;
 		deleteModalOpen = true;
 	}
 

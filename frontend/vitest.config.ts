@@ -12,7 +12,8 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			$lib: '/src/lib',
-			$app: '/src/tests/mocks/app'
+			$app: '/src/tests/mocks/app',
+			'$env/static/private': '/src/tests/mocks/env/static/private.ts'
 		}
 	}
 });

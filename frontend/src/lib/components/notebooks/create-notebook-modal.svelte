@@ -6,6 +6,8 @@
 	import { Button } from '$lib/components/ui/button';
 	import EmojiSelector from '$lib/components/ui/emoji-selector.svelte';
 	import type { Notebook } from '$lib/types';
+	import type { ApiNotebook } from '$lib/api/types';
+	import { toNotebook } from '$lib/services/notebooks';
 
 	interface Props {
 		open: boolean;
@@ -76,19 +78,21 @@
 			});
 
 			if (!response.ok) {
-				const data = await response.json();
+				const data = await response.json().catch(() => ({} as Record<string, unknown>));
 				if (data.fieldErrors) {
-					errors = data.fieldErrors;
+					errors = data.fieldErrors as typeof errors;
 				} else {
-					errors = { name: data.message || 'Failed to create notebook' };
+					errors = {
+						name: typeof data.message === 'string' ? data.message : 'Failed to create notebook'
+					};
 				}
 				return;
 			}
 
-			const notebook = await response.json();
+			const notebook = toNotebook(await response.json() as ApiNotebook);
 			onSuccess?.(notebook);
 			open = false;
-		} catch (err) {
+		} catch {
 			errors = { name: 'Network error. Please try again.' };
 		} finally {
 			submitting = false;

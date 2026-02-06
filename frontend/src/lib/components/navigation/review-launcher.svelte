@@ -6,6 +6,7 @@
 	import type { Notebook, ReviewScope, StudyCard } from '$lib/types';
 	import { fetchStudyCards } from '$lib/services/reviews';
 	import { studyCounts } from '$lib/stores/study-counts.svelte';
+	import { toast } from 'svelte-sonner';
 
 	interface Props {
 		notebooks: Notebook[];
@@ -32,12 +33,19 @@
 
 		try {
 			const cards = await fetchStudyCards(notebook?.id);
+			if (cards.length === 0) {
+				toast.info('No cards available to review right now.');
+				return;
+			}
 
 			const scope: ReviewScope = notebook
 				? { type: 'notebook', notebook, mode: 'scheduled' }
 				: { type: 'all', mode: 'scheduled' };
 
 			onStartReview?.(scope, cards);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to load study cards.';
+			toast.error(message);
 		} finally {
 			loading = false;
 		}

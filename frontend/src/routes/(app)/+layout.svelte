@@ -11,6 +11,7 @@
 	import { toNotebooksWithCounts } from '$lib/services/notebooks';
 	import { fetchStudyCards, fetchPracticeCards } from '$lib/services/reviews';
 	import { studyCounts } from '$lib/stores/study-counts.svelte';
+	import { toast } from 'svelte-sonner';
 
 	let { data, children } = $props();
 
@@ -97,7 +98,7 @@
 		focusModeCards = cards;
 		focusModeMode = scope.mode;
 
-		const focusState: App.PageState['focusMode'] = {
+		const focusState: NonNullable<typeof page.state.focusMode> = {
 			type: scope.type,
 			mode: scope.mode,
 			currentIndex: 0
@@ -181,12 +182,22 @@
 	}
 
 	async function fetchAndStartReview(mode: ReviewMode, notebookId?: string) {
-		const cards = mode === 'scheduled'
-			? await fetchStudyCards(notebookId)
-			: await fetchPracticeCards(notebookId);
+		try {
+			const cards = mode === 'scheduled'
+				? await fetchStudyCards(notebookId)
+				: await fetchPracticeCards(notebookId);
 
-		const scope: ReviewScope = { type: 'all', mode };
-		startFocusMode(scope, cards);
+			if (cards.length === 0) {
+				toast.info('No cards available right now.');
+				return;
+			}
+
+			const scope: ReviewScope = { type: 'all', mode };
+			startFocusMode(scope, cards);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : 'Failed to load cards.';
+			toast.error(message);
+		}
 	}
 
 	// Create notebook modal state

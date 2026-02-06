@@ -61,4 +61,26 @@ describe('Theme Store', () => {
 		expect(theme.current).toBe('light');
 		expect(document.documentElement.classList.contains('dark')).toBe(false);
 	});
+
+	it('should replace existing matchMedia listener on repeated init', () => {
+		const addEventListener = vi.fn();
+		const removeEventListener = vi.fn();
+
+		vi.mocked(window.matchMedia).mockImplementation(() => ({
+			matches: false,
+			media: '(prefers-color-scheme: dark)',
+			onchange: null,
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			addEventListener,
+			removeEventListener,
+			dispatchEvent: vi.fn()
+		}));
+
+		theme.init();
+		theme.init();
+
+		expect(addEventListener).toHaveBeenCalledTimes(2);
+		expect(removeEventListener).toHaveBeenCalledTimes(1);
+	});
 });

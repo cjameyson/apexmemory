@@ -3,7 +3,6 @@ import type { StudyCard, CardDisplay, BasicCardDisplay, ClozeCardDisplay, ImageO
 import type { ImageOcclusionField } from '$lib/components/image-occlusion/types';
 import type { JSONContent } from '@tiptap/core';
 import { assetUrl } from '$lib/api/client';
-import { toast } from 'svelte-sonner';
 
 const RATING_MAP: Record<number, 'again' | 'hard' | 'good' | 'easy'> = {
 	1: 'again',
@@ -38,32 +37,57 @@ export function toStudyCards(apiList: ApiStudyCard[]): StudyCard[] {
 	return apiList.map(toStudyCard);
 }
 
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+	try {
+		const payload = await response.json();
+		if (payload && typeof payload === 'object') {
+			const message = (payload as { message?: unknown }).message;
+			if (typeof message === 'string' && message.length > 0) {
+				return message;
+			}
+			const error = (payload as { error?: unknown }).error;
+			if (typeof error === 'string' && error.length > 0) {
+				return error;
+			}
+		}
+	} catch {
+		// Ignore JSON parsing failures and use fallback.
+	}
+	return fallback;
+}
+
+function extractCards(payload: unknown): ApiStudyCard[] {
+	if (Array.isArray(payload)) {
+		return payload as ApiStudyCard[];
+	}
+	if (payload && typeof payload === 'object' && Array.isArray((payload as { data?: unknown }).data)) {
+		return (payload as { data: ApiStudyCard[] }).data;
+	}
+	throw new Error('Invalid card response from server');
+}
+
+async function fetchCards(endpoint: string, failureMessage: string): Promise<StudyCard[]> {
+	const response = await fetch(endpoint);
+	if (!response.ok) {
+		throw new Error(await readErrorMessage(response, failureMessage));
+	}
+
+	const payload = await response.json();
+	return toStudyCards(extractCards(payload));
+}
+
 export async function fetchStudyCards(notebookId?: string): Promise<StudyCard[]> {
 	const params = new URLSearchParams({ limit: '50' });
 	if (notebookId) params.set('notebook_id', notebookId);
 
-	const res = await fetch(`/api/reviews/study?${params}`);
-	if (!res.ok) {
-		toast.error('Failed to load study cards. Please try again.');
-		return [];
-	}
-	const data: ApiStudyCard[] = await res.json();
-	return toStudyCards(data);
+	return fetchCards(`/api/reviews/study?${params}`, 'Failed to load study cards. Please try again.');
 }
 
 export async function fetchPracticeCards(notebookId?: string): Promise<StudyCard[]> {
 	const params = new URLSearchParams({ limit: '50' });
 	if (notebookId) params.set('notebook_id', notebookId);
 
-	const res = await fetch(`/api/reviews/practice?${params}`);
-	if (!res.ok) {
-		toast.error('Failed to load practice cards. Please try again.');
-		return [];
-	}
-	const response = await res.json();
-	// Practice endpoint returns paginated response
-	const data: ApiStudyCard[] = response.data ?? response;
-	return toStudyCards(data);
+	return fetchCards(`/api/reviews/practice?${params}`, 'Failed to load practice cards. Please try again.');
 }
 
 /**

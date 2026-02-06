@@ -25,6 +25,5 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		error(result.status, { message: result.error.error, ...result.error });
 	}
 
-	// Unwrap paginated response to return bare array, matching /api/reviews/study shape
-	return json(result.data.data);
+	return json(result.data);
 };

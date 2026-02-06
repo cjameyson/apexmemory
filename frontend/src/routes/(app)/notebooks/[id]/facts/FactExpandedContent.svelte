@@ -16,29 +16,43 @@
 	let cards = $state<Card[] | null>(null);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
-	let fetched = $state(false);
 
 	$effect(() => {
-		if (fetched) return;
-		fetched = true;
+		const factId = fact.id;
+		const currentNotebookId = notebookId;
+		const controller = new AbortController();
 
 		loading = true;
 		error = null;
-		fetch(`/api/notebooks/${notebookId}/facts/${fact.id}`)
-			.then(async (res) => {
+		cards = null;
+
+		const loadCards = async () => {
+			try {
+				const res = await fetch(`/api/notebooks/${currentNotebookId}/facts/${factId}`, {
+					signal: controller.signal
+				});
 				if (!res.ok) {
 					error = 'Failed to load cards';
 					return;
 				}
+
 				const data: ApiFactDetail = await res.json();
 				cards = data.cards.map(toCard);
-			})
-			.catch(() => {
+			} catch {
+				if (controller.signal.aborted) return;
 				error = 'Failed to load cards';
-			})
-			.finally(() => {
-				loading = false;
-			});
+			} finally {
+				if (!controller.signal.aborted) {
+					loading = false;
+				}
+			}
+		};
+
+		void loadCards();
+
+		return () => {
+			controller.abort();
+		};
 	});
 
 	interface FieldDisplay {
@@ -129,13 +143,13 @@
 	<!-- Fact Fields -->
 	<div>
 		<h4 class="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Fields</h4>
-		<div class="space-y-2">
-			{#each fields as field}
-				<div>
-					<span class="text-xs font-medium text-muted-foreground">{formatFieldLabel(field.name)}</span>
-					<p class="mt-0.5 text-sm text-foreground">{extractText(field.value) || '(empty)'}</p>
-				</div>
-			{/each}
+			<div class="space-y-2">
+				{#each fields as field (`${field.name}-${field.type}`)}
+					<div>
+						<span class="text-xs font-medium text-muted-foreground">{formatFieldLabel(field.name)}</span>
+						<p class="mt-0.5 text-sm text-foreground">{extractText(field.value) || '(empty)'}</p>
+					</div>
+				{/each}
 		</div>
 	</div>
 
@@ -167,10 +181,10 @@
 						<th class="pb-1 text-right font-medium">Lapses</th>
 					</tr>
 				</thead>
-				<tbody>
-					{#each cards as card}
-						{@const cloze = fact.factType === 'cloze' ? getClozeInfo(card.elementId) : null}
-						<tr class="border-b border-border/50">
+					<tbody>
+						{#each cards as card (card.id)}
+							{@const cloze = fact.factType === 'cloze' ? getClozeInfo(card.elementId) : null}
+							<tr class="border-b border-border/50">
 							<td class="py-1.5"><CardStateBadge state={card.state} /></td>
 							{#if fact.factType === 'cloze'}
 								<td class="py-1.5 text-muted-foreground">{card.elementId}</td>

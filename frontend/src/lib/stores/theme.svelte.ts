@@ -10,6 +10,8 @@ const STORAGE_KEY = 'theme';
 
 function createThemeStore() {
 	let current = $state<Theme>('light');
+	let mediaQuery: MediaQueryList | null = null;
+	let mediaQueryListener: ((event: MediaQueryListEvent) => void) | null = null;
 
 	// Initialize from localStorage or system preference
 	function init() {
@@ -25,14 +27,20 @@ function createThemeStore() {
 
 		applyTheme(current);
 
-		// Listen for system preference changes when no stored preference
-		window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+		// Replace existing system-preference listener to avoid duplicate handlers.
+		if (mediaQuery && mediaQueryListener) {
+			mediaQuery.removeEventListener('change', mediaQueryListener);
+		}
+
+		mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+		mediaQueryListener = (e: MediaQueryListEvent) => {
 			if (!localStorage.getItem(STORAGE_KEY)) {
 				const newTheme = e.matches ? 'dark' : 'light';
 				current = newTheme;
 				applyTheme(newTheme);
 			}
-		});
+		};
+		mediaQuery.addEventListener('change', mediaQueryListener);
 	}
 
 	function applyTheme(theme: Theme) {
@@ -58,7 +66,9 @@ function createThemeStore() {
 
 	function clear() {
 		localStorage.removeItem(STORAGE_KEY);
-		const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+		const prefersDark = mediaQuery
+			? mediaQuery.matches
+			: window.matchMedia('(prefers-color-scheme: dark)').matches;
 		const newTheme = prefersDark ? 'dark' : 'light';
 		current = newTheme;
 		applyTheme(newTheme);

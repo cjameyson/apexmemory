@@ -9,8 +9,7 @@
 		ZapIcon,
 		BookOpenIcon,
 		LayersIcon,
-		FileTextIcon,
-		ArrowRightIcon
+		FileTextIcon
 	} from '@lucide/svelte';
 	import type { Notebook, Source, DisplayCard } from '$lib/types';
 	import { getAllNotebooks, getAllSources, getAllDueCards } from '$lib/mocks';
@@ -25,16 +24,9 @@
 	let { currentNotebook, onClose, onStartReview, class: className }: Props = $props();
 
 	let searchQuery = $state('');
-	let scope = $state<'notebook' | 'all'>('all');
+	let scope = $derived<'notebook' | 'all'>(currentNotebook ? 'notebook' : 'all');
 	let selectedIndex = $state(0);
 	let inputRef = $state<HTMLInputElement | null>(null);
-
-	// Initialize scope based on currentNotebook
-	$effect(() => {
-		if (currentNotebook) {
-			scope = 'notebook';
-		}
-	});
 
 	// Get data for search
 	let notebooks = $derived(getAllNotebooks());

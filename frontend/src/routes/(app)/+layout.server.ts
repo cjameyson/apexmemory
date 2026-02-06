@@ -1,4 +1,4 @@
-import { redirect } from '@sveltejs/kit';
+import { error, redirect } from '@sveltejs/kit';
 import type { LayoutServerLoad } from './$types';
 import { apiRequest } from '$lib/server/api';
 import type { ApiNotebook, ApiStudyCountsResponse } from '$lib/api/types';
@@ -19,11 +19,25 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		})
 	]);
 
+	if (!notebooksResult.ok) {
+		if (notebooksResult.status === 401 || notebooksResult.status === 403) {
+			redirect(302, '/login');
+		}
+		console.error('Failed to load notebooks:', notebooksResult.error);
+		error(notebooksResult.status || 502, { message: 'Failed to load notebooks' });
+	}
+
+	if (!countsResult.ok) {
+		if (countsResult.status === 401 || countsResult.status === 403) {
+			redirect(302, '/login');
+		}
+		console.error('Failed to load study counts:', countsResult.error);
+		error(countsResult.status || 502, { message: 'Failed to load study counts' });
+	}
+
 	return {
 		user: locals.user,
-		notebooks: notebooksResult.ok ? notebooksResult.data : [],
-		studyCounts: countsResult.ok
-			? countsResult.data
-			: { counts: {}, total_due: 0, total_new: 0 }
+		notebooks: notebooksResult.data,
+		studyCounts: countsResult.data
 	};
 };
