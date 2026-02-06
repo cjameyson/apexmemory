@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { generateHTML } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
-	import Underline from '@tiptap/extension-underline';
 	import Image from '@tiptap/extension-image';
 	import { assetUrl } from '$lib/api/client';
 	import type { JSONContent } from '@tiptap/core';
@@ -46,7 +45,7 @@
 		}
 	});
 
-	const extensions = [StarterKit, Underline, AssetImage];
+	const extensions = [StarterKit, AssetImage];
 
 	let html = $derived(generateHTML(content, extensions));
 </script>

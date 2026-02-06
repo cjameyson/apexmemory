@@ -15,7 +15,7 @@
 		onSelectRegion?: (id: string) => void;
 		onUpdateRegion?: (
 			id: string,
-			updates: Partial<Pick<Region, 'label' | 'hint' | 'backContent'>>
+			updates: Partial<Pick<Region, 'label' | 'hint' | 'backExtra'>>
 		) => void;
 		onDeleteRegion?: (id: string) => void;
 		onFilterChange?: (visibleIds: Set<string> | null) => void;
@@ -45,7 +45,7 @@
 					(r) =>
 						r.label.toLowerCase().includes(filterText.toLowerCase()) ||
 						r.hint?.toLowerCase().includes(filterText.toLowerCase()) ||
-						r.backContent?.toLowerCase().includes(filterText.toLowerCase())
+						r.backExtra?.toLowerCase().includes(filterText.toLowerCase())
 				)
 			: regions
 	);
@@ -67,8 +67,8 @@
 		onUpdateRegion?.(id, { hint: value || undefined });
 	}
 
-	function handleBackContentChange(id: string, value: string) {
-		onUpdateRegion?.(id, { backContent: value || undefined });
+	function handleBackExtraChange(id: string, value: string) {
+		onUpdateRegion?.(id, { backExtra: value || undefined });
 	}
 </script>
 
@@ -135,7 +135,7 @@
 						onSelect={() => onSelectRegion?.(region.id)}
 						onLabelChange={(value) => handleLabelChange(region.id, value)}
 						onHintChange={(value) => handleHintChange(region.id, value)}
-						onBackContentChange={(value) => handleBackContentChange(region.id, value)}
+						onBackExtraChange={(value) => handleBackExtraChange(region.id, value)}
 						onDelete={() => onDeleteRegion?.(region.id)}
 					/>
 				{/each}

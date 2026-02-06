@@ -7,9 +7,10 @@
 		display: ImageOcclusionCardDisplay;
 		isRevealed: boolean;
 		onReveal: () => void;
+		onHintUsed?: () => void;
 	}
 
-	let { display, isRevealed, onReveal }: Props = $props();
+	let { display, isRevealed, onReveal, onHintUsed }: Props = $props();
 
 	let showHint = $state(false);
 
@@ -76,11 +77,11 @@
 	<h3 class="text-lg font-medium text-white/80">{display.title}</h3>
 
 	<!-- Image container with overlays -->
-	<div class="relative inline-block max-w-full" style="max-height:60vh;">
+	<div class="relative inline-block max-w-full" style="max-height:70vh;">
 		<img
 			src={display.imageUrl}
 			alt={display.title}
-			class="block max-w-full max-h-[60vh] object-contain rounded-lg"
+			class="block max-w-full max-h-[70vh] object-contain rounded-lg"
 			style={rotationStyle}
 			draggable="false"
 		/>
@@ -120,18 +121,22 @@
 		{/each}
 	</div>
 
-	<!-- Hint button (pre-reveal only) -->
+	<!-- Hint (pre-reveal only) -->
 	{#if !isRevealed && hasHint}
-		<button
-			type="button"
-			onclick={() => (showHint = !showHint)}
-			class="flex items-center gap-1.5 text-sm text-white/50 hover:text-white/70 transition-colors"
-		>
-			<LightbulbIcon class="size-4" />
-			<span>{showHint ? 'Hide hint' : 'Show hint'}</span>
-		</button>
 		{#if showHint}
-			<p class="text-sm text-amber-300/80 italic">{targetRegion?.hint}</p>
+			<p class="text-sm text-amber-300/80 italic flex items-center gap-1.5">
+				<LightbulbIcon class="size-4 shrink-0" />
+				<span class="font-medium not-italic text-amber-300">Hint:</span> {targetRegion?.hint}
+			</p>
+		{:else}
+			<button
+				type="button"
+				onclick={() => { showHint = true; onHintUsed?.(); }}
+				class="flex items-center gap-1.5 text-sm text-white/50 hover:text-white/70 transition-colors"
+			>
+				<LightbulbIcon class="size-4" />
+				<span>Show hint</span>
+			</button>
 		{/if}
 	{/if}
 

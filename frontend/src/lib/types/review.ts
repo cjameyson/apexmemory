@@ -24,12 +24,14 @@ export interface BasicCardDisplay {
 	type: 'basic';
 	front: JSONContent | string;
 	back: JSONContent | string;
+	backExtra?: string;
 }
 
 export interface ClozeCardDisplay {
 	type: 'cloze';
 	front: string;
 	clozeAnswer: string;
+	backExtra?: string;
 }
 
 export interface ImageOcclusionCardDisplay {
@@ -43,6 +45,7 @@ export interface ImageOcclusionCardDisplay {
 	targetRegionId: string;
 	mode: OcclusionMode;
 	revealStyle: RevealStyle;
+	backExtra?: string;
 }
 
 export type CardDisplay = BasicCardDisplay | ClozeCardDisplay | ImageOcclusionCardDisplay;

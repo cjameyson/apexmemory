@@ -14,7 +14,7 @@
 		onSelect?: () => void;
 		onLabelChange?: (value: string) => void;
 		onHintChange?: (value: string) => void;
-		onBackContentChange?: (value: string) => void;
+		onBackExtraChange?: (value: string) => void;
 		onDelete?: () => void;
 	}
 
@@ -27,7 +27,7 @@
 		onSelect,
 		onLabelChange,
 		onHintChange,
-		onBackContentChange,
+		onBackExtraChange,
 		onDelete
 	}: Props = $props();
 
@@ -107,15 +107,15 @@
 			</div>
 
 			<div>
-				<span class="mb-1 block text-xs font-medium text-muted-foreground">Back Content</span>
+				<span class="mb-1 block text-xs font-medium text-muted-foreground">Back Extra</span>
 				<Textarea
-					value={region.backContent ?? ''}
+					value={region.backExtra ?? ''}
 					placeholder="Additional content shown on answer..."
 					class="min-h-[50px] resize-none bg-background text-sm"
-					aria-label="Region back content"
+					aria-label="Region back extra"
 					onclick={(e: MouseEvent) => e.stopPropagation()}
 					oninput={(e: Event) =>
-						onBackContentChange?.((e.target as HTMLTextAreaElement).value)}
+						onBackExtraChange?.((e.target as HTMLTextAreaElement).value)}
 				/>
 			</div>
 		</div>

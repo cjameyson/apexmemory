@@ -44,7 +44,7 @@ Image occlusion facts allow users to create flashcards from a single image by de
           },
           "label": "Mitochondria",
           "hint": "Powerhouse of the cell",
-          "back_content": "Produces ATP through cellular respiration"
+          "back_extra": "Produces ATP through cellular respiration"
         },
         {
           "id": "m_nR4wL8vK",
@@ -57,7 +57,7 @@ Image occlusion facts allow users to create flashcards from a single image by de
           },
           "label": "Nucleus",
           "hint": null,
-          "back_content": "Contains genetic material (DNA)"
+          "back_extra": "Contains genetic material (DNA)"
         }
       ]
     }
@@ -109,12 +109,12 @@ The `width` and `height` define the coordinate space for all regions. These are 
 | `shape` | object | ✓ | Shape definition |
 | `label` | string | | Text displayed on the mask (plain text) |
 | `hint` | string | | Hint shown during review (plain text) |
-| `back_content` | string | | Answer text shown after reveal (plain text) |
+| `back_extra` | string | | Answer text shown after reveal (plain text) |
 
 **Text field guidance:**
 - `label`: Short identifier shown on the mask itself (e.g., "?", "A", "1", or a term)
 - `hint`: Clue to help recall, shown near the image before reveal (e.g., "Powerhouse of the cell")
-- `back_content`: Full answer or explanation shown after reveal
+- `back_extra`: Full answer or explanation shown after reveal
 
 ### Shape Object — Rectangle
 
@@ -207,7 +207,7 @@ The `element_id` is stable — editing the fact to add/remove other regions does
 
 1. Remove target mask (reveal that region)
 2. Keep other masks in place
-3. Display target's `back_content` below the image (if set)
+3. Display target's `back_extra` below the image (if set)
 
 ### Design Note: Why "Hide All, Reveal One"?
 
@@ -264,25 +264,25 @@ The 128 limit balances flexibility with sanity:
           "id": "m_aLv8kQ2x",
           "shape": { "type": "rect", "x": 240, "y": 120, "width": 120, "height": 60 },
           "label": "?",
-          "back_content": "Right Atrium — receives deoxygenated blood from the body"
+          "back_extra": "Right Atrium — receives deoxygenated blood from the body"
         },
         {
           "id": "m_bNw9rT3y",
           "shape": { "type": "rect", "x": 440, "y": 120, "width": 120, "height": 60 },
           "label": "?",
-          "back_content": "Left Atrium — receives oxygenated blood from the lungs"
+          "back_extra": "Left Atrium — receives oxygenated blood from the lungs"
         },
         {
           "id": "m_cPx0sU4z",
           "shape": { "type": "rect", "x": 240, "y": 240, "width": 144, "height": 120 },
           "label": "?",
-          "back_content": "Right Ventricle — pumps blood to the lungs"
+          "back_extra": "Right Ventricle — pumps blood to the lungs"
         },
         {
           "id": "m_dQy1tV5a",
           "shape": { "type": "rect", "x": 416, "y": 240, "width": 144, "height": 120 },
           "label": "?",
-          "back_content": "Left Ventricle — pumps blood to the body (thickest wall)"
+          "back_extra": "Left Ventricle — pumps blood to the body (thickest wall)"
         }
       ]
     }
@@ -312,14 +312,14 @@ Useful for learning programming languages, keyboard shortcuts, or UI elements.
           "shape": { "type": "rect", "x": 30, "y": 40, "width": 72, "height": 32 },
           "label": "keyword",
           "hint": "Used to define a function",
-          "back_content": "def"
+          "back_extra": "def"
         },
         {
           "id": "m_fSa3vX7c",
           "shape": { "type": "rect", "x": 420, "y": 120, "width": 150, "height": 32 },
           "label": "expression",
           "hint": "Pythonic way to build a list",
-          "back_content": "List comprehension: [x**2 for x in range(10)]"
+          "back_extra": "List comprehension: [x**2 for x in range(10)]"
         }
       ]
     }
@@ -346,13 +346,13 @@ Useful for learning programming languages, keyboard shortcuts, or UI elements.
           "id": "m_gTb4wY8d",
           "shape": { "type": "rect", "x": 420, "y": 280, "width": 80, "height": 100 },
           "hint": "Known for pasta and Rome",
-          "back_content": "Italy"
+          "back_extra": "Italy"
         },
         {
           "id": "m_hUc5xZ9e",
           "shape": { "type": "rect", "x": 300, "y": 200, "width": 120, "height": 80 },
           "hint": "Known for wine and Paris",
-          "back_content": "France"
+          "back_extra": "France"
         }
       ]
     }
@@ -380,7 +380,7 @@ The simplest valid image occlusion fact.
         {
           "id": "m_jWd6yA0f",
           "shape": { "type": "rect", "x": 40, "y": 27, "width": 320, "height": 213 },
-          "back_content": "Brazil"
+          "back_extra": "Brazil"
         }
       ]
     }
@@ -403,7 +403,7 @@ function createRegion(shape) {
     shape,
     label: null,
     hint: null,
-    back_content: null,
+    back_extra: null,
   };
 }
 ```
@@ -449,7 +449,7 @@ Groups allow multiple regions to act as a single card:
       "id": "g_arm_bones",
       "name": "Arm Bones",
       "region_ids": ["m_abc", "m_def", "m_ghi"],
-      "back_content": "Humerus, Radius, and Ulna"
+      "back_extra": "Humerus, Radius, and Ulna"
     }
   ]
 }

@@ -67,13 +67,15 @@
 		totalDurationMs: number;
 		ratingCounts: { again: number; hard: number; good: number; easy: number };
 		newCardsSeen: number;
+		hintsUsed: number;
 	}
 
 	let sessionStats = $state<SessionStats>({
 		cardsReviewed: 0,
 		totalDurationMs: 0,
 		ratingCounts: { again: 0, hard: 0, good: 0, easy: 0 },
-		newCardsSeen: 0
+		newCardsSeen: 0,
+		hintsUsed: 0
 	});
 
 	function formatDuration(ms: number): string {
@@ -442,7 +444,7 @@
 				<h2 class="text-3xl font-bold mb-2">Session Complete</h2>
 
 				<div class="mt-6 mb-8 space-y-4">
-					<!-- Cards + Time -->
+					<!-- Cards + Time + Hints -->
 					<div class="flex justify-center gap-8 text-lg">
 						<div>
 							<span class="text-white/60">Cards</span>
@@ -452,6 +454,12 @@
 							<span class="text-white/60">Time</span>
 							<span class="ml-2 font-semibold">{formatDuration(sessionStats.totalDurationMs)}</span>
 						</div>
+						{#if sessionStats.hintsUsed > 0}
+							<div>
+								<span class="text-white/60">Hints</span>
+								<span class="ml-2 font-semibold">{sessionStats.hintsUsed}</span>
+							</div>
+						{/if}
 					</div>
 
 					<!-- Rating breakdown -->
@@ -489,7 +497,7 @@
 				</button>
 			</div>
 		{:else if currentCard && display}
-			<div class="w-full max-w-2xl">
+			<div class="w-full {display.type === 'image_occlusion' ? 'max-w-5xl' : 'max-w-2xl'}">
 				<div
 					class="bg-white/10 backdrop-blur-sm rounded-3xl p-8 mb-8 min-h-64 flex flex-col justify-center"
 				>
@@ -498,6 +506,7 @@
 							{display}
 							{isRevealed}
 							onReveal={reveal}
+							onHintUsed={() => sessionStats.hintsUsed++}
 						/>
 					{:else if display.type === 'cloze'}
 						<div class="text-center">
@@ -530,6 +539,12 @@
 								{/if}
 							</div>
 						{/if}
+					{/if}
+
+					{#if isRevealed && display.backExtra}
+						<div class="mt-4 pt-4 border-t border-white/10">
+							<p class="text-sm text-white/50 italic text-center"><span class="font-medium not-italic text-white/60">Extra:</span> {display.backExtra}</p>
+						</div>
 					{/if}
 
 					{#if !isRevealed && display.type !== 'image_occlusion'}

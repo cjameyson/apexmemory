@@ -158,15 +158,15 @@
 
 	function handleUpdateRegion(
 		id: string,
-		updates: Partial<Pick<Region, 'label' | 'hint' | 'backContent'>>
+		updates: Partial<Pick<Region, 'label' | 'hint' | 'backExtra'>>
 	) {
 		const region = editor.regions.find((r) => r.id === id);
 		if (!region) return;
 
-		const originalValues: Partial<Pick<Region, 'label' | 'hint' | 'backContent'>> = {};
+		const originalValues: Partial<Pick<Region, 'label' | 'hint' | 'backExtra'>> = {};
 		if ('label' in updates) originalValues.label = region.label;
 		if ('hint' in updates) originalValues.hint = region.hint;
-		if ('backContent' in updates) originalValues.backContent = region.backContent;
+		if ('backExtra' in updates) originalValues.backExtra = region.backExtra;
 
 		const command = new UpdateRegionMetadataCommand(editor, id, originalValues, updates);
 		history.execute(command);

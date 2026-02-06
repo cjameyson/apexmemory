@@ -164,19 +164,19 @@ export class ResizeRegionCommand implements EditorCommand {
 }
 
 /**
- * Command to update region metadata (label, hint, backContent).
+ * Command to update region metadata (label, hint, backExtra).
  * Supports merging for continuous typing.
  */
 export class UpdateRegionMetadataCommand implements EditorCommand {
 	readonly type: CommandType = 'update_region_metadata';
 	readonly targetId: string;
-	private finalUpdates: Partial<Pick<Region, 'label' | 'hint' | 'backContent'>>;
+	private finalUpdates: Partial<Pick<Region, 'label' | 'hint' | 'backExtra'>>;
 
 	constructor(
 		private readonly mutators: EditorStateMutators,
 		private readonly regionId: string,
-		private readonly originalValues: Partial<Pick<Region, 'label' | 'hint' | 'backContent'>>,
-		updates: Partial<Pick<Region, 'label' | 'hint' | 'backContent'>>
+		private readonly originalValues: Partial<Pick<Region, 'label' | 'hint' | 'backExtra'>>,
+		updates: Partial<Pick<Region, 'label' | 'hint' | 'backExtra'>>
 	) {
 		this.targetId = regionId;
 		this.finalUpdates = updates;

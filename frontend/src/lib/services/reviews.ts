@@ -80,6 +80,8 @@ export function extractCardDisplay(card: StudyCard): CardDisplay {
 	if (card.factType === 'basic') {
 		const frontField = fields.find((f) => f.name === 'front');
 		const backField = fields.find((f) => f.name === 'back');
+		const backExtraField = fields.find((f) => f.name === 'back_extra');
+		const backExtra = backExtraField?.value ? String(backExtraField.value) : undefined;
 		return {
 			type: 'basic',
 			front: frontField?.type === 'rich_text' && typeof frontField.value === 'object'
@@ -87,7 +89,8 @@ export function extractCardDisplay(card: StudyCard): CardDisplay {
 				: String(frontField?.value ?? ''),
 			back: backField?.type === 'rich_text' && typeof backField.value === 'object'
 				? (backField.value as JSONContent)
-				: String(backField?.value ?? '')
+				: String(backField?.value ?? ''),
+			backExtra
 		} satisfies BasicCardDisplay;
 	}
 
@@ -106,7 +109,9 @@ export function extractCardDisplay(card: StudyCard): CardDisplay {
 			return id === elementId ? '[...]' : answer;
 		});
 
-		return { type: 'cloze', front, clozeAnswer } satisfies ClozeCardDisplay;
+		const backExtraField = fields.find((f) => f.name === 'back_extra');
+		const backExtra = backExtraField?.value ? String(backExtraField.value) : undefined;
+		return { type: 'cloze', front, clozeAnswer, backExtra } satisfies ClozeCardDisplay;
 	}
 
 	if (card.factType === 'image_occlusion') {
@@ -121,6 +126,9 @@ export function extractCardDisplay(card: StudyCard): CardDisplay {
 			? assetUrl(data.image.assetId)
 			: data.image.url;
 
+		const targetRegion = data.regions.find((r) => r.id === card.elementId);
+		const backExtra = targetRegion?.backExtra || undefined;
+
 		return {
 			type: 'image_occlusion',
 			title: data.title || 'Image Occlusion',
@@ -131,7 +139,8 @@ export function extractCardDisplay(card: StudyCard): CardDisplay {
 			regions: data.regions,
 			targetRegionId: card.elementId,
 			mode: data.mode ?? 'hide_all_guess_one',
-			revealStyle: data.revealStyle ?? 'show_label'
+			revealStyle: data.revealStyle ?? 'show_label',
+			backExtra
 		} satisfies ImageOcclusionCardDisplay;
 	}
 

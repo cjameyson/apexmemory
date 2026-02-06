@@ -29,7 +29,7 @@ export interface Region {
 	shape: RectShape;
 	label: string;
 	hint?: string;
-	backContent?: string;
+	backExtra?: string;
 }
 
 /** Arrow annotation for pointing at regions */
@@ -188,7 +188,7 @@ export interface LabelPanelProps {
 	/** Callback when a region is selected */
 	onSelectRegion?: (id: string) => void;
 	/** Callback when region metadata is updated */
-	onUpdateRegion?: (id: string, updates: Partial<Pick<Region, 'label' | 'hint' | 'backContent'>>) => void;
+	onUpdateRegion?: (id: string, updates: Partial<Pick<Region, 'label' | 'hint' | 'backExtra'>>) => void;
 	/** Callback when region is deleted */
 	onDeleteRegion?: (id: string) => void;
 }
@@ -208,7 +208,7 @@ export interface LabelPanelItemProps {
 	/** Callback when hint changes */
 	onHintChange?: (value: string) => void;
 	/** Callback when back content changes */
-	onBackContentChange?: (value: string) => void;
+	onBackExtraChange?: (value: string) => void;
 	/** Callback when delete is clicked */
 	onDelete?: () => void;
 }

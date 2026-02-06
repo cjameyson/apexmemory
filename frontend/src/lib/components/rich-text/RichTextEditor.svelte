@@ -2,7 +2,6 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { Editor, type JSONContent } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
-	import Underline from '@tiptap/extension-underline';
 	import Image from '@tiptap/extension-image';
 	import { uploadAsset, assetUrl } from '$lib/api/client';
 	import EditorToolbar from './EditorToolbar.svelte';
@@ -45,7 +44,6 @@
 		editor = new Editor({
 			extensions: [
 				StarterKit,
-				Underline,
 				AssetImage.configure({ allowBase64: false })
 			],
 			content: content ?? undefined,
