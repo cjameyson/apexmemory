@@ -84,13 +84,28 @@
 	{#if isSelected}
 		<!-- SELECTED: Full edit mode -->
 		<div class="space-y-1.5">
-			<!-- Label field with badge -->
-			<div class="flex items-center gap-2">
+			<!-- Top row: badge + trash -->
+			<div class="flex items-center justify-between">
 				<span
 					class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-bold {badgeClasses}"
 				>
 					{index}
 				</span>
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					class="h-6 w-6 text-muted-foreground hover:text-destructive"
+					onclick={(e: MouseEvent) => {
+						e.stopPropagation();
+						onDelete?.();
+					}}
+				>
+					<Trash2 class="h-3.5 w-3.5" />
+				</Button>
+			</div>
+
+			<!-- Label field -->
+			<div class="flex items-center gap-2">
 				<span class="w-12 shrink-0 text-right text-xs font-medium text-muted-foreground"
 					>Label<span class="text-destructive"> *</span></span
 				>
@@ -107,8 +122,8 @@
 				/>
 			</div>
 
-			<!-- Hint field (indented to align with Label input) -->
-			<div class="flex items-center gap-2 pl-7">
+			<!-- Hint field -->
+			<div class="flex items-center gap-2">
 				<span class="w-12 shrink-0 text-right text-xs font-medium text-muted-foreground"
 					>Hint</span
 				>
@@ -122,8 +137,8 @@
 				/>
 			</div>
 
-			<!-- Back Extra field (indented to align) -->
-			<div class="flex items-start gap-2 pl-7">
+			<!-- Back Extra field -->
+			<div class="flex items-start gap-2">
 				<span class="w-12 shrink-0 pt-1.5 text-right text-xs font-medium text-muted-foreground"
 					>Extra</span
 				>
@@ -136,21 +151,6 @@
 					oninput={(e: Event) =>
 						onBackExtraChange?.((e.target as HTMLTextAreaElement).value)}
 				/>
-			</div>
-
-			<!-- Delete button (bottom-right) -->
-			<div class="flex justify-end pl-7">
-				<Button
-					variant="ghost"
-					size="icon-sm"
-					class="h-6 w-6 text-muted-foreground hover:text-destructive"
-					onclick={(e: MouseEvent) => {
-						e.stopPropagation();
-						onDelete?.();
-					}}
-				>
-					<Trash2 class="h-3.5 w-3.5" />
-				</Button>
 			</div>
 		</div>
 	{:else}
