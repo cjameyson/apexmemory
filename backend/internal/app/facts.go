@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"regexp"
 	"sort"
 	"strconv"
@@ -76,23 +75,6 @@ type CardResponse struct {
 }
 
 func toFactResponse(n db.GetFactRow) FactResponse {
-	resp := FactResponse{
-		ID:         n.ID,
-		NotebookID: n.NotebookID,
-		FactType:   n.FactType,
-		Content:    json.RawMessage(n.Content),
-		CardCount:  n.CardCount,
-		CreatedAt:  n.CreatedAt,
-		UpdatedAt:  n.UpdatedAt,
-	}
-	if n.SourceID.Valid {
-		id := uuid.UUID(n.SourceID.Bytes)
-		resp.SourceID = &id
-	}
-	return resp
-}
-
-func toFactListResponse(n db.ListFactsByNotebookRow) FactResponse {
 	resp := FactResponse{
 		ID:         n.ID,
 		NotebookID: n.NotebookID,
@@ -210,7 +192,7 @@ func (app *Application) cleanupOrphanedAssets(ctx context.Context, userID uuid.U
 			AssetIDJson:   assetIDJSON,
 		})
 		if err != nil {
-			slog.Error("failed to count facts referencing asset",
+			GetLogger(ctx).Error("failed to count facts referencing asset",
 				"error", err,
 				"asset_id", assetID,
 				"user_id", userID,
@@ -223,14 +205,14 @@ func (app *Application) cleanupOrphanedAssets(ctx context.Context, userID uuid.U
 
 		key := storageKey(userID, assetID)
 		if err := app.Storage.Delete(ctx, key); err != nil {
-			slog.Error("failed to delete orphaned asset from storage",
+			GetLogger(ctx).Error("failed to delete orphaned asset from storage",
 				"error", err,
 				"asset_id", assetID,
 				"user_id", userID,
 			)
 		}
 		if _, err := app.Queries.DeleteAsset(ctx, db.DeleteAssetParams{UserID: userID, ID: assetID}); err != nil {
-			slog.Error("failed to delete orphaned asset record",
+			GetLogger(ctx).Error("failed to delete orphaned asset record",
 				"error", err,
 				"asset_id", assetID,
 				"user_id", userID,
@@ -507,29 +489,6 @@ func (app *Application) GetFact(ctx context.Context, userID, notebookID, factID 
 		return db.GetFactRow{}, err
 	}
 	return fact, nil
-}
-
-// ListFacts retrieves paginated facts for a notebook.
-func (app *Application) ListFacts(ctx context.Context, userID, notebookID uuid.UUID, limit, offset int32) ([]db.ListFactsByNotebookRow, int64, error) {
-	facts, err := app.Queries.ListFactsByNotebook(ctx, db.ListFactsByNotebookParams{
-		UserID:     userID,
-		NotebookID: notebookID,
-		RowLimit:   limit,
-		RowOffset:  offset,
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-
-	total, err := app.Queries.CountFactsByNotebook(ctx, db.CountFactsByNotebookParams{
-		UserID:     userID,
-		NotebookID: notebookID,
-	})
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return facts, total, nil
 }
 
 // UpdateFactResult contains the outcome of a fact update.

@@ -154,13 +154,16 @@ func (q *Queries) GetFact(ctx context.Context, arg GetFactParams) (GetFactRow, e
 
 const getFactStatsByNotebook = `-- name: GetFactStatsByNotebook :one
 SELECT
-  (SELECT count(*) FROM app.facts f1 WHERE f1.user_id = $1 AND f1.notebook_id = $2) AS total_facts,
-  (SELECT count(*) FROM app.cards c1 WHERE c1.user_id = $1 AND c1.notebook_id = $2) AS total_cards,
-  (SELECT count(*) FROM app.cards c2 WHERE c2.user_id = $1 AND c2.notebook_id = $2
-    AND c2.due <= now() AND c2.suspended_at IS NULL AND c2.buried_until IS NULL) AS total_due,
-  (SELECT count(*) FROM app.facts f2 WHERE f2.user_id = $1 AND f2.notebook_id = $2 AND f2.fact_type = 'basic') AS basic_count,
-  (SELECT count(*) FROM app.facts f3 WHERE f3.user_id = $1 AND f3.notebook_id = $2 AND f3.fact_type = 'cloze') AS cloze_count,
-  (SELECT count(*) FROM app.facts f4 WHERE f4.user_id = $1 AND f4.notebook_id = $2 AND f4.fact_type = 'image_occlusion') AS image_occlusion_count
+  count(DISTINCT f.id) AS total_facts,
+  count(DISTINCT c.id) AS total_cards,
+  count(DISTINCT c.id) FILTER (WHERE c.due <= now() AND c.suspended_at IS NULL
+    AND (c.buried_until IS NULL OR c.buried_until <= CURRENT_DATE)) AS total_due,
+  count(DISTINCT f.id) FILTER (WHERE f.fact_type = 'basic') AS basic_count,
+  count(DISTINCT f.id) FILTER (WHERE f.fact_type = 'cloze') AS cloze_count,
+  count(DISTINCT f.id) FILTER (WHERE f.fact_type = 'image_occlusion') AS image_occlusion_count
+FROM app.facts f
+LEFT JOIN app.cards c ON c.user_id = f.user_id AND c.fact_id = f.id
+WHERE f.user_id = $1 AND f.notebook_id = $2
 `
 
 type GetFactStatsByNotebookParams struct {
@@ -191,73 +194,11 @@ func (q *Queries) GetFactStatsByNotebook(ctx context.Context, arg GetFactStatsBy
 	return i, err
 }
 
-const listFactsByNotebook = `-- name: ListFactsByNotebook :many
-SELECT n.user_id, n.id, n.notebook_id, n.fact_type, n.content, n.source_id, n.created_at, n.updated_at, (SELECT count(*) FROM app.cards c WHERE c.user_id = n.user_id AND c.fact_id = n.id) AS card_count
-FROM app.facts n
-WHERE n.user_id = $1 AND n.notebook_id = $2
-ORDER BY n.created_at DESC
-LIMIT $4 OFFSET $3
-`
-
-type ListFactsByNotebookParams struct {
-	UserID     uuid.UUID `json:"user_id"`
-	NotebookID uuid.UUID `json:"notebook_id"`
-	RowOffset  int32     `json:"row_offset"`
-	RowLimit   int32     `json:"row_limit"`
-}
-
-type ListFactsByNotebookRow struct {
-	UserID     uuid.UUID   `json:"user_id"`
-	ID         uuid.UUID   `json:"id"`
-	NotebookID uuid.UUID   `json:"notebook_id"`
-	FactType   string      `json:"fact_type"`
-	Content    []byte      `json:"content"`
-	SourceID   pgtype.UUID `json:"source_id"`
-	CreatedAt  time.Time   `json:"created_at"`
-	UpdatedAt  time.Time   `json:"updated_at"`
-	CardCount  int64       `json:"card_count"`
-}
-
-func (q *Queries) ListFactsByNotebook(ctx context.Context, arg ListFactsByNotebookParams) ([]ListFactsByNotebookRow, error) {
-	rows, err := q.db.Query(ctx, listFactsByNotebook,
-		arg.UserID,
-		arg.NotebookID,
-		arg.RowOffset,
-		arg.RowLimit,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListFactsByNotebookRow{}
-	for rows.Next() {
-		var i ListFactsByNotebookRow
-		if err := rows.Scan(
-			&i.UserID,
-			&i.ID,
-			&i.NotebookID,
-			&i.FactType,
-			&i.Content,
-			&i.SourceID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.CardCount,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listFactsByNotebookFiltered = `-- name: ListFactsByNotebookFiltered :many
 SELECT f.user_id, f.id, f.notebook_id, f.fact_type, f.content, f.source_id, f.created_at, f.updated_at,
   (SELECT count(*) FROM app.cards c WHERE c.user_id = f.user_id AND c.fact_id = f.id) AS card_count,
   (SELECT count(*) FROM app.cards c WHERE c.user_id = f.user_id AND c.fact_id = f.id
-    AND c.due <= now() AND c.suspended_at IS NULL AND c.buried_until IS NULL) AS due_count
+    AND c.due <= now() AND c.suspended_at IS NULL AND (c.buried_until IS NULL OR c.buried_until <= CURRENT_DATE)) AS due_count
 FROM app.facts f
 WHERE f.user_id = $1 AND f.notebook_id = $2
   AND ($3::text IS NULL OR f.fact_type = $3)

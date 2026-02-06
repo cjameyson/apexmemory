@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 	"math"
 	"time"
 
@@ -556,7 +555,7 @@ func getFSRSSettingsWithFallback(ctx context.Context, q *db.Queries, userID, not
 		ID:     notebookID,
 	})
 	if err != nil {
-		slog.Warn("failed to fetch FSRS settings, using defaults",
+		GetLogger(ctx).Warn("failed to fetch FSRS settings, using defaults",
 			"notebook_id", notebookID,
 			"user_id", userID,
 			"error", err,
@@ -566,7 +565,7 @@ func getFSRSSettingsWithFallback(ctx context.Context, q *db.Queries, userID, not
 
 	var settings FSRSSettings
 	if err := json.Unmarshal(settingsJSON, &settings); err != nil {
-		slog.Warn("failed to parse FSRS settings, using defaults",
+		GetLogger(ctx).Warn("failed to parse FSRS settings, using defaults",
 			"notebook_id", notebookID,
 			"user_id", userID,
 			"error", err,
@@ -729,7 +728,10 @@ func (app *Application) getStudyCounts(ctx context.Context, userID uuid.UUID) (S
 	var totalDue, totalNew int64
 	for _, row := range countRows {
 		nbID := row.NotebookID.String()
-		existing := counts[nbID]
+		existing, ok := counts[nbID]
+		if !ok {
+			continue
+		}
 		counts[nbID] = NotebookStudyCounts{
 			Due:   row.DueCount,
 			New:   row.NewCount,

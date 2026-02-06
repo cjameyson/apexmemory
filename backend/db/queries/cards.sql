@@ -12,7 +12,7 @@ ORDER BY element_id ASC;
 SELECT * FROM app.cards
 WHERE user_id = @user_id AND notebook_id = @notebook_id
   AND (sqlc.narg('state')::app.card_state IS NULL OR state = sqlc.narg('state'))
-  AND suspended_at IS NULL AND buried_until IS NULL
+  AND suspended_at IS NULL AND (buried_until IS NULL OR buried_until <= CURRENT_DATE)
 ORDER BY due ASC NULLS FIRST, created_at ASC
 LIMIT @row_limit OFFSET @row_offset;
 
@@ -20,7 +20,7 @@ LIMIT @row_limit OFFSET @row_offset;
 SELECT count(*) FROM app.cards
 WHERE user_id = @user_id AND notebook_id = @notebook_id
   AND (sqlc.narg('state')::app.card_state IS NULL OR state = sqlc.narg('state'))
-  AND suspended_at IS NULL AND buried_until IS NULL;
+  AND suspended_at IS NULL AND (buried_until IS NULL OR buried_until <= CURRENT_DATE);
 
 -- name: GetCard :one
 SELECT * FROM app.cards

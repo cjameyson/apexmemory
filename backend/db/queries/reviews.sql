@@ -1,33 +1,28 @@
 -- name: GetStudyCards :many
 -- Returns due cards for review: overdue first, then learning, then new.
 -- New card cap limits how many new cards are introduced per day.
+WITH new_today AS (
+    SELECT count(*) AS cnt FROM app.reviews r
+    WHERE r.user_id = @user_id
+      AND r.state_before = 'new'
+      AND r.mode = 'scheduled'
+      AND r.reviewed_at >= date_trunc('day', now())
+)
 SELECT c.*, f.fact_type, f.content AS fact_content
 FROM app.cards c
 JOIN app.facts f ON f.user_id = c.user_id AND f.id = c.fact_id
+JOIN app.notebooks n ON n.user_id = c.user_id AND n.id = c.notebook_id AND n.archived_at IS NULL
 WHERE c.user_id = @user_id
   AND (sqlc.narg('notebook_id')::uuid IS NULL OR c.notebook_id = sqlc.narg('notebook_id'))
   AND c.suspended_at IS NULL
-  AND c.buried_until IS NULL
+  AND (c.buried_until IS NULL OR c.buried_until <= CURRENT_DATE)
   AND (
-    -- Due cards (overdue or currently in learning)
     (c.state != 'new' AND c.due <= now())
-    OR
-    -- New cards, subject to daily cap
-    (c.state = 'new' AND (
-      SELECT count(*) FROM app.reviews r
-      WHERE r.user_id = @user_id
-        AND r.state_before = 'new'
-        AND r.mode = 'scheduled'
-        AND r.reviewed_at >= date_trunc('day', now())
-    ) < @new_card_cap::bigint
-    )
+    OR (c.state = 'new' AND (SELECT cnt FROM new_today) < @new_card_cap::bigint)
   )
 ORDER BY
-  -- Overdue non-new cards first
   CASE WHEN c.state != 'new' AND c.due <= now() THEN 0 ELSE 1 END,
-  -- Then learning/relearning before new
   CASE WHEN c.state IN ('learning', 'relearning') THEN 0 ELSE 1 END,
-  -- Within each group, earliest due first
   c.due ASC NULLS LAST,
   c.created_at ASC
 LIMIT @row_limit;
@@ -37,24 +32,27 @@ LIMIT @row_limit;
 SELECT c.*, f.fact_type, f.content AS fact_content
 FROM app.cards c
 JOIN app.facts f ON f.user_id = c.user_id AND f.id = c.fact_id
+JOIN app.notebooks n ON n.user_id = c.user_id AND n.id = c.notebook_id AND n.archived_at IS NULL
 WHERE c.user_id = @user_id
   AND (sqlc.narg('notebook_id')::uuid IS NULL OR c.notebook_id = sqlc.narg('notebook_id'))
   AND c.suspended_at IS NULL
-  AND c.buried_until IS NULL
+  AND (c.buried_until IS NULL OR c.buried_until <= CURRENT_DATE)
 ORDER BY c.created_at ASC
 LIMIT @row_limit OFFSET @row_offset;
 
 -- name: CountPracticeCards :one
-SELECT count(*) FROM app.cards
-WHERE user_id = @user_id
-  AND (sqlc.narg('notebook_id')::uuid IS NULL OR notebook_id = sqlc.narg('notebook_id'))
-  AND suspended_at IS NULL
-  AND buried_until IS NULL;
+SELECT count(*) FROM app.cards c
+JOIN app.notebooks n ON n.user_id = c.user_id AND n.id = c.notebook_id AND n.archived_at IS NULL
+WHERE c.user_id = @user_id
+  AND (sqlc.narg('notebook_id')::uuid IS NULL OR c.notebook_id = sqlc.narg('notebook_id'))
+  AND c.suspended_at IS NULL
+  AND (c.buried_until IS NULL OR c.buried_until <= CURRENT_DATE);
 
 -- name: GetCardForReview :one
-SELECT * FROM app.cards
-WHERE user_id = @user_id AND id = @id
-FOR UPDATE;
+SELECT c.* FROM app.cards c
+JOIN app.notebooks n ON n.user_id = c.user_id AND n.id = c.notebook_id AND n.archived_at IS NULL
+WHERE c.user_id = @user_id AND c.id = @id
+FOR UPDATE OF c;
 
 -- name: CreateReview :one
 INSERT INTO app.reviews (
@@ -96,9 +94,10 @@ SELECT
     count(*) FILTER (WHERE c.state != 'new' AND c.due <= now()) AS due_count,
     count(*) FILTER (WHERE c.state = 'new') AS new_count
 FROM app.cards c
+JOIN app.notebooks n ON n.user_id = c.user_id AND n.id = c.notebook_id AND n.archived_at IS NULL
 WHERE c.user_id = @user_id
   AND c.suspended_at IS NULL
-  AND c.buried_until IS NULL
+  AND (c.buried_until IS NULL OR c.buried_until <= CURRENT_DATE)
   AND (
     (c.state != 'new' AND c.due <= now())
     OR c.state = 'new'
@@ -157,7 +156,8 @@ SELECT
 FROM app.reviews
 WHERE user_id = @user_id
   AND (sqlc.narg('notebook_id')::uuid IS NULL OR notebook_id = sqlc.narg('notebook_id'))
-  AND reviewed_at::date = COALESCE(sqlc.narg('date')::date, CURRENT_DATE);
+  AND reviewed_at >= COALESCE(sqlc.narg('date')::date, CURRENT_DATE)::timestamptz
+  AND reviewed_at < (COALESCE(sqlc.narg('date')::date, CURRENT_DATE) + interval '1 day')::timestamptz;
 
 -- name: GetReviewHistory :many
 -- Paginated review history for a notebook, optionally filtered by date.
@@ -168,7 +168,9 @@ SELECT
 FROM app.reviews r
 WHERE r.user_id = @user_id
   AND r.notebook_id = @notebook_id
-  AND (sqlc.narg('date')::date IS NULL OR r.reviewed_at::date = sqlc.narg('date'))
+  AND (sqlc.narg('date')::date IS NULL
+       OR (r.reviewed_at >= sqlc.narg('date')::timestamptz
+           AND r.reviewed_at < (sqlc.narg('date')::date + interval '1 day')::timestamptz))
 ORDER BY r.reviewed_at DESC
 LIMIT @row_limit OFFSET @row_offset;
 
@@ -177,4 +179,6 @@ SELECT count(*)
 FROM app.reviews
 WHERE user_id = @user_id
   AND notebook_id = @notebook_id
-  AND (sqlc.narg('date')::date IS NULL OR reviewed_at::date = sqlc.narg('date'));
+  AND (sqlc.narg('date')::date IS NULL
+       OR (reviewed_at >= sqlc.narg('date')::timestamptz
+           AND reviewed_at < (sqlc.narg('date')::date + interval '1 day')::timestamptz));

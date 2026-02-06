@@ -21,11 +21,7 @@ func (user *AppUser) IsAnonymous() bool {
 }
 
 func (app *Application) GetCurrentUserHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	app.RespondJSON(w, r, http.StatusOK, map[string]any{
 		"id":       user.ID,

@@ -9,11 +9,7 @@ import (
 
 // ListCardsHandler handles GET /v1/notebooks/{notebook_id}/cards
 func (app *Application) ListCardsHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	notebookID, ok := app.PathUUID(w, r, "notebook_id")
 	if !ok {
@@ -50,11 +46,7 @@ func (app *Application) ListCardsHandler(w http.ResponseWriter, r *http.Request)
 
 // GetCardHandler handles GET /v1/notebooks/{notebook_id}/cards/{id}
 func (app *Application) GetCardHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	notebookID, ok := app.PathUUID(w, r, "notebook_id")
 	if !ok {

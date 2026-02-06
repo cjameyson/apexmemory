@@ -75,7 +75,6 @@ type Querier interface {
 	IsNotebookArchived(ctx context.Context, arg IsNotebookArchivedParams) (IsNotebookArchivedRow, error)
 	ListCardsByFact(ctx context.Context, arg ListCardsByFactParams) ([]Card, error)
 	ListCardsByNotebook(ctx context.Context, arg ListCardsByNotebookParams) ([]Card, error)
-	ListFactsByNotebook(ctx context.Context, arg ListFactsByNotebookParams) ([]ListFactsByNotebookRow, error)
 	ListFactsByNotebookFiltered(ctx context.Context, arg ListFactsByNotebookFilteredParams) ([]ListFactsByNotebookFilteredRow, error)
 	ListNotebooks(ctx context.Context, userID uuid.UUID) ([]Notebook, error)
 	// Restore card state from review's before columns + undo_snapshot.

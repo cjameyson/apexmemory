@@ -6,14 +6,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
-	"log/slog"
 	"net/http"
 
 	"apexmemory.ai/internal/db"
@@ -28,8 +26,6 @@ var allowedContentTypes = map[string]bool{
 	"image/webp": true,
 	"image/gif":  true,
 }
-
-var errAssetNotFound = errors.New("asset not found")
 
 // AssetValidationError represents a validation error for asset uploads.
 type AssetValidationError struct {
@@ -81,6 +77,7 @@ func (app *Application) UploadAsset(ctx context.Context, userID uuid.UUID, filen
 			Message: fmt.Sprintf("file content does not match an allowed image type (detected: %s)", detected),
 		}
 	}
+	contentType = detected
 
 	// Compute SHA-256 hash
 	hash := sha256.Sum256(data)
@@ -120,7 +117,7 @@ func (app *Application) UploadAsset(ctx context.Context, userID uuid.UUID, filen
 			UserID: userID,
 			ID:     asset.ID,
 		}); delErr != nil {
-			slog.Error("failed to clean up asset record after storage failure",
+			GetLogger(ctx).Error("failed to clean up asset record after storage failure",
 				"error", delErr,
 				"asset_id", asset.ID,
 				"user_id", userID,

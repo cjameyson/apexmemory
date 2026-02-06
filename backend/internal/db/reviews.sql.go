@@ -14,11 +14,12 @@ import (
 )
 
 const countPracticeCards = `-- name: CountPracticeCards :one
-SELECT count(*) FROM app.cards
-WHERE user_id = $1
-  AND ($2::uuid IS NULL OR notebook_id = $2)
-  AND suspended_at IS NULL
-  AND buried_until IS NULL
+SELECT count(*) FROM app.cards c
+JOIN app.notebooks n ON n.user_id = c.user_id AND n.id = c.notebook_id AND n.archived_at IS NULL
+WHERE c.user_id = $1
+  AND ($2::uuid IS NULL OR c.notebook_id = $2)
+  AND c.suspended_at IS NULL
+  AND (c.buried_until IS NULL OR c.buried_until <= CURRENT_DATE)
 `
 
 type CountPracticeCardsParams struct {
@@ -38,7 +39,9 @@ SELECT count(*)
 FROM app.reviews
 WHERE user_id = $1
   AND notebook_id = $2
-  AND ($3::date IS NULL OR reviewed_at::date = $3)
+  AND ($3::date IS NULL
+       OR (reviewed_at >= $3::timestamptz
+           AND reviewed_at < ($3::date + interval '1 day')::timestamptz))
 `
 
 type CountReviewHistoryParams struct {
@@ -170,9 +173,10 @@ func (q *Queries) DeleteReview(ctx context.Context, arg DeleteReviewParams) (int
 }
 
 const getCardForReview = `-- name: GetCardForReview :one
-SELECT user_id, id, notebook_id, fact_id, element_id, state, stability, difficulty, step, due, last_review, elapsed_days, scheduled_days, reps, lapses, suspended_at, buried_until, created_at, updated_at FROM app.cards
-WHERE user_id = $1 AND id = $2
-FOR UPDATE
+SELECT c.user_id, c.id, c.notebook_id, c.fact_id, c.element_id, c.state, c.stability, c.difficulty, c.step, c.due, c.last_review, c.elapsed_days, c.scheduled_days, c.reps, c.lapses, c.suspended_at, c.buried_until, c.created_at, c.updated_at FROM app.cards c
+JOIN app.notebooks n ON n.user_id = c.user_id AND n.id = c.notebook_id AND n.archived_at IS NULL
+WHERE c.user_id = $1 AND c.id = $2
+FOR UPDATE OF c
 `
 
 type GetCardForReviewParams struct {
@@ -231,10 +235,11 @@ const getPracticeCards = `-- name: GetPracticeCards :many
 SELECT c.user_id, c.id, c.notebook_id, c.fact_id, c.element_id, c.state, c.stability, c.difficulty, c.step, c.due, c.last_review, c.elapsed_days, c.scheduled_days, c.reps, c.lapses, c.suspended_at, c.buried_until, c.created_at, c.updated_at, f.fact_type, f.content AS fact_content
 FROM app.cards c
 JOIN app.facts f ON f.user_id = c.user_id AND f.id = c.fact_id
+JOIN app.notebooks n ON n.user_id = c.user_id AND n.id = c.notebook_id AND n.archived_at IS NULL
 WHERE c.user_id = $1
   AND ($2::uuid IS NULL OR c.notebook_id = $2)
   AND c.suspended_at IS NULL
-  AND c.buried_until IS NULL
+  AND (c.buried_until IS NULL OR c.buried_until <= CURRENT_DATE)
 ORDER BY c.created_at ASC
 LIMIT $4 OFFSET $3
 `
@@ -367,7 +372,9 @@ SELECT
 FROM app.reviews r
 WHERE r.user_id = $1
   AND r.notebook_id = $2
-  AND ($3::date IS NULL OR r.reviewed_at::date = $3)
+  AND ($3::date IS NULL
+       OR (r.reviewed_at >= $3::timestamptz
+           AND r.reviewed_at < ($3::date + interval '1 day')::timestamptz))
 ORDER BY r.reviewed_at DESC
 LIMIT $5 OFFSET $4
 `
@@ -447,7 +454,8 @@ SELECT
 FROM app.reviews
 WHERE user_id = $1
   AND ($2::uuid IS NULL OR notebook_id = $2)
-  AND reviewed_at::date = COALESCE($3::date, CURRENT_DATE)
+  AND reviewed_at >= COALESCE($3::date, CURRENT_DATE)::timestamptz
+  AND reviewed_at < (COALESCE($3::date, CURRENT_DATE) + interval '1 day')::timestamptz
 `
 
 type GetReviewSummaryByDateParams struct {
@@ -487,33 +495,28 @@ func (q *Queries) GetReviewSummaryByDate(ctx context.Context, arg GetReviewSumma
 }
 
 const getStudyCards = `-- name: GetStudyCards :many
+WITH new_today AS (
+    SELECT count(*) AS cnt FROM app.reviews r
+    WHERE r.user_id = $1
+      AND r.state_before = 'new'
+      AND r.mode = 'scheduled'
+      AND r.reviewed_at >= date_trunc('day', now())
+)
 SELECT c.user_id, c.id, c.notebook_id, c.fact_id, c.element_id, c.state, c.stability, c.difficulty, c.step, c.due, c.last_review, c.elapsed_days, c.scheduled_days, c.reps, c.lapses, c.suspended_at, c.buried_until, c.created_at, c.updated_at, f.fact_type, f.content AS fact_content
 FROM app.cards c
 JOIN app.facts f ON f.user_id = c.user_id AND f.id = c.fact_id
+JOIN app.notebooks n ON n.user_id = c.user_id AND n.id = c.notebook_id AND n.archived_at IS NULL
 WHERE c.user_id = $1
   AND ($2::uuid IS NULL OR c.notebook_id = $2)
   AND c.suspended_at IS NULL
-  AND c.buried_until IS NULL
+  AND (c.buried_until IS NULL OR c.buried_until <= CURRENT_DATE)
   AND (
-    -- Due cards (overdue or currently in learning)
     (c.state != 'new' AND c.due <= now())
-    OR
-    -- New cards, subject to daily cap
-    (c.state = 'new' AND (
-      SELECT count(*) FROM app.reviews r
-      WHERE r.user_id = $1
-        AND r.state_before = 'new'
-        AND r.mode = 'scheduled'
-        AND r.reviewed_at >= date_trunc('day', now())
-    ) < $3::bigint
-    )
+    OR (c.state = 'new' AND (SELECT cnt FROM new_today) < $3::bigint)
   )
 ORDER BY
-  -- Overdue non-new cards first
   CASE WHEN c.state != 'new' AND c.due <= now() THEN 0 ELSE 1 END,
-  -- Then learning/relearning before new
   CASE WHEN c.state IN ('learning', 'relearning') THEN 0 ELSE 1 END,
-  -- Within each group, earliest due first
   c.due ASC NULLS LAST,
   c.created_at ASC
 LIMIT $4
@@ -605,9 +608,10 @@ SELECT
     count(*) FILTER (WHERE c.state != 'new' AND c.due <= now()) AS due_count,
     count(*) FILTER (WHERE c.state = 'new') AS new_count
 FROM app.cards c
+JOIN app.notebooks n ON n.user_id = c.user_id AND n.id = c.notebook_id AND n.archived_at IS NULL
 WHERE c.user_id = $1
   AND c.suspended_at IS NULL
-  AND c.buried_until IS NULL
+  AND (c.buried_until IS NULL OR c.buried_until <= CURRENT_DATE)
   AND (
     (c.state != 'new' AND c.due <= now())
     OR c.state = 'new'

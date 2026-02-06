@@ -92,6 +92,7 @@ func TruncateTables(ctx context.Context, p *pgxpool.Pool) error {
 			app.reviews,
 			app.cards,
 			app.facts,
+			app.assets,
 			app.notebooks,
 			app.user_sessions,
 			app.auth_identities,

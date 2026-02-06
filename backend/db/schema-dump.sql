@@ -460,6 +460,13 @@ CREATE INDEX ix_reviews_card ON app.reviews USING btree (user_id, card_id, revie
 
 
 --
+-- Name: ix_reviews_new_today; Type: INDEX; Schema: app; Owner: -
+--
+
+CREATE INDEX ix_reviews_new_today ON app.reviews USING btree (user_id, reviewed_at) WHERE ((state_before = 'new'::app.card_state) AND (mode = 'scheduled'::text));
+
+
+--
 -- Name: ix_reviews_notebook_time; Type: INDEX; Schema: app; Owner: -
 --
 

@@ -204,6 +204,28 @@ func TestUploadAssetHandler(t *testing.T) {
 		})
 	}
 
+	t.Run("uses detected content type over declared", func(t *testing.T) {
+		// Upload JPEG bytes but declare content type as image/png
+		jpegBytes := createTestJPEG(t, 32, 32)
+		req := multipartRequest(t, "file", "mistype.png", "image/png", jpegBytes)
+		req = app.WithUser(req, user)
+		rr := httptest.NewRecorder()
+
+		app.UploadAssetHandler(rr, req)
+
+		if rr.Code != http.StatusCreated {
+			t.Fatalf("expected 201, got %d. Body: %s", rr.Code, rr.Body.String())
+		}
+
+		var resp map[string]any
+		decodeResponse(t, rr, &resp)
+
+		// The stored content type should be the detected JPEG, not the declared PNG
+		if resp["content_type"] != "image/jpeg" {
+			t.Errorf("expected content_type 'image/jpeg' (detected), got %v", resp["content_type"])
+		}
+	})
+
 	t.Run("missing file field", func(t *testing.T) {
 		// Build a multipart body with the wrong field name so "file" is absent.
 		req := multipartRequest(t, "wrong_field", "test.png", "image/png", pngData)
@@ -261,6 +283,16 @@ func TestServeAssetHandler(t *testing.T) {
 		// ETag
 		if got := rr.Header().Get("ETag"); got != expectedETag {
 			t.Errorf("expected ETag %q, got %q", expectedETag, got)
+		}
+
+		// X-Content-Type-Options: nosniff
+		if got := rr.Header().Get("X-Content-Type-Options"); got != "nosniff" {
+			t.Errorf("expected X-Content-Type-Options %q, got %q", "nosniff", got)
+		}
+
+		// Content-Disposition: inline
+		if got := rr.Header().Get("Content-Disposition"); got != "inline" {
+			t.Errorf("expected Content-Disposition %q, got %q", "inline", got)
 		}
 
 		// Body must match the original data

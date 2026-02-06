@@ -10,11 +10,7 @@ import (
 
 // CreateFactHandler handles POST /v1/notebooks/{notebook_id}/facts
 func (app *Application) CreateFactHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	notebookID, ok := app.PathUUID(w, r, "notebook_id")
 	if !ok {
@@ -75,11 +71,7 @@ func (app *Application) CreateFactHandler(w http.ResponseWriter, r *http.Request
 // ListFactsHandler handles GET /v1/notebooks/{notebook_id}/facts
 // Query params: limit, offset, type (fact_type filter), q (search), stats=true (include stats)
 func (app *Application) ListFactsHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	notebookID, ok := app.PathUUID(w, r, "notebook_id")
 	if !ok {
@@ -145,11 +137,7 @@ func (app *Application) ListFactsHandler(w http.ResponseWriter, r *http.Request)
 
 // GetFactHandler handles GET /v1/notebooks/{notebook_id}/facts/{id}
 func (app *Application) GetFactHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	notebookID, ok := app.PathUUID(w, r, "notebook_id")
 	if !ok {
@@ -194,11 +182,7 @@ func (app *Application) GetFactHandler(w http.ResponseWriter, r *http.Request) {
 
 // UpdateFactHandler handles PATCH /v1/notebooks/{notebook_id}/facts/{id}
 func (app *Application) UpdateFactHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	notebookID, ok := app.PathUUID(w, r, "notebook_id")
 	if !ok {
@@ -249,11 +233,7 @@ func (app *Application) UpdateFactHandler(w http.ResponseWriter, r *http.Request
 
 // DeleteFactHandler handles DELETE /v1/notebooks/{notebook_id}/facts/{id}
 func (app *Application) DeleteFactHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	notebookID, ok := app.PathUUID(w, r, "notebook_id")
 	if !ok {

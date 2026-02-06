@@ -18,11 +18,7 @@ var colorRegex = regexp.MustCompile(notebookColorPattern)
 
 // CreateNotebookHandler handles POST /v1/notebooks
 func (app *Application) CreateNotebookHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	var input struct {
 		Name        string  `json:"name"`
@@ -80,11 +76,7 @@ func (app *Application) CreateNotebookHandler(w http.ResponseWriter, r *http.Req
 
 // ListNotebooksHandler handles GET /v1/notebooks
 func (app *Application) ListNotebooksHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	notebooks, err := app.ListNotebooks(r.Context(), user.ID)
 	if err != nil {
@@ -103,11 +95,7 @@ func (app *Application) ListNotebooksHandler(w http.ResponseWriter, r *http.Requ
 
 // GetNotebookHandler handles GET /v1/notebooks/{id}
 func (app *Application) GetNotebookHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	notebookID, ok := app.PathUUID(w, r, "id")
 	if !ok {
@@ -129,11 +117,7 @@ func (app *Application) GetNotebookHandler(w http.ResponseWriter, r *http.Reques
 
 // UpdateNotebookHandler handles PATCH /v1/notebooks/{id}
 func (app *Application) UpdateNotebookHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	notebookID, ok := app.PathUUID(w, r, "id")
 	if !ok {
@@ -213,11 +197,7 @@ func (app *Application) UpdateNotebookHandler(w http.ResponseWriter, r *http.Req
 // DeleteNotebookHandler handles DELETE /v1/notebooks/{id}
 // This performs a soft delete (archive) rather than permanent deletion.
 func (app *Application) DeleteNotebookHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	notebookID, ok := app.PathUUID(w, r, "id")
 	if !ok {

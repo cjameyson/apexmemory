@@ -21,7 +21,9 @@ func (app *Application) LogRequests(next http.Handler) http.Handler {
 		// Generate request ID (UUIDv7 for time-ordering)
 		requestID := uuid.Must(uuid.NewV7()).String()
 		if incomingID := r.Header.Get("X-Request-ID"); incomingID != "" {
-			requestID = incomingID
+			if _, err := uuid.Parse(incomingID); err == nil {
+				requestID = incomingID
+			}
 		}
 
 		traceID := extractTraceID(r)

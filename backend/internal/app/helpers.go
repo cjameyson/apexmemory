@@ -123,6 +123,17 @@ func (app *Application) PathUUID(w http.ResponseWriter, r *http.Request, param s
 	return id, true
 }
 
+// MustUser returns the authenticated user from the request context.
+// Panics if called for an anonymous user - this should only be used in
+// handlers behind RequireAuth middleware.
+func (app *Application) MustUser(r *http.Request) *AppUser {
+	user := app.GetUser(r.Context())
+	if user.IsAnonymous() {
+		panic("MustUser called for anonymous user - check route middleware")
+	}
+	return user
+}
+
 // SortParam holds a parsed sort field and direction.
 type SortParam struct {
 	Field string // empty = use query default

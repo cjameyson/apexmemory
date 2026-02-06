@@ -25,11 +25,7 @@ type AssetResponse struct {
 
 // UploadAssetHandler handles POST /v1/assets
 func (app *Application) UploadAssetHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	// Limit request body size
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize+1024) // extra for multipart overhead
@@ -78,11 +74,7 @@ func (app *Application) UploadAssetHandler(w http.ResponseWriter, r *http.Reques
 
 // ServeAssetHandler handles GET /v1/assets/{id}/file
 func (app *Application) ServeAssetHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	assetID, ok := app.PathUUID(w, r, "id")
 	if !ok {
@@ -124,6 +116,8 @@ func (app *Application) ServeAssetHandler(w http.ResponseWriter, r *http.Request
 	defer reader.Close()
 
 	// Set response headers
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Disposition", "inline")
 	w.Header().Set("Content-Type", asset.ContentType)
 	w.Header().Set("Cache-Control", "private, max-age=31536000, immutable")
 	w.Header().Set("ETag", etag)

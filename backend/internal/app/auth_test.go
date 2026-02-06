@@ -249,11 +249,15 @@ func TestLogoutHandler(t *testing.T) {
 	})
 
 	t.Run("logout without auth", func(t *testing.T) {
+		// LogoutHandler uses MustUser which panics for anonymous users.
+		// In production, RequireAuth middleware rejects anonymous users before the handler.
+		// Test through the middleware to verify the full chain.
+		handler := app.RequireAuth(http.HandlerFunc(app.LogoutHandler))
 		req := httptest.NewRequest("POST", "/v1/auth/logout", nil)
 		req = app.WithUser(req, AnonymousUser)
 		rr := httptest.NewRecorder()
 
-		app.LogoutHandler(rr, req)
+		handler.ServeHTTP(rr, req)
 
 		if rr.Code != http.StatusUnauthorized {
 			t.Errorf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
@@ -292,16 +296,68 @@ func TestGetCurrentUserHandler(t *testing.T) {
 	})
 
 	t.Run("get current user unauthenticated", func(t *testing.T) {
+		handler := app.RequireAuth(http.HandlerFunc(app.GetCurrentUserHandler))
 		req := httptest.NewRequest("GET", "/v1/auth/me", nil)
 		req = app.WithUser(req, AnonymousUser)
 		rr := httptest.NewRecorder()
 
-		app.GetCurrentUserHandler(rr, req)
+		handler.ServeHTTP(rr, req)
 
 		if rr.Code != http.StatusUnauthorized {
 			t.Errorf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)
 		}
 	})
+}
+
+func TestRegisterHandler_EmailNormalized(t *testing.T) {
+	app := testApp(t)
+
+	req := jsonRequest(t, "POST", "/v1/auth/register", map[string]string{
+		"email":    "Test@EXAMPLE.com",
+		"username": "normalizetest",
+		"password": "password123",
+	})
+	rr := httptest.NewRecorder()
+
+	app.RegisterHandler(rr, req)
+
+	if rr.Code != http.StatusCreated {
+		t.Fatalf("expected 201, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp map[string]any
+	decodeResponse(t, rr, &resp)
+
+	user, ok := resp["user"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected user object in response")
+	}
+	if user["email"] != "test@example.com" {
+		t.Errorf("expected email normalized to 'test@example.com', got %v", user["email"])
+	}
+}
+
+func TestLoginHandler_CaseInsensitiveEmail(t *testing.T) {
+	app := testApp(t)
+
+	// Register with lowercase email
+	_, err := app.RegisterUser(t.Context(), "casetest@example.com", "casetestuser", "password123")
+	if err != nil {
+		t.Fatalf("failed to register test user: %v", err)
+	}
+
+	// Login with mixed case
+	req := jsonRequest(t, "POST", "/v1/auth/login", map[string]string{
+		"email":    "CaseTest@EXAMPLE.COM",
+		"password": "password123",
+	})
+	rr := httptest.NewRecorder()
+
+	app.LoginHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected 200 for case-insensitive email login, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
 }
 
 func TestPasswordHashing(t *testing.T) {

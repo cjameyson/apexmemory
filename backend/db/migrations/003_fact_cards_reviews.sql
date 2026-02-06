@@ -239,12 +239,17 @@ CREATE INDEX ix_reviews_notebook_time ON app.reviews(user_id, notebook_id, revie
 CREATE INDEX ix_reviews_optimizer ON app.reviews(user_id, notebook_id, state_before, rating)
     WHERE scheduled_days >= 1;
 
+-- For new-card-cap count in study query
+CREATE INDEX ix_reviews_new_today ON app.reviews(user_id, reviewed_at)
+    WHERE state_before = 'new' AND mode = 'scheduled';
+
 ---- create above / drop below ----
 
 DROP TRIGGER IF EXISTS trg_cards_sync_notebook_count ON app.cards;
 DROP TRIGGER IF EXISTS trg_cards_set_updated_at ON app.cards;
 DROP TRIGGER IF EXISTS trg_facts_set_updated_at ON app.facts;
 
+DROP INDEX IF EXISTS app.ix_reviews_new_today;
 DROP INDEX IF EXISTS app.ix_reviews_optimizer;
 DROP INDEX IF EXISTS app.ix_reviews_notebook_time;
 DROP INDEX IF EXISTS app.ix_reviews_card;

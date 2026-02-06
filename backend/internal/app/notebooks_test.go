@@ -132,13 +132,14 @@ func TestCreateNotebookHandler(t *testing.T) {
 func TestCreateNotebookHandler_Unauthenticated(t *testing.T) {
 	app := testApp(t)
 
+	handler := app.RequireAuth(http.HandlerFunc(app.CreateNotebookHandler))
 	req := jsonRequest(t, "POST", "/v1/notebooks", map[string]any{
 		"name": "My Notebook",
 	})
 	req = app.WithUser(req, AnonymousUser)
 	rr := httptest.NewRecorder()
 
-	app.CreateNotebookHandler(rr, req)
+	handler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusUnauthorized {
 		t.Errorf("expected status %d, got %d", http.StatusUnauthorized, rr.Code)

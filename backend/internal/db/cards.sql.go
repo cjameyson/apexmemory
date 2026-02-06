@@ -15,7 +15,7 @@ const countCardsByNotebook = `-- name: CountCardsByNotebook :one
 SELECT count(*) FROM app.cards
 WHERE user_id = $1 AND notebook_id = $2
   AND ($3::app.card_state IS NULL OR state = $3)
-  AND suspended_at IS NULL AND buried_until IS NULL
+  AND suspended_at IS NULL AND (buried_until IS NULL OR buried_until <= CURRENT_DATE)
 `
 
 type CountCardsByNotebookParams struct {
@@ -185,7 +185,7 @@ const listCardsByNotebook = `-- name: ListCardsByNotebook :many
 SELECT user_id, id, notebook_id, fact_id, element_id, state, stability, difficulty, step, due, last_review, elapsed_days, scheduled_days, reps, lapses, suspended_at, buried_until, created_at, updated_at FROM app.cards
 WHERE user_id = $1 AND notebook_id = $2
   AND ($3::app.card_state IS NULL OR state = $3)
-  AND suspended_at IS NULL AND buried_until IS NULL
+  AND suspended_at IS NULL AND (buried_until IS NULL OR buried_until <= CURRENT_DATE)
 ORDER BY due ASC NULLS FIRST, created_at ASC
 LIMIT $5 OFFSET $4
 `

@@ -43,6 +43,7 @@ func (app *Application) ListCards(ctx context.Context, userID, notebookID uuid.U
 	total, err := app.Queries.CountCardsByNotebook(ctx, db.CountCardsByNotebookParams{
 		UserID:     userID,
 		NotebookID: notebookID,
+		State:      state,
 	})
 	if err != nil {
 		return nil, 0, err

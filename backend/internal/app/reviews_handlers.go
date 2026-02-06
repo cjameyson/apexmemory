@@ -11,11 +11,7 @@ import (
 
 // GetStudyCardsHandler handles GET /v1/reviews/study
 func (app *Application) GetStudyCardsHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	limit := int32(20)
 	if v := r.URL.Query().Get("limit"); v != "" {
@@ -45,11 +41,7 @@ func (app *Application) GetStudyCardsHandler(w http.ResponseWriter, r *http.Requ
 
 // GetPracticeCardsHandler handles GET /v1/reviews/practice
 func (app *Application) GetPracticeCardsHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	limit, offset := parsePagination(r)
 
@@ -74,11 +66,7 @@ func (app *Application) GetPracticeCardsHandler(w http.ResponseWriter, r *http.R
 
 // SubmitReviewHandler handles POST /v1/reviews
 func (app *Application) SubmitReviewHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	var req ReviewRequest
 	if err := app.ReadJSON(w, r, &req); err != nil {
@@ -118,11 +106,7 @@ func (app *Application) SubmitReviewHandler(w http.ResponseWriter, r *http.Reque
 
 // GetStudyCountsHandler handles GET /v1/reviews/study-counts
 func (app *Application) GetStudyCountsHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	resp, err := app.getStudyCounts(r.Context(), user.ID)
 	if err != nil {
@@ -135,15 +119,10 @@ func (app *Application) GetStudyCountsHandler(w http.ResponseWriter, r *http.Req
 
 // UndoReviewHandler handles DELETE /v1/reviews/{id}
 func (app *Application) UndoReviewHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
-	reviewID, err := uuid.Parse(r.PathValue("id"))
-	if err != nil {
-		app.RespondError(w, r, http.StatusBadRequest, "invalid review id")
+	reviewID, ok := app.PathUUID(w, r, "id")
+	if !ok {
 		return
 	}
 
@@ -183,11 +162,7 @@ func parseDate(r *http.Request, param string) (*time.Time, error) {
 
 // GetReviewSummaryHandler handles GET /v1/reviews/summary
 func (app *Application) GetReviewSummaryHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	var notebookID *uuid.UUID
 	if v := r.URL.Query().Get("notebook_id"); v != "" {
@@ -216,15 +191,10 @@ func (app *Application) GetReviewSummaryHandler(w http.ResponseWriter, r *http.R
 
 // GetReviewHistoryHandler handles GET /v1/notebooks/{notebook_id}/reviews
 func (app *Application) GetReviewHistoryHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
-	notebookID, err := uuid.Parse(r.PathValue("notebook_id"))
-	if err != nil {
-		app.RespondError(w, r, http.StatusBadRequest, "invalid notebook_id")
+	notebookID, ok := app.PathUUID(w, r, "notebook_id")
+	if !ok {
 		return
 	}
 

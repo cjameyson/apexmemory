@@ -1221,6 +1221,198 @@ func TestGetStudyCards_UsesNotebookFSRSSettings(t *testing.T) {
 	}
 }
 
+// -----------------------------------------------------------------------------
+// Archived Notebook + Buried Until Tests
+// -----------------------------------------------------------------------------
+
+func TestGetStudyCards_ExcludesArchivedNotebook(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	nbID, _ := createTestCard(t, app, user.ID)
+
+	// Archive the notebook
+	if err := app.ArchiveNotebook(t.Context(), user.ID, nbID); err != nil {
+		t.Fatalf("failed to archive notebook: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/v1/reviews/study", nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetStudyCardsHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp []map[string]any
+	decodeResponse(t, rr, &resp)
+
+	if len(resp) != 0 {
+		t.Errorf("expected 0 study cards from archived notebook, got %d", len(resp))
+	}
+}
+
+func TestGetPracticeCards_ExcludesArchivedNotebook(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	nbID, _ := createTestCard(t, app, user.ID)
+
+	// Archive the notebook
+	if err := app.ArchiveNotebook(t.Context(), user.ID, nbID); err != nil {
+		t.Fatalf("failed to archive notebook: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/v1/reviews/practice", nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetPracticeCardsHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp map[string]any
+	decodeResponse(t, rr, &resp)
+
+	data, ok := resp["data"].([]any)
+	if !ok {
+		t.Fatal("expected data array")
+	}
+	if len(data) != 0 {
+		t.Errorf("expected 0 practice cards from archived notebook, got %d", len(data))
+	}
+}
+
+func TestGetStudyCounts_ExcludesArchivedNotebook(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+
+	// Create two notebooks with cards
+	nbID1, _ := createTestCard(t, app, user.ID)
+	nbID2, _ := createTestCard(t, app, user.ID)
+
+	// Archive notebook 2
+	if err := app.ArchiveNotebook(t.Context(), user.ID, nbID2); err != nil {
+		t.Fatalf("failed to archive notebook: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/v1/reviews/study-counts", nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetStudyCountsHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp StudyCountsResponse
+	decodeResponse(t, rr, &resp)
+
+	// Only non-archived notebook should appear
+	if _, ok := resp.Counts[nbID2.String()]; ok {
+		t.Error("archived notebook should not appear in study counts")
+	}
+	if _, ok := resp.Counts[nbID1.String()]; !ok {
+		t.Error("non-archived notebook should appear in study counts")
+	}
+	if resp.TotalNew != 1 {
+		t.Errorf("expected total_new 1 (only non-archived), got %d", resp.TotalNew)
+	}
+}
+
+func TestGetStudyCards_BuriedUntilPastDate_Unburries(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	nbID, cardID := createTestCard(t, app, user.ID)
+
+	// Set buried_until to yesterday
+	yesterday := time.Now().AddDate(0, 0, -1).Format("2006-01-02")
+	_, err := app.DB.Exec(t.Context(),
+		"UPDATE app.cards SET buried_until = $1 WHERE user_id = $2 AND id = $3",
+		yesterday, user.ID, cardID)
+	if err != nil {
+		t.Fatalf("failed to set buried_until: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/v1/reviews/study?notebook_id="+nbID.String(), nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetStudyCardsHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp []map[string]any
+	decodeResponse(t, rr, &resp)
+
+	if len(resp) != 1 {
+		t.Errorf("expected 1 study card (past buried_until should auto-unbury), got %d", len(resp))
+	}
+}
+
+func TestGetStudyCards_BuriedUntilFutureDate_Excluded(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	nbID, cardID := createTestCard(t, app, user.ID)
+
+	// Set buried_until to 2 days from now (avoids UTC/local timezone boundary issues)
+	tomorrow := time.Now().UTC().AddDate(0, 0, 2).Format("2006-01-02")
+	_, err := app.DB.Exec(t.Context(),
+		"UPDATE app.cards SET buried_until = $1 WHERE user_id = $2 AND id = $3",
+		tomorrow, user.ID, cardID)
+	if err != nil {
+		t.Fatalf("failed to set buried_until: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/v1/reviews/study?notebook_id="+nbID.String(), nil)
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.GetStudyCardsHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+
+	var resp []map[string]any
+	decodeResponse(t, rr, &resp)
+
+	if len(resp) != 0 {
+		t.Errorf("expected 0 study cards (future buried_until should exclude), got %d", len(resp))
+	}
+}
+
+func TestSubmitReview_ArchivedNotebook_Rejected(t *testing.T) {
+	app := testApp(t)
+	user := createTestUser(t, app)
+	nbID, cardID := createTestCard(t, app, user.ID)
+
+	// Archive the notebook
+	if err := app.ArchiveNotebook(t.Context(), user.ID, nbID); err != nil {
+		t.Fatalf("failed to archive notebook: %v", err)
+	}
+
+	req := jsonRequest(t, "POST", "/v1/reviews", map[string]any{
+		"id":      uuid.New().String(),
+		"card_id": cardID.String(),
+		"rating":  "good",
+		"mode":    "scheduled",
+	})
+	req = app.WithUser(req, user)
+	rr := httptest.NewRecorder()
+
+	app.SubmitReviewHandler(rr, req)
+
+	if rr.Code != http.StatusNotFound {
+		t.Errorf("expected 404 for review on archived notebook card, got %d. Body: %s", rr.Code, rr.Body.String())
+	}
+}
+
 func TestGetStudyCards_MultiNotebook_UsesDifferentSettings(t *testing.T) {
 	app := testApp(t)
 	user := createTestUser(t, app)

@@ -22,6 +22,20 @@ var (
 	usernameMaxLen = 30
 )
 
+// AuthResponse is the typed response for register/login endpoints.
+type AuthResponse struct {
+	User         AuthUserResponse `json:"user"`
+	SessionToken string           `json:"session_token"`
+	ExpiresAt    time.Time        `json:"expires_at"`
+}
+
+// AuthUserResponse is the user portion of an auth response.
+type AuthUserResponse struct {
+	ID       string `json:"id"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+}
+
 func (app *Application) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Email    string `json:"email"`
@@ -34,6 +48,8 @@ func (app *Application) RegisterHandler(w http.ResponseWriter, r *http.Request) 
 		app.RespondError(w, r, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
+
+	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
 
 	if input.Email == "" || input.Username == "" || input.Password == "" {
 		app.RespondError(w, r, http.StatusBadRequest, "Email, username, and password are required")
@@ -97,17 +113,15 @@ func (app *Application) RegisterHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	response := map[string]interface{}{
-		"user": map[string]interface{}{
-			"id":       user.ID,
-			"email":    user.Email,
-			"username": user.Username,
+	app.RespondJSON(w, r, http.StatusCreated, AuthResponse{
+		User: AuthUserResponse{
+			ID:       user.ID.String(),
+			Email:    user.Email,
+			Username: user.Username,
 		},
-		"session_token": sessionToken,
-		"expires_at":    time.Now().Add(SessionDuration),
-	}
-
-	app.RespondJSON(w, r, http.StatusCreated, response)
+		SessionToken: sessionToken,
+		ExpiresAt:    time.Now().Add(SessionDuration),
+	})
 }
 
 func (app *Application) LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -121,6 +135,8 @@ func (app *Application) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		app.RespondError(w, r, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
+
+	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
 
 	if input.Email == "" || input.Password == "" {
 		app.RespondError(w, r, http.StatusBadRequest, "Email and password are required")
@@ -146,28 +162,22 @@ func (app *Application) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := map[string]interface{}{
-		"user": map[string]interface{}{
-			"id":       user.ID,
-			"email":    user.Email,
-			"username": user.Username,
+	app.RespondJSON(w, r, http.StatusOK, AuthResponse{
+		User: AuthUserResponse{
+			ID:       user.ID.String(),
+			Email:    user.Email,
+			Username: user.Username,
 		},
-		"session_token": sessionToken,
-		"expires_at":    time.Now().Add(SessionDuration),
-	}
-
-	app.RespondJSON(w, r, http.StatusOK, response)
+		SessionToken: sessionToken,
+		ExpiresAt:    time.Now().Add(SessionDuration),
+	})
 }
 
 // LogoutHandler invalidates the current session.
 // Note: The IsAnonymous check is defense-in-depth; RequireAuth middleware already
 // rejects anonymous users, but this guard protects against misconfigured routes.
 func (app *Application) LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	_ = app.MustUser(r)
 
 	token := app.extractTokenFromHeader(r)
 	if err := app.DeleteSession(r.Context(), token); err != nil {
@@ -185,11 +195,7 @@ func (app *Application) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 // Note: The IsAnonymous check is defense-in-depth; RequireAuth middleware already
 // rejects anonymous users, but this guard protects against misconfigured routes.
 func (app *Application) LogoutAllHandler(w http.ResponseWriter, r *http.Request) {
-	user := app.GetUser(r.Context())
-	if user.IsAnonymous() {
-		app.RespondError(w, r, http.StatusUnauthorized, "Not authenticated")
-		return
-	}
+	user := app.MustUser(r)
 
 	if err := app.DeleteUserSessions(r.Context(), user.ID); err != nil {
 		app.RespondServerError(w, r, ErrDBQuery("delete sessions", err))
