@@ -500,9 +500,10 @@
 			viewBox={svgViewBox}
 			preserveAspectRatio="none"
 		>
-			{#each regions as region (region.id)}
+			{#each regions as region, i (region.id)}
 				<RegionOverlay
 					{region}
+					index={i + 1}
 					isSelected={region.id === selectedRegionId}
 					{displayContext}
 					onClick={() => handleRegionClick(region.id)}

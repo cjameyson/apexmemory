@@ -4,6 +4,7 @@
 
 	interface Props {
 		region: Region;
+		index: number;
 		isSelected: boolean;
 		displayContext: DisplayContext;
 		onClick?: () => void;
@@ -12,7 +13,7 @@
 		onResizeStart?: (e: MouseEvent, position: ResizeHandlePosition) => void;
 	}
 
-	let { region, isSelected, displayContext, onClick, onDblClick, onMoveStart, onResizeStart }: Props = $props();
+	let { region, index, isSelected, displayContext, onClick, onDblClick, onMoveStart, onResizeStart }: Props = $props();
 
 	// Transform region to display coordinates
 	let displayShape = $derived<RectShape>(regionToDisplay(region.shape, displayContext));
@@ -20,24 +21,38 @@
 	// Resize handles (only shown when selected)
 	let handles = $derived(isSelected ? getResizeHandles(displayShape) : []);
 
-	// Region index for display
-	let regionIndex = $derived(
-		(() => {
-			// This would ideally come from parent, but we show label for now
-			return region.label || '?';
-		})()
+	let isUnlabeled = $derived(!region.label.trim());
+	let regionLabel = $derived(region.label || '?');
+
+	// Dynamic color: selected = success (green), unlabeled = warning (amber), normal = primary (blue)
+	let regionColor = $derived(
+		isSelected ? 'var(--success)' : isUnlabeled ? 'var(--warning)' : 'var(--primary)'
 	);
+	let regionColorFg = $derived(
+		isSelected
+			? 'var(--success-foreground)'
+			: isUnlabeled
+				? 'var(--warning-foreground)'
+				: 'var(--primary-foreground)'
+	);
+
+	// Index badge positioning (top-left corner, slightly inset)
+	const BADGE_R = 9;
+	let badgeCx = $derived(displayShape.x + 2 + BADGE_R);
+	let badgeCy = $derived(displayShape.y + 2 + BADGE_R);
+	let showBadge = $derived(displayShape.width > 30 && displayShape.height > 30);
 </script>
 
 <g
 	class="region-overlay"
+	style="--rc: {regionColor}; --rc-fg: {regionColorFg}"
 	role="button"
 	tabindex="0"
 	onclick={onClick}
 	ondblclick={onDblClick}
 	onkeydown={(e) => e.key === 'Enter' && onClick?.()}
 >
-	<!-- Region fill (semi-transparent primary color) -->
+	<!-- Region fill (semi-transparent) -->
 	<rect
 		x={displayShape.x}
 		y={displayShape.y}
@@ -85,8 +100,22 @@
 		text-anchor="middle"
 		dominant-baseline="central"
 	>
-		{regionIndex}
+		{regionLabel}
 	</text>
+
+	<!-- Index badge (top-left corner) -->
+	{#if showBadge}
+		<circle cx={badgeCx} cy={badgeCy} r={BADGE_R} class="badge-circle" />
+		<text
+			x={badgeCx}
+			y={badgeCy}
+			class="badge-text"
+			text-anchor="middle"
+			dominant-baseline="central"
+		>
+			{index}
+		</text>
+	{/if}
 
 	<!-- Resize handles (when selected) -->
 	{#if isSelected}
@@ -109,29 +138,29 @@
 
 <style>
 	.region-fill {
-		fill: oklch(from var(--primary) l c h / 0.3);
+		fill: oklch(from var(--rc) l c h / 0.3);
 		cursor: pointer;
 		transition: fill 0.15s ease;
 	}
 
 	.region-fill:hover {
-		fill: oklch(from var(--primary) l c h / 0.4);
+		fill: oklch(from var(--rc) l c h / 0.4);
 	}
 
 	.region-fill.selected {
-		fill: oklch(from var(--primary) l c h / 0.35);
+		fill: oklch(from var(--rc) l c h / 0.35);
 	}
 
 	.region-border {
 		fill: none;
-		stroke: var(--primary);
+		stroke: var(--rc);
 		stroke-width: 2;
 		pointer-events: none;
 	}
 
 	.region-border-ants {
 		fill: none;
-		stroke: var(--primary);
+		stroke: var(--rc);
 		stroke-width: 2;
 		stroke-dasharray: 8 4;
 		pointer-events: none;
@@ -148,19 +177,32 @@
 	}
 
 	.region-label {
-		fill: var(--primary-foreground);
+		fill: white;
 		font-size: 14px;
 		font-weight: 600;
 		pointer-events: none;
 		user-select: none;
 		text-shadow:
-			0 1px 2px oklch(from var(--primary) calc(l - 0.3) c h / 0.8),
-			0 0 8px oklch(from var(--primary) l c h / 0.5);
+			0 1px 3px rgba(0, 0, 0, 0.7),
+			0 0 8px rgba(0, 0, 0, 0.4);
+	}
+
+	.badge-circle {
+		fill: var(--rc);
+		opacity: 0.9;
+	}
+
+	.badge-text {
+		fill: var(--rc-fg);
+		font-size: 11px;
+		font-weight: 700;
+		pointer-events: none;
+		user-select: none;
 	}
 
 	.resize-handle {
-		fill: var(--primary);
-		stroke: var(--primary-foreground);
+		fill: var(--rc);
+		stroke: var(--rc-fg);
 		stroke-width: 1;
 		cursor: pointer;
 	}

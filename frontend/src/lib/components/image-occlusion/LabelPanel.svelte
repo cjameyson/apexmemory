@@ -18,6 +18,7 @@
 			updates: Partial<Pick<Region, 'label' | 'hint' | 'backExtra'>>
 		) => void;
 		onDeleteRegion?: (id: string) => void;
+		onAdvanceToRegion?: (id: string) => void;
 		onFilterChange?: (visibleIds: Set<string> | null) => void;
 		onTitleChange?: (value: string) => void;
 	}
@@ -32,6 +33,7 @@
 		onSelectRegion,
 		onUpdateRegion,
 		onDeleteRegion,
+		onAdvanceToRegion,
 		onFilterChange,
 		onTitleChange
 	}: Props = $props();
@@ -69,6 +71,13 @@
 
 	function handleBackExtraChange(id: string, value: string) {
 		onUpdateRegion?.(id, { backExtra: value || undefined });
+	}
+
+	function handleAdvanceNext(currentRegionId: string) {
+		const currentIndex = filteredRegions.findIndex((r) => r.id === currentRegionId);
+		if (currentIndex === -1 || filteredRegions.length < 2) return;
+		const nextIndex = (currentIndex + 1) % filteredRegions.length;
+		onAdvanceToRegion?.(filteredRegions[nextIndex].id);
 	}
 </script>
 
@@ -137,6 +146,7 @@
 						onHintChange={(value) => handleHintChange(region.id, value)}
 						onBackExtraChange={(value) => handleBackExtraChange(region.id, value)}
 						onDelete={() => onDeleteRegion?.(region.id)}
+						onAdvanceNext={() => handleAdvanceNext(region.id)}
 					/>
 				{/each}
 			{/if}

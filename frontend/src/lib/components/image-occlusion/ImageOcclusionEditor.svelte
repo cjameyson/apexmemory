@@ -156,6 +156,11 @@
 		focusLabelRegionId = id;
 	}
 
+	function handleAdvanceToRegion(id: string) {
+		editor.setSelectedRegionId(id);
+		focusLabelRegionId = id;
+	}
+
 	function handleUpdateRegion(
 		id: string,
 		updates: Partial<Pick<Region, 'label' | 'hint' | 'backExtra'>>
@@ -342,6 +347,13 @@
 				case 'escape':
 					editor.setSelectedRegionId(null);
 					break;
+				case 'enter':
+				case 'f2':
+					if (editor.selectedRegionId) {
+						e.preventDefault();
+						focusLabelRegionId = editor.selectedRegionId;
+					}
+					break;
 				case 'delete':
 				case 'backspace':
 					if (editor.selectedRegionId) {
@@ -481,6 +493,7 @@
 			onSelectRegion={handleSelectRegion}
 			onUpdateRegion={handleUpdateRegion}
 			onDeleteRegion={handleDeleteRegion}
+			onAdvanceToRegion={handleAdvanceToRegion}
 			onFilterChange={(ids) => (visibleRegionIds = ids)}
 			onTitleChange={(v) => (cardTitle = v)}
 		/>

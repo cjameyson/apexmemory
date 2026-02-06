@@ -16,6 +16,7 @@
 		onHintChange?: (value: string) => void;
 		onBackExtraChange?: (value: string) => void;
 		onDelete?: () => void;
+		onAdvanceNext?: () => void;
 	}
 
 	let {
@@ -28,10 +29,32 @@
 		onLabelChange,
 		onHintChange,
 		onBackExtraChange,
-		onDelete
+		onDelete,
+		onAdvanceNext
 	}: Props = $props();
 
 	let labelInputRef: HTMLInputElement | null = $state(null);
+
+	let isUnlabeled = $derived(!region.label.trim());
+
+	// Color classes based on state
+	let badgeClasses = $derived(
+		isSelected
+			? 'bg-success/10 text-success'
+			: isUnlabeled
+				? 'bg-warning/10 text-warning'
+				: 'bg-primary/10 text-primary'
+	);
+
+	let wrapperClasses = $derived(
+		isSelected
+			? 'border-success bg-success/5'
+			: labelError
+				? 'border-destructive/50 bg-destructive/5'
+				: isUnlabeled
+					? 'border-warning/50 bg-warning/5'
+					: 'border-transparent hover:bg-muted/50'
+	);
 
 	$effect(() => {
 		if (focusLabel && isSelected && labelInputRef) {
@@ -42,14 +65,18 @@
 			});
 		}
 	});
+
+	function handleLabelKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && e.shiftKey) {
+			e.preventDefault();
+			e.stopPropagation();
+			onAdvanceNext?.();
+		}
+	}
 </script>
 
 <div
-	class="rounded-lg border p-2 transition-colors {isSelected
-		? 'border-primary bg-primary/5'
-		: labelError
-			? 'border-destructive/50 bg-destructive/5'
-			: 'border-transparent hover:bg-muted/50'}"
+	class="rounded-lg border p-2 transition-colors {wrapperClasses}"
 	onclick={onSelect}
 	onkeydown={(e) => e.key === 'Enter' && onSelect?.()}
 	role="button"
@@ -61,7 +88,7 @@
 			<!-- Top row: numbered badge + delete button -->
 			<div class="flex items-center justify-between">
 				<span
-					class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/10 text-xs font-medium text-primary"
+					class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-medium {badgeClasses}"
 				>
 					{index}
 				</span>
@@ -91,6 +118,7 @@
 					aria-invalid={labelError || undefined}
 					onclick={(e: MouseEvent) => e.stopPropagation()}
 					oninput={(e: Event) => onLabelChange?.((e.target as HTMLInputElement).value)}
+					onkeydown={handleLabelKeydown}
 				/>
 			</div>
 
@@ -123,11 +151,11 @@
 		<!-- NOT SELECTED: Compact plain text display -->
 		<div class="flex w-full items-center gap-2 text-left">
 			<span
-				class="flex h-5 w-5 shrink-0 items-center justify-center rounded bg-primary/10 text-xs font-medium text-primary"
+				class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-xs font-medium {badgeClasses}"
 			>
 				{index}
 			</span>
-			<span class="flex-1 truncate text-sm text-foreground">
+			<span class="flex-1 truncate text-sm {isUnlabeled ? 'italic text-warning' : 'text-foreground'}">
 				{region.label || 'Untitled region'}
 			</span>
 		</div>
