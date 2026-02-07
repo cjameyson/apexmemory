@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.apexmemory.api</string>
+
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/opt/apexmemory/deploy/run-api.sh</string>
+	</array>
+
+	<key>RunAtLoad</key>
+	<true/>
+
+	<key>KeepAlive</key>
+	<true/>
+
+	<key>StandardOutPath</key>
+	<string>/opt/apexmemory-data/logs/api-stdout.log</string>
+
+	<key>StandardErrorPath</key>
+	<string>/opt/apexmemory-data/logs/api-stderr.log</string>
+
+	<key>WorkingDirectory</key>
+	<string>/opt/apexmemory/backend</string>
+</dict>
+</plist>

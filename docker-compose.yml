@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:18beta2
     container_name: apexmemory-pg18
+    restart: unless-stopped
     env_file:
       # provide the other pg app and migrator users
       - ./.env

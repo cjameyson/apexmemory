@@ -1,0 +1,8 @@
+# Apex Memory - Caddy reverse proxy
+# No HTTPS: Tailscale provides WireGuard encryption at the network layer.
+
+:80 {
+	encode gzip zstd
+
+	reverse_proxy localhost:3000
+}
