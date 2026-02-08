@@ -60,10 +60,10 @@ echo ""
 # 5. Restart services
 echo "[5/6] Restarting services..."
 launchctl kickstart -k "${GUI_DOMAIN}/com.apexmemory.api" 2>/dev/null || \
-  { launchctl bootout "${GUI_DOMAIN}/com.apexmemory.api" 2>/dev/null; \
+  { launchctl bootout "${GUI_DOMAIN}/com.apexmemory.api" 2>/dev/null || true; \
     launchctl bootstrap "${GUI_DOMAIN}" ~/Library/LaunchAgents/com.apexmemory.api.plist; }
 launchctl kickstart -k "${GUI_DOMAIN}/com.apexmemory.frontend" 2>/dev/null || \
-  { launchctl bootout "${GUI_DOMAIN}/com.apexmemory.frontend" 2>/dev/null; \
+  { launchctl bootout "${GUI_DOMAIN}/com.apexmemory.frontend" 2>/dev/null || true; \
     launchctl bootstrap "${GUI_DOMAIN}" ~/Library/LaunchAgents/com.apexmemory.frontend.plist; }
 echo ""
 
